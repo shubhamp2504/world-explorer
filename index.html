@@ -1,0 +1,469 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>🌍 World Explorer — The Earth Playground</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/src/style.css" />
+</head>
+<body>
+
+  <!-- LOADING OVERLAY -->
+  <div id="loadingScreen" class="loading-screen">
+    <div class="loading-inner">
+      <div class="loading-globe-wrap">
+        <div class="loading-orbit orbit-1"></div>
+        <div class="loading-orbit orbit-2"></div>
+        <div class="loading-earth-core">🌍</div>
+      </div>
+      <h1 class="loading-title">WORLD EXPLORER</h1>
+      <p class="loading-sub" id="loadingStatus">Initializing Earth Playground...</p>
+      <div class="loading-bar"><div class="loading-fill" id="loadingFill"></div></div>
+    </div>
+  </div>
+
+  <!-- MAIN HEADER / NAVIGATION -->
+  <header class="header">
+    <div class="header-left">
+      <div class="brand" id="brandHome" title="Reset View">
+        <span class="brand-globe">🌍</span>
+        <div class="brand-text">
+          <span class="brand-title">WORLD EXPLORER</span>
+          <span class="brand-tag">The Earth Playground</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- 5 HERO EXPERIENCES NAVIGATION -->
+    <nav class="header-nav">
+      <button class="nav-tab active" data-mode="explore" id="tabExplore">
+        <span class="tab-icon">🌐</span>
+        <span class="tab-label">Explore</span>
+      </button>
+      <button class="nav-tab" data-mode="favorites" id="tabFavorites">
+        <span class="tab-icon">❤️</span>
+        <span class="tab-label">Favorite Places</span>
+        <span class="tab-badge">Vote</span>
+      </button>
+      <button class="nav-tab" data-mode="battle" id="tabBattle">
+        <span class="tab-icon">🧠</span>
+        <span class="tab-label">Battle Royale</span>
+        <span class="tab-badge-accent">Game</span>
+      </button>
+      <button class="nav-tab" data-mode="mystery" id="tabMystery">
+        <span class="tab-icon">🕵️</span>
+        <span class="tab-label">Guess Where</span>
+      </button>
+    </nav>
+
+    <!-- HEADER RIGHT CONTROLS -->
+    <div class="header-right">
+      <!-- LUXURY COSMIC DISCOVERY BUTTON -->
+      <button class="btn-surprise-hero" id="btnSurpriseHero" title="Discover an extraordinary place on Earth">
+        <span class="surprise-sparkle">✨</span>
+        <span class="surprise-text">SURPRISE ME</span>
+      </button>
+
+      <div class="live-clock-badge" id="liveUtcClock">--:--:-- UTC</div>
+      <button class="btn-icon" id="btnSoundToggle" title="Toggle Cosmic Ambience & Audio">🔇</button>
+      <button class="btn-icon" id="themeToggle" title="Toggle Ambience Mode">✨</button>
+    </div>
+  </header>
+
+  <!-- MAIN APP WORKSPACE -->
+  <main class="app-workspace">
+
+    <!-- MAP CANVAS & D3 SVG VIEWPORT -->
+    <section class="map-viewport" id="mapViewport">
+
+      <!-- FLOATING SLEEK SEARCH & QUICK JUMP BAR (TOP LEFT) -->
+      <div class="map-top-bar">
+        <div class="search-pill-wrap">
+          <div class="search-pill">
+            <span class="search-icon">🔍</span>
+            <input type="text" id="globalSearch" placeholder="Search country, capital, or wonder..." autocomplete="off" />
+            <kbd id="searchKbd">Esc</kbd>
+          </div>
+          <div class="search-results-dropdown" id="searchResultsDropdown"></div>
+        </div>
+
+        <!-- QUICK COUNTRY JUMP HUD -->
+        <div class="quick-jump-bar" id="quickJumpBar">
+          <span class="quick-jump-label">⚡ JUMP:</span>
+          <button class="quick-jump-pill" data-code="IN">🇮🇳 India</button>
+          <button class="quick-jump-pill" data-code="JP">🇯🇵 Japan</button>
+          <button class="quick-jump-pill" data-code="US">🇺🇸 USA</button>
+          <button class="quick-jump-pill" data-code="GB">🇬🇧 UK</button>
+          <button class="quick-jump-pill" data-code="FR">🇫🇷 France</button>
+          <button class="quick-jump-pill" data-code="BR">🇧🇷 Brazil</button>
+          <button class="quick-jump-pill" data-code="AU">🇦🇺 Australia</button>
+          <button class="quick-jump-pill" data-code="DE">🇩🇪 Germany</button>
+          <button class="quick-jump-pill" data-code="AE">🇦🇪 UAE</button>
+          <button class="quick-jump-pill" data-code="EG">🇪🇬 Egypt</button>
+        </div>
+      </div>
+
+      <!-- SLEEK VERTICAL FLOATING NAVIGATION DOCK -->
+      <div class="map-floating-dock" id="mapFloatingDock">
+        <button class="dock-btn" id="btnZoomIn" title="Zoom In">+</button>
+        <button class="dock-btn" id="btnZoomOut" title="Zoom Out">−</button>
+        <button class="dock-btn reset" id="btnZoomReset" title="Center View">⌂</button>
+        <div class="dock-sep"></div>
+        <button class="dock-btn" id="btnOrreryView" title="Whole Solar System View">🌌</button>
+        <button class="dock-btn active" id="btnGlobeView" title="3D Photorealistic Globe">🌐</button>
+        <button class="dock-btn" id="btnFlatView" title="2D Map">🗺️</button>
+        <div class="dock-sep"></div>
+        <button class="dock-btn active" id="btnDayNightToggle" title="Toggle Day/Night Cycle">☀️</button>
+      </div>
+
+      <!-- MAP RENDER CANVAS (2D D3 & 3D WebGL) -->
+      <div class="map-render-canvas" id="mapRenderCanvas">
+        <div id="globe3dContainer" class="globe-3d-canvas"></div>
+        <svg id="earthSvg" style="display: none;"></svg>
+        <div class="earth-tooltip" id="earthTooltip"></div>
+
+        <!-- 🌌 ULTRA-HD SOLAR SYSTEM PLANETARY DOCK -->
+        <div class="celestial-status-pill" id="celestialStatusPill">
+          <span class="celestial-dock-tag">🪐 SOLAR SYSTEM</span>
+          <div class="planet-selector-scroll" id="planetSelectorScroll">
+            <button class="planet-pill orrery-pill active" data-planet="system" id="btnWholeSolarSystem" title="Whole Solar System in One Frame">🌌 Whole Solar System</button>
+            <button class="planet-pill" data-planet="sun" title="The Sun">☀️ Sun</button>
+            <button class="planet-pill" data-planet="mercury" title="Mercury">☿️ Mercury</button>
+            <button class="planet-pill" data-planet="venus" title="Venus">♀️ Venus</button>
+            <button class="planet-pill" data-planet="earth" title="Earth (Blue Marble)">🌍 Earth</button>
+            <button class="planet-pill" data-planet="moon" title="The Moon">🌕 Moon</button>
+            <button class="planet-pill" data-planet="mars" title="Mars">♂️ Mars</button>
+            <button class="planet-pill" data-planet="jupiter" title="Jupiter">♃ Jupiter</button>
+            <button class="planet-pill" data-planet="saturn" title="Saturn (3D Rings)">♄ Saturn</button>
+            <button class="planet-pill" data-planet="uranus" title="Uranus">♅ Uranus</button>
+            <button class="planet-pill" data-planet="neptune" title="Neptune">♆ Neptune</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- FAVORITE PLACES CATEGORIES FILTER BAR -->
+      <div class="favorites-filter-dock" id="favoritesFilterDock" style="display: none;">
+        <div class="fav-filter-scroll" id="favFilterScroll">
+          <!-- Populated dynamically via JS with categories -->
+        </div>
+      </div>
+
+      <!-- BATTLE ROYALE IN-GAME OVERLAY HUD -->
+      <div class="battle-hud" id="battleHud" style="display: none;">
+        <div class="battle-top-bar">
+          <div class="battle-stat-chip">
+            <span class="hud-label">Score</span>
+            <span class="hud-val" id="battleScore">0</span>
+          </div>
+          <div class="battle-stat-chip">
+            <span class="hud-label">Streak</span>
+            <span class="hud-val streak" id="battleStreak">🔥 0</span>
+          </div>
+          <div class="battle-timer-wrap">
+            <div class="battle-timer-circle" id="battleTimer">10</div>
+          </div>
+          <div class="battle-stat-chip">
+            <span class="hud-label">Level</span>
+            <span class="hud-val" id="battleLevel">Level 1</span>
+          </div>
+          <button class="btn-end-battle" id="btnEndBattle">✕ Exit</button>
+        </div>
+        <div class="battle-prompt-card">
+          <span class="battle-badge" id="battleDiffBadge">EASY</span>
+          <h2 class="battle-question" id="battleQuestionText">Click on the country!</h2>
+          <p class="battle-hint" id="battleHintText">Tap the map to lock your answer before time runs out!</p>
+        </div>
+      </div>
+
+      <!-- GUESS WHERE MYSTERY HUD -->
+      <div class="mystery-hud" id="mysteryHud" style="display: none;">
+        <div class="mystery-top-bar">
+          <div class="mystery-round-badge" id="mysteryRoundBadge">ROUND 1 OF 6</div>
+          <div class="mystery-clue-label">🕵️ Clue Revealed:</div>
+          <div class="mystery-clue-content" id="mysteryClueContent">Loading clue...</div>
+          <div class="mystery-actions">
+            <button class="btn-guess-next-clue" id="btnNextClue">Next Clue (+penalty)</button>
+            <button class="btn-guess-giveup" id="btnMysteryReveal">Give Up</button>
+          </div>
+        </div>
+        <div class="mystery-hint-pill">📍 Click your guess on the world map below!</div>
+      </div>
+
+      <!-- MAP FOOTER STATUS TICKER -->
+      <div class="map-footer-ticker">
+        <div class="ticker-left-tag">🔥 EARTH LIVE TICKER</div>
+        <div class="ticker-scroll-content" id="footerTickerText">
+          Loading extraordinary phenomena and global secrets...
+        </div>
+        <div class="ticker-right-stats" id="footerStatsPill">
+          <span>🌍 195 Nations</span>
+          <span>•</span>
+          <span>8.1 Billion Souls</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- RIGHT ACTION & DISCOVERY PANEL (GLASSMORPHISM) -->
+    <aside class="right-drawer" id="rightDrawer">
+
+      <!-- DEFAULT EXPLORE VIEW (COUNTRY DOSSIER) -->
+      <div class="drawer-view active" id="viewCountryDossier">
+        <div class="dossier-hero" id="dossierHero">
+          <div class="dossier-flag" id="dossierFlag">🇯🇵</div>
+          <div class="dossier-titles">
+            <h2 class="dossier-name" id="dossierName">Japan</h2>
+            <p class="dossier-official" id="dossierOfficial">State of Japan</p>
+            <div class="dossier-badges">
+              <span class="badge region-badge" id="dossierRegion">Asia</span>
+              <span class="badge capital-badge" id="dossierCapital">🏛️ Tokyo</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- LIVE LOCAL TIME CARD -->
+        <div class="live-local-card">
+          <div class="local-time-data">
+            <div class="local-clock-display" id="localTimeDisplay">00:00:00</div>
+            <div class="local-clock-city" id="localTimeCity">Local Capital Time</div>
+          </div>
+          <div class="local-time-extra">
+            <span class="local-tz-tag" id="localTimeTz">UTC+9</span>
+            <span class="local-date-tag" id="localDateTag">Today</span>
+          </div>
+        </div>
+
+        <!-- REAL-TIME LIVE WEATHER CARD (OPEN-METEO) -->
+        <div class="live-weather-card" id="liveWeatherCard">
+          <div class="live-weather-main">
+            <span class="weather-icon" id="weatherIcon">☀️</span>
+            <div class="weather-temp-wrap">
+              <span class="weather-temp" id="weatherTemp">--°C</span>
+              <span class="weather-desc" id="weatherDesc">Live Weather</span>
+            </div>
+          </div>
+          <div class="weather-sub-metrics">
+            <span class="weather-metric" id="weatherHumidity">💧 --% Humidity</span>
+            <span class="weather-metric" id="weatherWind">💨 -- km/h Wind</span>
+          </div>
+        </div>
+
+        <!-- DOSSIER TABS -->
+        <div class="drawer-tabs">
+          <button class="dtab active" data-tab="stats">📊 Stats</button>
+          <button class="dtab" data-tab="wild">🤯 Wild Facts</button>
+          <button class="dtab" data-tab="economy">💰 Economy</button>
+          <button class="dtab" data-tab="culture">🎭 Culture</button>
+        </div>
+
+        <!-- TAB 1: STATS -->
+        <div class="tab-panel active" id="tabContentStats">
+          <div class="stats-mini-grid" id="statsMiniGrid"></div>
+          <div class="progress-rankings" id="progressRankings"></div>
+        </div>
+
+        <!-- TAB 2: WILD FACTS -->
+        <div class="tab-panel" id="tabContentWild">
+          <div class="wild-facts-list" id="wildFactsList"></div>
+        </div>
+
+        <!-- TAB 3: ECONOMY -->
+        <div class="tab-panel" id="tabContentEconomy">
+          <div class="econ-list" id="econList"></div>
+        </div>
+
+        <!-- TAB 4: CULTURE -->
+        <div class="tab-panel" id="tabContentCulture">
+          <div class="culture-list" id="cultureList"></div>
+        </div>
+
+        <!-- DOSSIER BOTTOM ACTIONS -->
+        <div class="drawer-footer-actions">
+          <button class="btn-share-trigger" id="btnShareCountry">
+            <span>📲 Share Card</span>
+          </button>
+          <button class="btn-wiki-link" id="btnWikiCountry">
+            <span>📖 Wikipedia</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- 🪐 PLANETARY DOSSIER VIEW (SOLAR SYSTEM EXPLORER) -->
+      <div class="drawer-view" id="viewPlanetDossier" style="display: none;">
+        <div class="dossier-hero">
+          <div class="dossier-flag" id="planetSymbol">🪐</div>
+          <div class="dossier-titles">
+            <h2 class="dossier-name" id="planetName">Saturn</h2>
+            <p class="dossier-official" id="planetType">Gas Giant (Jewel of the Solar System)</p>
+            <div class="dossier-badges">
+              <span class="badge region-badge" id="planetDistBadge">1.43B km from Sun</span>
+              <span class="badge capital-badge" id="planetMoonsBadge">146 Moons</span>
+            </div>
+          </div>
+        </div>
+        <p class="planet-tagline" id="planetTagline">Adorned with magnificent 3D rings...</p>
+
+        <div class="stats-mini-grid" id="planetStatsGrid"></div>
+
+        <div class="planet-facts-section">
+          <h4 class="planet-facts-header">🚀 Extraordinary Astronomical Phenomena</h4>
+          <div class="wild-facts-list" id="planetFactsList"></div>
+        </div>
+
+        <div class="drawer-footer-actions">
+          <button class="btn-share-trigger" id="btnReturnToEarth">
+            <span>🌍 Return to Earth</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- FAVORITE PLACES LIST & LEADERBOARD -->
+      <div class="drawer-view" id="viewFavoritesList" style="display: none;">
+        <div class="fav-drawer-header">
+          <h2>❤️ Community Top Voted</h2>
+          <p>Global leaderboards curated & voted by travelers worldwide.</p>
+        </div>
+        <div class="fav-leaderboard" id="favLeaderboard"></div>
+      </div>
+
+      <!-- LIVE EVENT DETAIL VIEW (Volcano, Earthquake, Storm etc.) -->
+      <div class="drawer-view" id="viewLiveEventDetail" style="display: none;">
+        <div class="event-detail-header">
+          <span class="event-type-badge" id="eventBadge">🌋 ACTIVE VOLCANO</span>
+          <button class="btn-close-view" id="btnCloseEventDetail">✕</button>
+        </div>
+        <h2 class="event-title" id="eventTitle">Mount Etna</h2>
+        <div class="event-country-tag" id="eventCountry">Italy</div>
+        <div class="event-status-box" id="eventStatusBox">
+          <div class="event-status-item">
+            <span class="lbl">Current Activity</span>
+            <span class="val" id="eventActivityVal">Moderate Eruptive Activity</span>
+          </div>
+          <div class="event-status-item">
+            <span class="lbl">Last Alert Update</span>
+            <span class="val" id="eventUpdateVal">12 mins ago</span>
+          </div>
+        </div>
+        <p class="event-desc" id="eventDesc"></p>
+        <button class="btn-share-trigger full" id="btnShareEvent">
+          <span>📲 Share Event Snapshot</span>
+        </button>
+      </div>
+
+    </aside>
+  </main>
+
+  <!-- THE ULTIMATE RANDOM SURPRISE MODAL (SPINNING WHEEL DISCOVERY) -->
+  <dialog class="surprise-modal" id="surpriseModal">
+    <div class="surprise-modal-content">
+      <div class="surprise-header-banner">
+        <span class="surp-pre">🎲 YOU DISCOVERED</span>
+        <h2 class="surp-name" id="surpName">SOCOTRA ARCHIPELAGO</h2>
+        <div class="surp-country" id="surpCountry">🇾🇪 Yemen • Alien Landscape</div>
+      </div>
+      <p class="surp-tagline" id="surpTagline">"One of the strangest landscapes on Earth."</p>
+      <div class="surp-facts-grid" id="surpFactsGrid"></div>
+      <blockquote class="surp-quote" id="surpQuote"></blockquote>
+      <div class="surp-modal-actions">
+        <button class="btn-surp-action explore" id="btnSurpExplore">
+          <span>🔭 Fly & Explore</span>
+        </button>
+        <button class="btn-surp-action next" id="btnSurpNext">
+          <span>🎲 Surprise Me Again!</span>
+        </button>
+        <button class="btn-surp-action share" id="btnSurpShare">
+          <span>📲 Share Discovery</span>
+        </button>
+        <button class="btn-surp-close" id="btnSurpClose">✕</button>
+      </div>
+    </div>
+  </dialog>
+
+  <!-- PLACE DETAIL MODAL (FAVORITE PLACE WITH VOTING) -->
+  <dialog class="place-modal" id="placeModal">
+    <div class="place-modal-inner">
+      <div class="place-image-wrap">
+        <img id="placeModalImg" src="" alt="Place photo" />
+        <span class="place-cat-badge" id="placeModalCat">🌅 Best Sunset</span>
+        <button class="place-close-btn" id="btnClosePlaceModal">✕</button>
+      </div>
+      <div class="place-modal-body">
+        <div class="place-title-row">
+          <div>
+            <h2 class="place-modal-title" id="placeModalTitle">Oia, Santorini</h2>
+            <p class="place-modal-country" id="placeModalCountry">Greece 🇬🇷</p>
+          </div>
+          <div class="place-vote-badge">
+            <span class="vote-num" id="placeModalVoteCount">48,920</span>
+            <span class="vote-sub">Community Votes</span>
+          </div>
+        </div>
+        <p class="place-modal-desc" id="placeModalDesc"></p>
+        <div class="place-why-box">
+          <h4>❤️ Why People Are Obsessed:</h4>
+          <p id="placeModalWhy"></p>
+        </div>
+        <div class="place-nearby-box">
+          <h4>📍 Nearby Hidden Gems:</h4>
+          <ul id="placeModalNearby"></ul>
+        </div>
+        <div class="place-modal-footer">
+          <button class="btn-vote-act" id="btnVotePlace">
+            <span class="vote-heart">❤️</span>
+            <span id="btnVoteLabel">VOTE FOR THIS PLACE</span>
+          </button>
+          <button class="btn-share-act" id="btnSharePlace">
+            <span>📲 Share Card</span>
+          </button>
+          <button class="btn-fly-act" id="btnFlyPlace">
+            <span>🔭 Zoom Here</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </dialog>
+
+  <!-- VIRAL 9:16 SOCIAL SHARE CARD MODAL -->
+  <dialog class="share-card-modal" id="shareCardModal">
+    <div class="share-card-wrap">
+      <button class="close-share-btn" id="btnCloseShareCard">✕</button>
+      <!-- 9:16 TIKTOK / INSTA STORY CARD PREVIEW -->
+      <div class="social-story-card" id="socialStoryCard">
+        <div class="story-branding">
+          <span class="story-logo">🌍 WORLD EXPLORER</span>
+          <span class="story-tag">The Earth Playground</span>
+        </div>
+        <div class="story-headline" id="shareStoryHeadline">"I found the most remote inhabited island on Earth."</div>
+        <div class="story-center-visual" id="shareStoryVisual">
+          <div class="story-icon-huge" id="shareStoryIcon">🏝️</div>
+          <h2 class="story-subject" id="shareStorySubject">Tristan da Cunha</h2>
+          <p class="story-subtext" id="shareStorySubtext">South Atlantic • 2,688 km from mainland</p>
+        </div>
+        <div class="story-stat-box" id="shareStoryStatBox">
+          <span class="stat-highlight" id="shareStoryHighlight">Top 1% Rarest Discovery</span>
+        </div>
+        <div class="story-footer">
+          <span>worldexplorer.app</span>
+          <span class="story-badge">Try This On Earth 🚀</span>
+        </div>
+      </div>
+
+      <div class="share-modal-buttons">
+        <button class="btn-social-action copy" id="btnCopyShareText">
+          <span>📋 Copy Caption & Link</span>
+        </button>
+        <button class="btn-social-action download" id="btnDownloadStoryCard">
+          <span>💾 Download Story Image</span>
+        </button>
+      </div>
+    </div>
+  </dialog>
+
+  <!-- TOAST NOTIFICATIONS -->
+  <div class="toast-stream" id="toastStream"></div>
+
+  <script type="module" src="/src/main.js"></script>
+</body>
+</html>

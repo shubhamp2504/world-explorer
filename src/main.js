@@ -1,0 +1,1694 @@
+import './style.css';
+import * as d3 from 'd3';
+import * as topojson from 'topojson-client';
+import { COUNTRIES } from './countries.js';
+import { CRAZY_FACTS, WILD_COUNTRY_FACTS } from './facts.js';
+import { FAVORITE_CATEGORIES, INITIAL_FAVORITES } from './data/favorites.js';
+import { LIVE_VOLCANOES, LIVE_EARTHQUAKES, LIVE_STORMS, LIVE_WILDFIRES, LIVE_FLIGHT_ROUTES, LIVE_SHIPPING_CHOKEPOINTS } from './data/liveEarth.js';
+import { BATTLE_QUESTIONS, MYSTERY_LOCATIONS } from './data/games.js';
+import { SURPRISE_LOCATIONS } from './data/surprises.js';
+import { PLANETS_DATA } from './data/planets.js';
+import { EarthGlobe3D } from './globe3d.js';
+import { sounds } from './audio.js';
+
+// ============================================================
+// GLOBAL STATE & SYSTEM REGISTRIES
+// ============================================================
+let worldData = null;
+let countriesGeo = null;
+const allCountries = [...COUNTRIES];
+const countryMap = new Map();
+const countryByNameLower = new Map();
+let realLiveEarthquakes = [...LIVE_EARTHQUAKES];
+
+let globe3dInstance = null;
+let currentMode = 'explore';          // explore | favorites | live | battle | mystery
+let currentProjection = 'flat';       // flat | globe
+let showDayNightTerminator = true;
+let selectedCountry = null;
+let lastSurpriseIndex = -1;
+
+// Internet's Favorite Places State
+let favoritesList = [...INITIAL_FAVORITES];
+let selectedFavCategory = 'all';
+
+// Live Earth State
+const liveLayers = {
+  terminator: true,
+  volcanoes: true,
+  earthquakes: true,
+  storms: true,
+  wildfires: true,
+  flights: true,
+  shipping: true
+};
+const now = new Date();
+let scrubberTimeMinutes = now.getUTCHours() * 60 + now.getUTCMinutes(); // Actual UTC time
+let scrubberPlaying = false;
+let scrubberInterval = null;
+
+// Battle Royale State
+let battleQuestionIndex = 0;
+let battleScore = 0;
+let battleStreak = 0;
+let battleTimerSeconds = 10;
+let battleTimerInterval = null;
+let currentBattleQuestion = null;
+
+// Guess Where Mystery State
+let mysteryIndex = 0;
+let mysteryClueRound = 1;
+let currentMysteryTarget = null;
+let mysteryScore = 1000;
+
+// D3 Variables
+let svg, g, projection, pathGen, zoom;
+let width, height;
+let rotateTimer = null;
+let isGlobeRotating = false;
+
+const WORLD_TOPO_URL = 'https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json';
+
+// Aliases mapping for TopoJSON
+const NAME_ALIASES = {
+  'united states of america': 'united states',
+  'dem. rep. congo': 'dr congo',
+  'congo': 'congo',
+  'dominican rep.': 'dominican republic',
+  "côte d'ivoire": 'ivory coast',
+  'central african rep.': 'central african republic',
+  'eq. guinea': 'equatorial guinea',
+  'north korea': 'north korea',
+  'south korea': 'south korea',
+  'solomon is.': 'solomon islands',
+  'bosnia and herz.': 'bosnia and herzegovina',
+  'macedonia': 'north macedonia',
+  's. sudan': 'south sudan',
+  'russia': 'russia',
+  'bahamas': 'bahamas',
+  'tanzania': 'tanzania',
+  'syria': 'syria',
+  'laos': 'laos',
+  'iran': 'iran',
+  'vietnam': 'vietnam',
+  'brunei': 'brunei',
+  'moldova': 'moldova',
+  'bolivia': 'bolivia',
+  'venezuela': 'venezuela'
+};
+
+// ============================================================
+// SYSTEM BOOTSTRAP & DATA SYNC
+// ============================================================
+async function boot() {
+  updateLoading(25, 'Loading textures...');
+
+  // Index countries
+  allCountries.forEach(c => {
+    countryMap.set(c.code, c);
+    countryByNameLower.set(c.name.toLowerCase(), c);
+  });
+
+  // Fetch topology
+  try {
+    const res = await fetch(WORLD_TOPO_URL);
+    worldData = await res.json();
+    countriesGeo = topojson.feature(worldData, worldData.objects.countries);
+  } catch (err) {
+    console.warn('Network topology fetch error, continuing gracefully:', err);
+  }
+
+  updateLoading(65, 'Building Solar System...');
+
+  if (countriesGeo && countriesGeo.features) {
+    countriesGeo.features.forEach(f => {
+      const topoName = f.properties?.name || '';
+      const rawLower = topoName.toLowerCase().trim();
+      const resolvedName = NAME_ALIASES[rawLower] || rawLower;
+
+      let match = countryByNameLower.get(resolvedName);
+      if (!match) {
+        for (const [key, c] of countryByNameLower.entries()) {
+          if (key.includes(rawLower) || rawLower.includes(key)) {
+            match = c;
+            break;
+          }
+        }
+      }
+
+      if (match) {
+        f.properties.countryCode = match.code;
+        f.properties.countryObj = match;
+      }
+    });
+  }
+
+  updateLoading(90, 'Initializing Earth...');
+  await new Promise(r => setTimeout(r, 120));
+
+  initD3Map();
+  initNavigation();
+  initSearch();
+  initQuickJumpBar();
+  initPlanetaryExplorer();
+  initFavoritesSystem();
+  initBattleRoyale();
+  initMysteryGame();
+  initRandomSurpriseButton();
+  initSharingModal();
+  startGlobalClock();
+  startFooterTicker();
+
+  updateLoading(100, 'Ready!');
+  setTimeout(() => {
+    const ls = document.getElementById('loadingScreen');
+    if (ls) {
+      ls.classList.add('fade-out');
+      setTimeout(() => { ls.style.display = 'none'; }, 600);
+    }
+  }, 2500);
+
+  // Launch directly into Photorealistic 3D Solar System Orrery
+  setTimeout(() => {
+    document.getElementById('btnGlobeView')?.click();
+    setTimeout(() => {
+      if (globe3dInstance) {
+        globe3dInstance.viewWholeSolarSystem();
+      }
+      openPlanetDossier('system');
+    }, 250);
+  }, 2750);
+}
+
+function updateLoading(pct, status) {
+  const fill = document.getElementById('loadingFill');
+  const txt = document.getElementById('loadingStatus');
+  if (fill) fill.style.width = `${pct}%`;
+  if (txt) txt.textContent = status;
+}
+
+// ============================================================
+// D3 MAP ENGINE (2D Natural Earth & 3D Globe + Solar Terminator)
+// ============================================================
+function initD3Map() {
+  const container = document.getElementById('mapRenderCanvas');
+  svg = d3.select('#earthSvg');
+  width = container.clientWidth || 900;
+  height = container.clientHeight || 600;
+
+  svg.attr('width', width).attr('height', height);
+
+  zoom = d3.zoom()
+    .scaleExtent([0.8, 22])
+    .on('zoom', (e) => {
+      g.attr('transform', e.transform);
+    });
+  svg.call(zoom);
+  svg.on('dblclick.zoom', null);
+  svg.on('dblclick', () => resetMapView());
+
+  g = svg.append('g');
+
+  buildFlatProjection();
+  renderMapLayers();
+
+  window.addEventListener('resize', () => {
+    width = container.clientWidth;
+    height = container.clientHeight;
+    svg.attr('width', width).attr('height', height);
+    if (currentProjection === 'flat') buildFlatProjection();
+    else buildGlobeProjection();
+    renderMapLayers();
+  });
+}
+
+function buildFlatProjection() {
+  projection = d3.geoNaturalEarth1()
+    .scale(width / 5.8)
+    .translate([width / 2, height / 2]);
+  pathGen = d3.geoPath().projection(projection);
+}
+
+function buildGlobeProjection() {
+  projection = d3.geoOrthographic()
+    .scale(Math.min(width, height) * 0.44)
+    .translate([width / 2, height / 2])
+    .clipAngle(90);
+  pathGen = d3.geoPath().projection(projection);
+}
+
+function renderMapLayers() {
+  g.selectAll('*').remove();
+
+  // 1. Ocean Sphere
+  g.append('path')
+    .datum({ type: 'Sphere' })
+    .attr('class', 'sphere')
+    .attr('d', pathGen);
+
+  // 2. Graticules
+  const graticule = d3.geoGraticule()();
+  g.append('path')
+    .datum(graticule)
+    .attr('class', 'graticule')
+    .attr('d', pathGen);
+
+  // 3. Country Geometries
+  if (countriesGeo && countriesGeo.features) {
+    g.selectAll('.country-path')
+      .data(countriesGeo.features)
+      .join('path')
+      .attr('class', d => {
+        const c = d.properties?.countryObj;
+        const reg = c ? c.region.replace(/\s+/g, '') : 'Other';
+        return `country-path region-${reg}`;
+      })
+      .attr('d', pathGen)
+      .attr('data-code', d => d.properties?.countryCode || '')
+      .on('mouseover', handleCountryHover)
+      .on('mousemove', handleMouseMove)
+      .on('mouseout', handleMouseOut)
+      .on('click', handleCountryClick);
+  }
+
+  // 4. Solar Terminator Shadow (Day/Night)
+  if (showDayNightTerminator) {
+    renderSolarTerminator();
+  }
+
+  // 5. Active Feature Overlays depending on mode
+  if (currentMode === 'favorites') {
+    renderFavoriteMarkers();
+  }
+
+  // 6. Ocean Border
+  g.append('path')
+    .datum({ type: 'Sphere' })
+    .attr('class', 'sphere-border')
+    .attr('d', pathGen);
+
+  if (currentProjection === '2d-globe') {
+    startGlobeRotation();
+  } else if (rotateTimer) {
+    rotateTimer.stop();
+  }
+}
+
+// Day/Night Solar Terminator Calculation with Real Sun & Moon Celestial Bodies
+function renderSolarTerminator() {
+  const now = new Date();
+  const utcHours = Math.floor(scrubberTimeMinutes / 60);
+  const utcMins = scrubberTimeMinutes % 60;
+  
+  // Day of year calculation for solar declination
+  const startOfYear = new Date(Date.UTC(now.getUTCFullYear(), 0, 1));
+  const dayOfYear = Math.floor((now - startOfYear) / (24 * 60 * 60 * 1000));
+  
+  // Solar declination & Zenith longitude
+  const declination = -23.44 * Math.cos((2 * Math.PI / 365) * (dayOfYear + 10));
+  const sunLng = (12 - (utcHours + utcMins / 60)) * 15;
+  const sunLat = declination;
+
+  // Antipodal point (center of the night hemisphere where Moon sits)
+  const nightCenterLng = (sunLng + 180) % 360 - 180;
+  const nightCenterLat = -declination;
+
+  // 1. Dark Twilight Shading
+  const circle = d3.geoCircle()
+    .center([nightCenterLng, nightCenterLat])
+    .radius(90);
+
+  g.append('path')
+    .datum(circle())
+    .attr('class', 'terminator-shadow')
+    .attr('d', pathGen);
+
+  // 2. Update Header Celestial Status Pill
+  const sunPill = document.getElementById('sunPositionVal');
+  const moonPill = document.getElementById('moonPhaseVal');
+  if (sunPill) sunPill.textContent = `${String(utcHours).padStart(2,'0')}:${String(utcMins).padStart(2,'0')} UTC (Zenith)`;
+  if (moonPill) {
+    const moonPhases = ['New Moon 🌑', 'Waxing Crescent 🌒', 'First Quarter 🌓', 'Waxing Gibbous 🌔', 'Full Moon 🌕', 'Waning Gibbous 🌖', 'Last Quarter 🌗', 'Waning Crescent 🌘'];
+    const phaseIdx = Math.floor((now.getDate() % 28) / 3.5);
+    moonPill.textContent = moonPhases[phaseIdx] || 'Waxing 🌔';
+  }
+
+  // Sync with 3D Globe if active
+  if (globe3dInstance) {
+    globe3dInstance.setUtcTime(scrubberTimeMinutes);
+  }
+}
+
+function startGlobeRotation() {
+  if (rotateTimer) rotateTimer.stop();
+  isGlobeRotating = true;
+  let lambda = 0;
+  rotateTimer = d3.timer((elapsed) => {
+    if (!isGlobeRotating) return;
+    lambda = (elapsed / 160) % 360;
+    projection.rotate([lambda, -15, 0]);
+    g.selectAll('path').attr('d', pathGen);
+    // Reposition markers
+    g.selectAll('.favorite-marker').attr('transform', d => {
+      const p = projection([d.lng, d.lat]);
+      return p ? `translate(${p[0]},${p[1]})` : 'translate(-999,-999)';
+    });
+    g.selectAll('.live-event-marker').attr('transform', d => {
+      const p = projection([d.lng, d.lat]);
+      return p ? `translate(${p[0]},${p[1]})` : 'translate(-999,-999)';
+    });
+  });
+
+  svg.on('mousedown.rot touchstart.rot', () => { isGlobeRotating = false; });
+}
+
+// Zoom & Map Transitions
+function zoomToCoordinates(lng, lat, scaleLevel = 4) {
+  const p = projection([lng, lat]);
+  if (!p) return;
+  svg.transition().duration(900).call(
+    zoom.transform,
+    d3.zoomIdentity.translate(width / 2 - scaleLevel * p[0], height / 2 - scaleLevel * p[1]).scale(scaleLevel)
+  );
+}
+
+function resetMapView() {
+  svg.transition().duration(600).call(zoom.transform, d3.zoomIdentity);
+}
+
+// Tooltip handler
+function handleCountryHover(event, d) {
+  const c = d.properties?.countryObj;
+  const name = c ? c.name : d.properties?.name || 'World Landmark';
+  const flag = c ? c.flag : '📍';
+  const cap = c ? `🏛️ Capital: ${c.capital}` : '';
+  const pop = c && c.population ? `👥 Population: ${formatNumber(c.population)}` : '';
+
+  const tt = document.getElementById('earthTooltip');
+  if (!tt) return;
+  tt.innerHTML = `
+    <div style="font-size:1.4rem;margin-bottom:2px;">${flag}</div>
+    <div style="font-weight:800;color:#fff;font-size:0.95rem;">${name}</div>
+    <div style="color:var(--accent-cyan);font-size:0.75rem;">${cap}</div>
+    <div style="color:var(--txt-muted);font-size:0.72rem;">${pop}</div>
+  `;
+  tt.classList.add('visible');
+  positionTooltip(event, tt);
+}
+
+function handleMouseMove(event) {
+  const tt = document.getElementById('earthTooltip');
+  if (tt) positionTooltip(event, tt);
+}
+
+function handleMouseOut() {
+  document.getElementById('earthTooltip')?.classList.remove('visible');
+}
+
+function positionTooltip(event, tt) {
+  const x = event.clientX + 16;
+  const y = event.clientY - 20;
+  const rect = tt.getBoundingClientRect();
+  tt.style.left = `${Math.min(x, window.innerWidth - rect.width - 15)}px`;
+  tt.style.top  = `${Math.max(10, Math.min(y, window.innerHeight - rect.height - 15))}px`;
+}
+
+// Map Click Router (Supports Explore, Battle Royale, Guess Where)
+function handleCountryClick(event, d) {
+  event.stopPropagation();
+  const c = d.properties?.countryObj;
+  const code = d.properties?.countryCode;
+
+  // 1. In Battle Royale Mode
+  if (currentMode === 'battle') {
+    handleBattleMapClick(code, c);
+    return;
+  }
+
+  // 2. In Guess Where Mystery Mode
+  if (currentMode === 'mystery') {
+    const coords = projection.invert([event.offsetX, event.offsetY]);
+    if (coords) handleMysteryMapGuess(coords[0], coords[1]);
+    return;
+  }
+
+  // 3. Normal Explore Mode
+  if (c) {
+    selectCountry(c);
+    highlightCountryPath(c.code);
+    zoomToCoordinates(c.lng || 0, c.lat || 0, 3.5);
+  }
+}
+
+function highlightCountryPath(code) {
+  g.selectAll('.country-path').classed('selected', false);
+  if (code) {
+    g.selectAll(`.country-path[data-code="${code}"]`).classed('selected', true);
+  }
+}
+
+// ============================================================
+// 1. INTERNET'S FAVORITE PLACES SYSTEM (VOTING & FILTERING)
+// ============================================================
+function initFavoritesSystem() {
+  const filterScroll = document.getElementById('favFilterScroll');
+  if (!filterScroll) return;
+
+  filterScroll.innerHTML = FAVORITE_CATEGORIES.map(cat => `
+    <button class="fav-cat-btn ${cat.id === 'all' ? 'active' : ''}" data-cat="${cat.id}">
+      <span>${cat.icon}</span>
+      <span>${cat.label}</span>
+    </button>
+  `).join('');
+
+  filterScroll.querySelectorAll('.fav-cat-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      filterScroll.querySelectorAll('.fav-cat-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      selectedFavCategory = btn.dataset.cat;
+      renderFavoriteMarkers();
+      renderFavoritesLeaderboard();
+    });
+  });
+
+  renderFavoritesLeaderboard();
+}
+
+function renderFavoriteMarkers() {
+  g.selectAll('.favorite-marker-group').remove();
+
+  const filtered = selectedFavCategory === 'all' 
+    ? favoritesList 
+    : favoritesList.filter(f => f.category === selectedFavCategory);
+
+  const markerGroup = g.append('g').attr('class', 'favorite-marker-group');
+
+  filtered.forEach(fav => {
+    const p = projection([fav.lng, fav.lat]);
+    if (!p) return;
+
+    const gMarker = markerGroup.append('g')
+      .datum(fav)
+      .attr('class', 'favorite-marker')
+      .attr('transform', `translate(${p[0]},${p[1]})`)
+      .on('click', (e) => {
+        e.stopPropagation();
+        openPlaceModal(fav);
+      });
+
+    // Pulsing glowing ring
+    gMarker.append('circle')
+      .attr('class', 'marker-glow-circle')
+      .attr('r', 10)
+      .attr('fill', 'none')
+      .attr('stroke', '#f43f5e')
+      .attr('stroke-width', 2);
+
+    // Center icon pin
+    gMarker.append('circle')
+      .attr('r', 8)
+      .attr('fill', '#f43f5e');
+
+    gMarker.append('text')
+      .attr('text-anchor', 'middle')
+      .attr('dy', 4)
+      .attr('font-size', '10px')
+      .attr('fill', '#fff')
+      .text('❤️');
+  });
+}
+
+function renderFavoritesLeaderboard() {
+  const container = document.getElementById('favLeaderboard');
+  if (!container) return;
+
+  const sorted = [...favoritesList]
+    .filter(f => selectedFavCategory === 'all' || f.category === selectedFavCategory)
+    .sort((a, b) => b.votes - a.votes);
+
+  const medals = ['🥇', '🥈', '🥉'];
+
+  container.innerHTML = sorted.map((fav, i) => `
+    <div class="fav-leader-item" data-id="${fav.id}">
+      <span class="fav-lead-rank">${medals[i] || `#${i + 1}`}</span>
+      <div class="fav-lead-info">
+        <div class="fav-lead-name">${fav.name}</div>
+        <div class="fav-lead-sub">${fav.country} • ${fav.category.toUpperCase()}</div>
+      </div>
+      <div class="fav-lead-votes">❤️ ${fav.votes.toLocaleString()}</div>
+    </div>
+  `).join('');
+
+  container.querySelectorAll('.fav-leader-item').forEach(el => {
+    el.addEventListener('click', () => {
+      const fav = favoritesList.find(f => f.id === el.dataset.id);
+      if (fav) {
+        openPlaceModal(fav);
+        zoomToCoordinates(fav.lng, fav.lat, 4.5);
+      }
+    });
+  });
+}
+
+function openPlaceModal(fav) {
+  const modal = document.getElementById('placeModal');
+  if (!modal) return;
+
+  document.getElementById('placeModalImg').src = fav.image;
+  document.getElementById('placeModalTitle').textContent = fav.name;
+  document.getElementById('placeModalCountry').textContent = `${fav.country}`;
+  document.getElementById('placeModalCat').textContent = fav.category.toUpperCase();
+  document.getElementById('placeModalVoteCount').textContent = fav.votes.toLocaleString();
+  document.getElementById('placeModalDesc').textContent = fav.description;
+  document.getElementById('placeModalWhy').textContent = fav.whyLoved;
+
+  const nearbyList = document.getElementById('placeModalNearby');
+  nearbyList.innerHTML = (fav.nearby || []).map(n => `<li>${n}</li>`).join('');
+
+  const voteBtn = document.getElementById('btnVotePlace');
+  voteBtn.onclick = () => {
+    fav.votes += 1;
+    document.getElementById('placeModalVoteCount').textContent = fav.votes.toLocaleString();
+    renderFavoritesLeaderboard();
+    showToast(`❤️ Voted for ${fav.name}! Total: ${fav.votes.toLocaleString()}`);
+  };
+
+  document.getElementById('btnSharePlace').onclick = () => {
+    openShareCardModal({
+      headline: `The Internet voted this one of Earth's greatest places!`,
+      subject: fav.name,
+      subtext: `${fav.country} • ${fav.votes.toLocaleString()} Community Votes`,
+      highlight: `Category Champion: ${fav.category.toUpperCase()} 🌟`,
+      icon: '❤️'
+    });
+  };
+
+  document.getElementById('btnFlyPlace').onclick = () => {
+    modal.close();
+    zoomToCoordinates(fav.lng, fav.lat, 5);
+  };
+
+  modal.showModal();
+}
+
+// ============================================================
+// 2. LIVE EARTH SYSTEM (VOLCANOES, STORMS, EARTHQUAKES, SCRUBBER)
+// ============================================================
+function initLiveEarthControls() {
+  // Checkbox listeners
+  const layers = ['Terminator', 'Volcanoes', 'Earthquakes', 'Storms', 'Wildfires', 'Flights', 'Shipping'];
+  layers.forEach(l => {
+    const chk = document.getElementById(`chkLayer${l}`);
+    if (chk) {
+      chk.addEventListener('change', () => {
+        liveLayers[l.toLowerCase()] = chk.checked;
+        chk.closest('.layer-chip')?.classList.toggle('active', chk.checked);
+        renderMapLayers();
+      });
+    }
+  });
+
+  // Scrubber range slider
+  const scrubber = document.getElementById('timeScrubber');
+  const scrubLabel = document.getElementById('scrubTimeLabel');
+  if (scrubber) {
+    scrubber.addEventListener('input', (e) => {
+      scrubberTimeMinutes = parseInt(e.target.value, 10);
+      const h = String(Math.floor(scrubberTimeMinutes / 60)).padStart(2, '0');
+      const m = String(scrubberTimeMinutes % 60).padStart(2, '0');
+      if (scrubLabel) scrubLabel.textContent = `${h}:${m} UTC`;
+      renderMapLayers();
+    });
+  }
+
+  // Play / Pause button
+  const playBtn = document.getElementById('btnScrubPlay');
+  if (playBtn) {
+    playBtn.addEventListener('click', () => {
+      scrubberPlaying = !scrubberPlaying;
+      playBtn.textContent = scrubberPlaying ? '⏸ Pause' : '▶ Play';
+      if (scrubberPlaying) {
+        scrubberInterval = setInterval(() => {
+          scrubberTimeMinutes = (scrubberTimeMinutes + 15) % 1440;
+          if (scrubber) scrubber.value = scrubberTimeMinutes;
+          const h = String(Math.floor(scrubberTimeMinutes / 60)).padStart(2, '0');
+          const m = String(scrubberTimeMinutes % 60).padStart(2, '0');
+          if (scrubLabel) scrubLabel.textContent = `${h}:${m} UTC`;
+          renderMapLayers();
+        }, 150);
+      } else {
+        clearInterval(scrubberInterval);
+      }
+    });
+  }
+}
+
+function renderLiveEarthOverlays() {
+  g.selectAll('.live-earth-group').remove();
+  const earthGroup = g.append('g').attr('class', 'live-earth-group');
+
+  // Volcanoes
+  if (liveLayers.volcanoes) {
+    LIVE_VOLCANOES.forEach(volc => {
+      const p = projection([volc.lng, volc.lat]);
+      if (!p) return;
+      const m = earthGroup.append('g')
+        .attr('class', 'live-event-marker')
+        .attr('transform', `translate(${p[0]},${p[1]})`)
+        .on('click', (e) => { e.stopPropagation(); openLiveEventDetail('volcano', volc); });
+      m.append('text').attr('text-anchor', 'middle').attr('dy', 5).attr('font-size', '16px').text('🌋');
+    });
+  }
+
+  // Earthquakes (Real Live USGS Feed)
+  if (liveLayers.earthquakes) {
+    realLiveEarthquakes.forEach(eq => {
+      const p = projection([eq.lng, eq.lat]);
+      if (!p) return;
+      const m = earthGroup.append('g')
+        .attr('class', 'live-event-marker')
+        .attr('transform', `translate(${p[0]},${p[1]})`)
+        .on('click', (e) => { e.stopPropagation(); openLiveEventDetail('earthquake', eq); });
+      m.append('circle').attr('r', Math.max(3, eq.mag * 2.2)).attr('fill', 'rgba(239, 68, 68, 0.45)').attr('stroke', '#ef4444').attr('stroke-width', 1.5);
+    });
+  }
+
+  // Storms
+  if (liveLayers.storms) {
+    LIVE_STORMS.forEach(storm => {
+      const p = projection([storm.lng, storm.lat]);
+      if (!p) return;
+      const m = earthGroup.append('g')
+        .attr('class', 'live-event-marker')
+        .attr('transform', `translate(${p[0]},${p[1]})`)
+        .on('click', (e) => { e.stopPropagation(); openLiveEventDetail('storm', storm); });
+      m.append('text').attr('text-anchor', 'middle').attr('dy', 6).attr('font-size', '18px').text('🌪️');
+    });
+  }
+
+  // Flights
+  if (liveLayers.flights) {
+    LIVE_FLIGHT_ROUTES.forEach(fl => {
+      const o = projection(fl.origin.reverse ? [fl.origin[1], fl.origin[0]] : fl.origin);
+      const d = projection(fl.dest.reverse ? [fl.dest[1], fl.dest[0]] : fl.dest);
+      if (o && d) {
+        earthGroup.append('line')
+          .attr('class', 'flight-path')
+          .attr('x1', o[0]).attr('y1', o[1])
+          .attr('x2', d[0]).attr('y2', d[1]);
+        const curX = o[0] + (d[0] - o[0]) * fl.progress;
+        const curY = o[1] + (d[1] - o[1]) * fl.progress;
+        earthGroup.append('text')
+          .attr('class', 'flight-icon')
+          .attr('x', curX).attr('y', curY)
+          .text('✈️');
+      }
+    });
+  }
+}
+
+function openLiveEventDetail(type, item) {
+  showDrawerSection('viewLiveEventDetail');
+  const badge = document.getElementById('eventBadge');
+  const title = document.getElementById('eventTitle');
+  const country = document.getElementById('eventCountry');
+  const actVal = document.getElementById('eventActivityVal');
+  const upVal = document.getElementById('eventUpdateVal');
+  const desc = document.getElementById('eventDesc');
+
+  if (type === 'volcano') {
+    badge.textContent = '🌋 ACTIVE VOLCANO';
+    title.textContent = item.name;
+    country.textContent = `${item.country} • Elevation ${item.elevation}`;
+    actVal.textContent = item.status;
+    upVal.textContent = item.update;
+    desc.textContent = item.detail;
+  } else if (type === 'earthquake') {
+    badge.textContent = '🌎 SEISMIC EVENT';
+    title.textContent = `Magnitude ${item.mag} Quake`;
+    country.textContent = item.place;
+    actVal.textContent = `Depth: ${item.depth}`;
+    upVal.textContent = item.time;
+    desc.textContent = `Tsunami warning: ${item.tsunami ? 'ACTIVE WARNING' : 'No tsunami threat detected.'}`;
+  } else if (type === 'storm') {
+    badge.textContent = '🌪️ TROPICAL STORM / CYCLONE';
+    title.textContent = item.name;
+    country.textContent = `${item.category}`;
+    actVal.textContent = `Wind speeds: ${item.wind}`;
+    upVal.textContent = `Tracking: ${item.track}`;
+    desc.textContent = `Atmospheric pressure down to ${item.pressure}. Extreme marine advisory active.`;
+  }
+
+  document.getElementById('btnShareEvent').onclick = () => {
+    openShareCardModal({
+      headline: `Live Earth Event Tracked on World Explorer!`,
+      subject: item.name || item.place,
+      subtext: `Activity Monitored in Real Time`,
+      highlight: `${item.status || item.mag || 'Extreme Global Activity'} 📡`,
+      icon: type === 'volcano' ? '🌋' : (type === 'storm' ? '🌪️' : '🌎')
+    });
+  };
+}
+
+// ============================================================
+// 3. GEOGRAPHY BATTLE ROYALE GAME ENGINE
+// ============================================================
+function initBattleRoyale() {
+  const exitBtn = document.getElementById('btnEndBattle');
+  if (exitBtn) {
+    exitBtn.addEventListener('click', () => {
+      endBattleRoyale();
+    });
+  }
+}
+
+function startBattleRoyale() {
+  battleScore = 0;
+  battleStreak = 0;
+  battleQuestionIndex = 0;
+  document.getElementById('battleScore').textContent = '0';
+  document.getElementById('battleStreak').textContent = '🔥 0';
+  document.getElementById('battleHud').style.display = 'flex';
+  nextBattleQuestion();
+}
+
+function nextBattleQuestion() {
+  if (battleQuestionIndex >= BATTLE_QUESTIONS.length) {
+    // Completed set!
+    showToast(`🏆 Battle Royale Finished! Final Score: ${battleScore.toLocaleString()}`);
+    openShareCardModal({
+      headline: `I scored ${battleScore.toLocaleString()} in Geography Battle Royale 🌍`,
+      subject: `Battle Royale Master`,
+      subtext: `Better than 94% of geography players worldwide.`,
+      highlight: `Max Streak: 🔥 ${battleStreak} in a row`,
+      icon: '🧠'
+    });
+    endBattleRoyale();
+    return;
+  }
+
+  currentBattleQuestion = BATTLE_QUESTIONS[battleQuestionIndex];
+  battleQuestionIndex++;
+
+  document.getElementById('battleQuestionText').textContent = currentBattleQuestion.text;
+  document.getElementById('battleHintText').textContent = currentBattleQuestion.hint;
+  document.getElementById('battleDiffBadge').textContent = currentBattleQuestion.difficulty;
+
+  // Reset 10-second countdown timer
+  clearInterval(battleTimerInterval);
+  battleTimerSeconds = 10;
+  const timerCircle = document.getElementById('battleTimer');
+  timerCircle.textContent = battleTimerSeconds;
+
+  battleTimerInterval = setInterval(() => {
+    battleTimerSeconds--;
+    timerCircle.textContent = battleTimerSeconds;
+    if (battleTimerSeconds <= 0) {
+      clearInterval(battleTimerInterval);
+      battleStreak = 0;
+      document.getElementById('battleStreak').textContent = '🔥 0';
+      showToast(`⏱️ Time expired! Moving to next round...`);
+      setTimeout(nextBattleQuestion, 1200);
+    }
+  }, 1000);
+}
+
+function handleBattleMapClick(clickedCode, countryObj) {
+  if (!currentBattleQuestion) return;
+  clearInterval(battleTimerInterval);
+
+  const isCorrect = (clickedCode === currentBattleQuestion.targetCode);
+  if (isCorrect) {
+    const points = 500 + (battleTimerSeconds * 50) + (battleStreak * 100);
+    battleScore += points;
+    battleStreak += 1;
+    document.getElementById('battleScore').textContent = battleScore.toLocaleString();
+    document.getElementById('battleStreak').textContent = `🔥 ${battleStreak}`;
+    showToast(`✅ CORRECT! +${points} pts!`);
+    zoomToCoordinates(currentBattleQuestion.lng, currentBattleQuestion.lat, 3.8);
+  } else {
+    battleStreak = 0;
+    document.getElementById('battleStreak').textContent = `🔥 0`;
+    showToast(`❌ WRONG! That was ${countryObj?.name || 'an incorrect place'}`);
+    highlightCountryPath(currentBattleQuestion.targetCode);
+  }
+
+  setTimeout(nextBattleQuestion, 2000);
+}
+
+function endBattleRoyale() {
+  clearInterval(battleTimerInterval);
+  document.getElementById('battleHud').style.display = 'none';
+  document.getElementById('tabExplore')?.click();
+}
+
+// ============================================================
+// 4. GUESS WHERE I AM (GEOGUESSR PROGRESSIVE MYSTERY)
+// ============================================================
+function initMysteryGame() {
+  document.getElementById('btnNextClue')?.addEventListener('click', () => {
+    if (mysteryClueRound < 6) {
+      mysteryClueRound++;
+      mysteryScore = Math.max(200, mysteryScore - 150);
+      showMysteryClue();
+    } else {
+      showToast('All 6 clues already revealed! Take your guess!');
+    }
+  });
+
+  document.getElementById('btnMysteryReveal')?.addEventListener('click', () => {
+    revealMysteryTarget(0);
+  });
+}
+
+function startMysteryGame() {
+  mysteryIndex = (mysteryIndex + 1) % MYSTERY_LOCATIONS.length;
+  currentMysteryTarget = MYSTERY_LOCATIONS[mysteryIndex];
+  mysteryClueRound = 1;
+  mysteryScore = 1000;
+
+  document.getElementById('mysteryHud').style.display = 'flex';
+  showMysteryClue();
+}
+
+function showMysteryClue() {
+  document.getElementById('mysteryRoundBadge').textContent = `CLUE ${mysteryClueRound} OF 6 (Value: ${mysteryScore} pts)`;
+  const clue = currentMysteryTarget.clues.find(c => c.round === mysteryClueRound);
+  document.getElementById('mysteryClueContent').textContent = clue ? `${clue.label}: ${clue.text}` : '';
+}
+
+function handleMysteryMapGuess(lng, lat) {
+  if (!currentMysteryTarget) return;
+
+  // Calculate Haversine distance
+  const dKm = calculateDistanceKm(lat, lng, currentMysteryTarget.lat, currentMysteryTarget.lng);
+  const accuracyScore = Math.max(50, Math.round(mysteryScore * Math.max(0, 1 - (dKm / 5000))));
+
+  // Draw animated line from guess to target on SVG
+  g.selectAll('.guess-line').remove();
+  const pGuess = projection([lng, lat]);
+  const pTarget = projection([currentMysteryTarget.lng, currentMysteryTarget.lat]);
+
+  if (pGuess && pTarget) {
+    g.append('line')
+      .attr('class', 'guess-line')
+      .attr('x1', pGuess[0]).attr('y1', pGuess[1])
+      .attr('x2', pTarget[0]).attr('y2', pTarget[1])
+      .attr('stroke', '#38bdf8')
+      .attr('stroke-width', 3)
+      .attr('stroke-dasharray', '6,6');
+  }
+
+  zoomToCoordinates(currentMysteryTarget.lng, currentMysteryTarget.lat, 4.5);
+
+  showToast(`🎯 Guess was ${Math.round(dKm).toLocaleString()} km away! Score: ${accuracyScore} pts`);
+  revealMysteryTarget(accuracyScore, dKm);
+}
+
+function revealMysteryTarget(score, distanceKm = 0) {
+  openShareCardModal({
+    headline: `I guessed ${Math.round(distanceKm).toLocaleString()} km away in Mystery Geo! 🕵️`,
+    subject: currentMysteryTarget.name,
+    subtext: `${currentMysteryTarget.country} • Accuracy: ${score}/1000 pts`,
+    highlight: `Solved with Clue Round ${mysteryClueRound}!`,
+    icon: '📍'
+  });
+
+  setTimeout(() => {
+    document.getElementById('mysteryHud').style.display = 'none';
+    document.getElementById('tabExplore')?.click();
+  }, 1500);
+}
+
+function calculateDistanceKm(lat1, lon1, lat2, lon2) {
+  const R = 6371;
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLon = (lon2 - lon1) * Math.PI / 180;
+  const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+            Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+            Math.sin(dLon/2) * Math.sin(dLon/2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+  return R * c;
+}
+
+// ============================================================
+// 5. THE ULTIMATE RANDOM SURPRISE BUTTON
+// ============================================================
+function initRandomSurpriseButton() {
+  const btn = document.getElementById('btnSurpriseHero');
+  if (btn) {
+    btn.addEventListener('click', triggerUltimateSurprise);
+  }
+
+  document.getElementById('btnSurpClose')?.addEventListener('click', () => {
+    document.getElementById('surpriseModal')?.close();
+  });
+
+  document.getElementById('btnSurpNext')?.addEventListener('click', triggerUltimateSurprise);
+}
+
+function triggerUltimateSurprise() {
+  let nextIdx;
+  do {
+    nextIdx = Math.floor(Math.random() * SURPRISE_LOCATIONS.length);
+  } while (nextIdx === lastSurpriseIndex && SURPRISE_LOCATIONS.length > 1);
+  lastSurpriseIndex = nextIdx;
+
+  const item = SURPRISE_LOCATIONS[nextIdx];
+
+  // Satisfying rapid camera zoom/spin animation before modal opens
+  showToast(`🎲 Spinning the Earth to discover ${item.name}...`);
+  sounds.playWhoosh();
+  if (currentProjection === 'globe' && globe3dInstance) {
+    globe3dInstance.flyTo(item.lat, item.lng, 2.2);
+  } else {
+    zoomToCoordinates(item.lng, item.lat, 4.5);
+  }
+
+  setTimeout(() => {
+    populateSurpriseModal(item);
+  }, 850);
+}
+
+function populateSurpriseModal(item) {
+  const modal = document.getElementById('surpriseModal');
+  if (!modal) return;
+
+  document.getElementById('surpName').textContent = item.name.toUpperCase();
+  document.getElementById('surpCountry').textContent = `${item.country} • ${item.category}`;
+  document.getElementById('surpTagline').textContent = `"${item.tagline}"`;
+
+  const factsGrid = document.getElementById('surpFactsGrid');
+  factsGrid.innerHTML = item.facts.map(f => `
+    <div class="surp-fact-pill">
+      <div class="surp-fact-lbl">${f.label}</div>
+      <div class="surp-fact-val">${f.value}</div>
+    </div>
+  `).join('');
+
+  document.getElementById('surpQuote').textContent = item.funQuote;
+
+  document.getElementById('btnSurpExplore').onclick = () => {
+    modal.close();
+    zoomToCoordinates(item.lng, item.lat, 6);
+  };
+
+  document.getElementById('btnSurpShare').onclick = () => {
+    openShareCardModal({
+      headline: `I just discovered this using the Ultimate Random Button! 🎲`,
+      subject: item.name,
+      subtext: `${item.country} • ${item.category}`,
+      highlight: item.tagline,
+      icon: '🌍'
+    });
+  };
+
+  modal.showModal();
+}
+
+// ============================================================
+// 6. VIRAL 9:16 SOCIAL SHARE CARD MODAL
+// ============================================================
+function initSharingModal() {
+  document.getElementById('btnCloseShareCard')?.addEventListener('click', () => {
+    document.getElementById('shareCardModal')?.close();
+  });
+
+  document.getElementById('btnCopyShareText')?.addEventListener('click', () => {
+    const text = document.getElementById('shareStoryHeadline').textContent + ' Play here: ' + window.location.href;
+    navigator.clipboard?.writeText(text);
+    showToast('📋 Copied caption & link to clipboard!');
+  });
+
+  document.getElementById('btnDownloadStoryCard')?.addEventListener('click', () => {
+    showToast('📸 Card ready for Instagram / TikTok stories!');
+  });
+}
+
+function openShareCardModal({ headline, subject, subtext, highlight, icon }) {
+  document.getElementById('shareStoryHeadline').textContent = headline;
+  document.getElementById('shareStorySubject').textContent = subject;
+  document.getElementById('shareStorySubtext').textContent = subtext;
+  document.getElementById('shareStoryHighlight').textContent = highlight;
+  document.getElementById('shareStoryIcon').textContent = icon || '🌍';
+
+  document.getElementById('shareCardModal')?.showModal();
+}
+
+// ============================================================
+// GLOBAL NAVIGATION & SEARCH ROUTER
+// ============================================================
+function initNavigation() {
+  document.querySelectorAll('.nav-tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+      document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+      tab.classList.add('active');
+      currentMode = tab.dataset.mode;
+      handleModeSwitch(currentMode);
+    });
+  });
+
+  // Flat vs Globe toggle with Three.js WebGL integration
+  const btnFlat = document.getElementById('btnFlatView');
+  const btnGlobe = document.getElementById('btnGlobeView');
+  const svgMap = document.getElementById('earthSvg');
+  const globeContainer = document.getElementById('globe3dContainer');
+
+  btnFlat?.addEventListener('click', () => {
+    currentProjection = 'flat';
+    if (rotateTimer) rotateTimer.stop();
+    btnFlat.classList.add('active');
+    btnGlobe?.classList.remove('active');
+
+    // Switch viewports
+    if (svgMap) svgMap.style.display = 'block';
+    if (globeContainer) globeContainer.style.display = 'none';
+
+    buildFlatProjection();
+    renderMapLayers();
+    resetMapView();
+  });
+
+  btnGlobe?.addEventListener('click', () => {
+    currentProjection = 'globe';
+    if (rotateTimer) rotateTimer.stop();
+    btnGlobe.classList.add('active');
+    btnFlat?.classList.remove('active');
+
+    // Switch viewports
+    if (svgMap) svgMap.style.display = 'none';
+    if (globeContainer) {
+      globeContainer.style.display = 'block';
+
+      // Lazy initialize 3D Globe instance on first click
+      if (!globe3dInstance) {
+        globe3dInstance = new EarthGlobe3D(
+          globeContainer,
+          (item) => {
+            // Clicked a 3D marker
+            openPlaceModal(item);
+          },
+          (lat, lng) => {
+            // Clicked surface point -> accurately select nearest country and display dossier
+            const c = findCountryAt(lat, lng);
+            if (c) {
+              selectCountry(c);
+              highlightCountryPath(c.code);
+            }
+          },
+          (planetId) => {
+            // Clicked a 3D celestial planet in deep space
+            openPlanetDossier(planetId);
+            document.querySelectorAll('.planet-pill').forEach(b => {
+              b.classList.toggle('active', b.dataset.planet === planetId);
+            });
+          }
+        );
+        globe3dInstance.setUtcTime(scrubberTimeMinutes);
+        globe3dInstance.clearMarkers(); // Start pristine in Explore mode
+      } else {
+        globe3dInstance.resize();
+        globe3dInstance.setUtcTime(scrubberTimeMinutes);
+      }
+    }
+  });
+
+  // Whole Solar System Orrery Shortcut Button
+  const btnOrrery = document.getElementById('btnOrreryView');
+  btnOrrery?.addEventListener('click', () => {
+    sounds.playWhoosh();
+    if (currentProjection !== 'globe') {
+      btnGlobe?.click();
+    }
+    if (globe3dInstance) {
+      globe3dInstance.viewWholeSolarSystem();
+      document.querySelectorAll('.planet-pill').forEach(b => {
+        b.classList.toggle('active', b.dataset.planet === 'system');
+      });
+      openPlanetDossier('system');
+    }
+  });
+
+  // Day/Night toggle
+  document.getElementById('btnDayNightToggle')?.addEventListener('click', () => {
+    sounds.playClick();
+    showDayNightTerminator = !showDayNightTerminator;
+    document.getElementById('btnDayNightToggle').classList.toggle('active', showDayNightTerminator);
+    renderMapLayers();
+  });
+
+  // Zoom controls (Works on both 3D Globe and 2D SVG Map)
+  document.getElementById('btnZoomIn')?.addEventListener('click', () => {
+    sounds.playClick();
+    if (currentProjection === 'globe' && globe3dInstance) {
+      globe3dInstance.zoomBy(0.82);
+    } else {
+      svg.transition().duration(300).call(zoom.scaleBy, 1.4);
+    }
+  });
+
+  document.getElementById('btnZoomOut')?.addEventListener('click', () => {
+    sounds.playClick();
+    if (currentProjection === 'globe' && globe3dInstance) {
+      globe3dInstance.zoomBy(1.22);
+    } else {
+      svg.transition().duration(300).call(zoom.scaleBy, 0.7);
+    }
+  });
+
+  document.getElementById('btnZoomReset')?.addEventListener('click', () => {
+    sounds.playClick();
+    if (currentProjection === 'globe' && globe3dInstance) {
+      globe3dInstance.resetView();
+    } else {
+      resetMapView();
+    }
+  });
+
+  // Celestial Focus Telemetry Handlers
+  document.getElementById('badgeSunFocus')?.addEventListener('click', () => {
+    sounds.playWhoosh();
+    if (globe3dInstance) {
+      globe3dInstance.focusTarget('sun');
+      showToast('☀️ Focused on the Radiant Sun');
+    }
+  });
+
+  document.getElementById('badgeMoonFocus')?.addEventListener('click', () => {
+    sounds.playWhoosh();
+    if (globe3dInstance) {
+      globe3dInstance.focusTarget('moon');
+      showToast('🌙 Focused on the 3D Cratered Moon');
+    }
+  });
+
+  document.getElementById('btnFocusEarth')?.addEventListener('click', () => {
+    sounds.playWhoosh();
+    if (globe3dInstance) {
+      globe3dInstance.focusTarget('earth');
+      showToast('🌍 Centered on Planet Earth');
+    }
+  });
+
+  // Audio Ambience & Sound Toggle
+  document.getElementById('btnSoundToggle')?.addEventListener('click', () => {
+    const isMuted = sounds.toggleMute();
+    const btn = document.getElementById('btnSoundToggle');
+    if (btn) {
+      btn.textContent = isMuted ? '🔇' : '🔊';
+      btn.classList.toggle('active', !isMuted);
+    }
+    showToast(isMuted ? '🔇 Audio muted' : '🔊 Cosmic soundscape activated');
+  });
+
+  // Close modals
+  document.getElementById('btnClosePlaceModal')?.addEventListener('click', () => { sounds.playClick(); document.getElementById('placeModal')?.close(); });
+  document.getElementById('btnCloseEventDetail')?.addEventListener('click', () => { sounds.playClick(); showDrawerSection('viewCountryDossier'); });
+  document.getElementById('themeToggle')?.addEventListener('click', () => { sounds.playClick(); document.body.classList.toggle('ambience-mystic'); });
+}
+
+function handleModeSwitch(mode) {
+  sounds.playClick();
+  // Hide all dynamic docks
+  const liveDock = document.getElementById('liveEarthDock');
+  if (liveDock) liveDock.style.display = 'none';
+  const favDock = document.getElementById('favoritesFilterDock');
+  if (favDock) favDock.style.display = 'none';
+  const battleHud = document.getElementById('battleHud');
+  if (battleHud) battleHud.style.display = 'none';
+  const mysteryHud = document.getElementById('mysteryHud');
+  if (mysteryHud) mysteryHud.style.display = 'none';
+
+  if (mode === 'explore') {
+    if (globe3dInstance) globe3dInstance.clearMarkers();
+    showDrawerSection('viewCountryDossier');
+    renderMapLayers();
+  } else if (mode === 'favorites') {
+    if (globe3dInstance) globe3dInstance.setMarkers(favoritesList, 'favorite');
+    document.getElementById('favoritesFilterDock').style.display = 'block';
+    showDrawerSection('viewFavoritesList');
+    renderFavoriteMarkers();
+  } else if (mode === 'battle') {
+    if (globe3dInstance) globe3dInstance.clearMarkers();
+    startBattleRoyale();
+  } else if (mode === 'mystery') {
+    if (globe3dInstance) globe3dInstance.clearMarkers();
+    startMysteryGame();
+  }
+}
+
+function showDrawerSection(viewId) {
+  document.querySelectorAll('.drawer-view').forEach(v => v.style.display = 'none');
+  const target = document.getElementById(viewId);
+  if (target) target.style.display = 'flex';
+}
+
+// Global Search
+function initSearch() {
+  const input = document.getElementById('globalSearch');
+  const dropdown = document.getElementById('searchResultsDropdown');
+  if (!input || !dropdown) return;
+
+  input.addEventListener('input', () => {
+    const q = input.value.trim().toLowerCase();
+    if (!q) { dropdown.classList.remove('open'); return; }
+
+    const matches = allCountries
+      .filter(c => c.name.toLowerCase().includes(q) || (c.capital && c.capital.toLowerCase().includes(q)))
+      .slice(0, 8);
+
+    dropdown.innerHTML = matches.map(c => `
+      <div class="search-item" data-code="${c.code}">
+        <span class="search-item-flag">${c.flag || '📍'}</span>
+        <div class="search-item-info">
+          <span class="search-item-name">${c.name}</span>
+          <span class="search-item-sub">🏛️ ${c.capital || 'N/A'} • ${c.region || ''}</span>
+        </div>
+      </div>
+    `).join('');
+
+    dropdown.querySelectorAll('.search-item').forEach(el => {
+      el.addEventListener('click', () => {
+        const c = countryMap.get(el.dataset.code);
+        if (c) {
+          input.value = c.name;
+          dropdown.classList.remove('open');
+          selectCountry(c);
+          highlightCountryPath(c.code);
+          zoomToCoordinates(c.lng || 0, c.lat || 0, 4);
+        }
+      });
+    });
+
+    dropdown.classList.add('open');
+  });
+
+  document.addEventListener('click', (e) => {
+    if (!e.target.closest('.search-pill-wrap')) dropdown.classList.remove('open');
+  });
+}
+
+// Quick Country Jump HUD
+function initQuickJumpBar() {
+  const bar = document.getElementById('quickJumpBar');
+  if (!bar) return;
+
+  bar.querySelectorAll('.quick-jump-pill').forEach(btn => {
+    btn.addEventListener('click', () => {
+      sounds.playClick();
+      const code = btn.dataset.code;
+      const c = countryMap.get(code);
+      if (c) {
+        selectCountry(c);
+        highlightCountryPath(c.code);
+        if (currentProjection === 'globe' && globe3dInstance) {
+          globe3dInstance.flyTo(c.lat, c.lng, 2.65);
+        } else {
+          zoomToCoordinates(c.lng || 0, c.lat || 0, 4);
+        }
+      }
+    });
+  });
+}
+
+// Real-Time Open-Meteo Weather Integration
+let weatherFetchAbortController = null;
+async function fetchLiveWeather(lat, lng) {
+  const descEl = document.getElementById('weatherDesc');
+  const tempEl = document.getElementById('weatherTemp');
+  const humidEl = document.getElementById('weatherHumidity');
+  const windEl = document.getElementById('weatherWind');
+  const iconEl = document.getElementById('weatherIcon');
+
+  if (weatherFetchAbortController) weatherFetchAbortController.abort();
+  weatherFetchAbortController = new AbortController();
+
+  if (descEl) descEl.textContent = 'Fetching live telemetry...';
+
+  try {
+    const res = await fetch(
+      `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&current=temperature_2m,relative_humidity_2m,weather_code,wind_speed_10m`,
+      { signal: weatherFetchAbortController.signal }
+    );
+    if (!res.ok) throw new Error('Weather feed error');
+    const data = await res.json();
+    const cur = data.current;
+    if (!cur) return;
+
+    if (tempEl) tempEl.textContent = `${Math.round(cur.temperature_2m)}°C`;
+    if (humidEl) humidEl.textContent = `💧 ${cur.relative_humidity_2m}% Humidity`;
+    if (windEl) windEl.textContent = `💨 ${cur.wind_speed_10m} km/h Wind`;
+
+    const code = cur.weather_code;
+    let desc = 'Clear Sky (Live)';
+    let icon = '☀️';
+    if (code >= 1 && code <= 3) { desc = 'Partly Cloudy'; icon = '⛅'; }
+    else if (code >= 45 && code <= 48) { desc = 'Foggy / Hazy'; icon = '🌫️'; }
+    else if (code >= 51 && code <= 67) { desc = 'Rain / Drizzle'; icon = '🌧️'; }
+    else if (code >= 71 && code <= 77) { desc = 'Snow Showers'; icon = '❄️'; }
+    else if (code >= 80 && code <= 82) { desc = 'Heavy Downpour'; icon = '⛈️'; }
+    else if (code >= 95) { desc = 'Thunderstorm'; icon = '⚡'; }
+
+    if (descEl) descEl.textContent = `${desc} (Live)`;
+    if (iconEl) iconEl.textContent = icon;
+  } catch (err) {
+    if (err.name !== 'AbortError') {
+      if (descEl) descEl.textContent = 'Live telemetry sync';
+    }
+  }
+}
+
+// Real-Time USGS Earthquakes Feed
+async function loadRealLiveUSGSEarthquakes() {
+  try {
+    const res = await fetch('https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/4.5_day.geojson');
+    if (!res.ok) return;
+    const data = await res.json();
+    if (data && data.features && data.features.length > 0) {
+      realLiveEarthquakes = data.features.map((f, idx) => {
+        const coords = f.geometry?.coordinates || [0, 0, 0];
+        const p = f.properties || {};
+        const minsAgo = Math.max(1, Math.round((Date.now() - p.time) / 60000));
+        const timeStr = minsAgo < 60 ? `${minsAgo}m ago` : `${Math.round(minsAgo / 60)}h ago`;
+        return {
+          id: `usgs-eq-${idx}`,
+          place: p.place || 'Active Seismic Zone',
+          mag: p.mag || 4.5,
+          depth: `${Math.round(coords[2] || 10)} km`,
+          lat: coords[1],
+          lng: coords[0],
+          time: timeStr,
+          tsunami: Boolean(p.tsunami),
+          isRealLiveUSGS: true
+        };
+      });
+      renderMapLayers();
+    }
+  } catch (err) {
+    console.warn('USGS feed fetch error (using fallback):', err);
+  }
+}
+
+// Accurately resolve clicked Earth coordinates to nearest country
+function findCountryAt(lat, lng) {
+  let nearest = null;
+  let minDist = Infinity;
+  for (const c of allCountries) {
+    if (c.lat === undefined || c.lng === undefined) continue;
+    const dLat = (c.lat - lat) * (Math.PI / 180);
+    const dLng = (c.lng - lng) * (Math.PI / 180);
+    const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+              Math.cos(lat * (Math.PI / 180)) * Math.cos(c.lat * (Math.PI / 180)) *
+              Math.sin(dLng / 2) * Math.sin(dLng / 2);
+    const d = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    if (d < minDist) {
+      minDist = d;
+      nearest = c;
+    }
+  }
+  return nearest;
+}
+
+// Solar System Planetary Explorer
+function initPlanetaryExplorer() {
+  const scroll = document.getElementById('planetSelectorScroll');
+  if (!scroll) return;
+
+  scroll.querySelectorAll('.planet-pill').forEach(btn => {
+    btn.addEventListener('click', () => {
+      sounds.playWhoosh();
+      const planetId = btn.dataset.planet;
+
+      scroll.querySelectorAll('.planet-pill').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      
+      btn.classList.add('just-selected');
+      setTimeout(() => btn.classList.remove('just-selected'), 500);
+
+      if (currentProjection !== 'globe') {
+        document.getElementById('btnGlobeView')?.click();
+      }
+
+      if (globe3dInstance) {
+        globe3dInstance.focusPlanet(planetId);
+      }
+
+      if (planetId === 'earth') {
+        if (!selectedCountry) {
+          const defaultC = countryMap.get('IN') || allCountries[0];
+          if (defaultC) selectCountry(defaultC);
+        }
+        showDrawerSection('viewCountryDossier');
+      } else {
+        openPlanetDossier(planetId);
+      }
+    });
+  });
+
+  document.getElementById('btnReturnToEarth')?.addEventListener('click', () => {
+    sounds.playWhoosh();
+    scroll.querySelectorAll('.planet-pill').forEach(b => b.classList.remove('active'));
+    scroll.querySelector('[data-planet="earth"]')?.classList.add('active');
+    if (globe3dInstance) globe3dInstance.focusPlanet('earth');
+    if (!selectedCountry) {
+      const defaultC = countryMap.get('IN') || allCountries[0];
+      if (defaultC) selectCountry(defaultC);
+    }
+    showDrawerSection('viewCountryDossier');
+  });
+}
+
+function openPlanetDossier(planetId) {
+  const p = PLANETS_DATA.find(x => x.id === planetId);
+  if (!p) return;
+
+  showDrawerSection('viewPlanetDossier');
+
+  document.getElementById('planetSymbol').textContent = p.symbol || '🪐';
+  document.getElementById('planetName').textContent = p.name;
+  document.getElementById('planetType').textContent = p.type;
+  document.getElementById('planetDistBadge').textContent = p.distanceSun;
+  document.getElementById('planetMoonsBadge').textContent = p.moons;
+  document.getElementById('planetTagline').textContent = `"${p.tagline}"`;
+
+  const tempDisplay = (p.temperature || '').includes('•') ? p.temperature.split('•')[0].trim() : (p.temperature || 'N/A');
+  const atmoDisplay = (p.atmosphere || '').includes(',') ? p.atmosphere.split(',')[0].trim() : (p.atmosphere || 'Interplanetary Medium');
+
+  document.getElementById('planetStatsGrid').innerHTML = [
+    { lbl: 'Diameter', val: p.diameter, sub: 'Equatorial Width' },
+    { lbl: 'Surface Temp', val: tempDisplay, sub: 'Thermal Climate' },
+    { lbl: 'Day Length', val: p.rotationPeriod, sub: 'Rotation Period' },
+    { lbl: 'Year Length', val: p.orbitalPeriod, sub: 'Orbital Transit' },
+    { lbl: 'Surface Gravity', val: p.gravity, sub: 'Gravitational Pull' },
+    { lbl: 'Atmosphere', val: atmoDisplay, sub: 'Primary Elements' }
+  ].map(s => `
+    <div class="stat-box">
+      <div class="stat-box-lbl">${s.lbl}</div>
+      <div class="stat-box-val" style="font-size:0.88rem;">${s.val}</div>
+      <div class="stat-box-sub">${s.sub}</div>
+    </div>
+  `).join('');
+
+  document.getElementById('planetFactsList').innerHTML = p.facts.map((fact, i) => `
+    <div class="wild-fact-card">
+      <div class="wild-fact-emoji">${i === 0 ? '🌌' : i === 1 ? '🔭' : '⚡'}</div>
+      <div class="wild-fact-text">${fact}</div>
+    </div>
+  `).join('');
+}
+
+// ============================================================
+// COUNTRY DOSSIER FILLER
+// ============================================================
+function selectCountry(c) {
+  selectedCountry = c;
+  showDrawerSection('viewCountryDossier');
+  sounds.playWhoosh();
+
+  if (currentProjection === 'globe' && globe3dInstance && c.lat !== undefined && c.lng !== undefined) {
+    globe3dInstance.flyTo(c.lat, c.lng, 2.65);
+    globe3dInstance.setTargetCountry(c.lat, c.lng, c.name, c.flag);
+  }
+
+  // Fetch real-time live weather
+  if (c.lat !== undefined && c.lng !== undefined) {
+    fetchLiveWeather(c.lat, c.lng);
+  }
+
+  document.getElementById('dossierFlag').textContent = c.flag || '🌍';
+  document.getElementById('dossierName').textContent = c.name;
+  document.getElementById('dossierOfficial').textContent = c.official || c.name;
+  document.getElementById('dossierRegion').textContent = c.region || 'World';
+  document.getElementById('dossierCapital').textContent = `🏛️ ${c.capital || 'N/A'}`;
+
+  // Fill tabs
+  fillStatsTab(c);
+  fillWildFactsTab(c);
+  fillEconomyTab(c);
+  fillCultureTab(c);
+
+  // Tabs switching
+  document.querySelectorAll('.dtab').forEach(t => {
+    t.onclick = () => {
+      document.querySelectorAll('.dtab').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+      t.classList.add('active');
+      const targetPanel = document.getElementById(`tabContent${t.dataset.tab.charAt(0).toUpperCase() + t.dataset.tab.slice(1)}`);
+      if (targetPanel) targetPanel.classList.add('active');
+    };
+  });
+
+  // Wikipedia link
+  document.getElementById('btnWikiCountry').onclick = () => {
+    window.open(`https://en.wikipedia.org/wiki/${encodeURIComponent(c.name)}`, '_blank');
+  };
+
+  // Share card
+  document.getElementById('btnShareCountry').onclick = () => {
+    openShareCardModal({
+      headline: `I discovered ${c.flag} ${c.name} on World Explorer!`,
+      subject: c.name,
+      subtext: `Capital: ${c.capital} • Population: ${formatNumber(c.population)}`,
+      highlight: `Spans ${(c.timezones || []).length} time zones • ${c.region}`,
+      icon: c.flag
+    });
+  };
+}
+
+function fillStatsTab(c) {
+  const density = c.area > 0 ? (c.population / c.area).toFixed(1) : 'N/A';
+  document.getElementById('statsMiniGrid').innerHTML = [
+    { lbl: 'Population', val: formatNumber(c.population), sub: `${((c.population / 8100000000) * 100).toFixed(2)}% of Earth` },
+    { lbl: 'Land Area', val: `${formatNumber(c.area)} km²`, sub: 'National Territory' },
+    { lbl: 'Density', val: `${density}/km²`, sub: 'People per km²' },
+    { lbl: 'Timezones', val: (c.timezones || []).length, sub: (c.timezones && c.timezones[0]) || 'UTC' }
+  ].map(s => `
+    <div class="stat-box">
+      <div class="stat-box-lbl">${s.lbl}</div>
+      <div class="stat-box-val">${s.val}</div>
+      <div class="stat-box-sub">${s.sub}</div>
+    </div>
+  `).join('');
+
+  const popRank = [...allCountries].sort((a,b) => b.population - a.population).findIndex(x => x.code === c.code) + 1;
+  const areaRank = [...allCountries].sort((a,b) => b.area - a.area).findIndex(x => x.code === c.code) + 1;
+
+  document.getElementById('progressRankings').innerHTML = [
+    { label: 'Global Population Standing', val: `#${popRank} of ${allCountries.length}`, pct: ((allCountries.length - popRank) / allCountries.length) * 100, col: 'var(--accent-cyan)' },
+    { label: 'Global Landmass Rank', val: `#${areaRank} of ${allCountries.length}`, pct: ((allCountries.length - areaRank) / allCountries.length) * 100, col: 'var(--accent-purple)' }
+  ].map(r => `
+    <div class="rank-row-item">
+      <div class="rank-row-top"><span>${r.label}</span><strong>${r.val}</strong></div>
+      <div class="rank-progress-track">
+        <div class="rank-progress-bar" style="width:${Math.max(5, r.pct)}%;background:${r.col}"></div>
+      </div>
+    </div>
+  `).join('');
+}
+
+function fillWildFactsTab(c) {
+  const facts = WILD_COUNTRY_FACTS[c.code] || [
+    { emoji: '✨', text: `<strong>Unique Geography:</strong> Sits prominently in the ${c.region} territory with a vibrant heritage.` },
+    { emoji: '🏛️', text: `<strong>Historic Epicenter:</strong> Capital city <strong>${c.capital}</strong> functions as the cultural heart of the nation.` }
+  ];
+  document.getElementById('wildFactsList').innerHTML = facts.map(f => `
+    <div class="wild-fact-card">
+      <div class="wild-fact-emoji">${f.emoji}</div>
+      <div class="wild-fact-text">${f.text}</div>
+    </div>
+  `).join('');
+}
+
+function fillEconomyTab(c) {
+  document.getElementById('econList').innerHTML = `
+    <div class="econ-item-card">
+      <div class="card-lbl">Official Currencies</div>
+      <div class="card-val">${(c.currencies || []).join(', ') || 'N/A'}</div>
+      <div class="card-sub">Medium of exchange across commercial zones</div>
+    </div>
+    <div class="econ-item-card">
+      <div class="card-lbl">Driving Direction</div>
+      <div class="card-val">${c.driveSide === 'left' ? '← Left Side Driving' : '→ Right Side Driving'}</div>
+      <div class="card-sub">${c.driveSide === 'left' ? 'Like UK, Japan, Australia' : 'Standard continental traffic'}</div>
+    </div>
+  `;
+}
+
+function fillCultureTab(c) {
+  document.getElementById('cultureList').innerHTML = `
+    <div class="cult-item-card">
+      <div class="card-lbl">Recognized Languages</div>
+      <div class="card-val">${(c.languages || []).join(', ') || 'N/A'}</div>
+      <div class="card-sub">Constitutional & regional dialects</div>
+    </div>
+  `;
+}
+
+// ============================================================
+// TIMERS, CLOCKS & TOASTS
+// ============================================================
+function startGlobalClock() {
+  const clock = document.getElementById('liveUtcClock');
+  const localClock = document.getElementById('localTimeDisplay');
+  const city = document.getElementById('localTimeCity');
+  const tzTag = document.getElementById('localTimeTz');
+
+  setInterval(() => {
+    const now = new Date();
+    if (clock) clock.textContent = `${now.toUTCString().slice(17, 25)} UTC`;
+
+    if (selectedCountry && localClock) {
+      const tzStr = (selectedCountry.timezones && selectedCountry.timezones[0]) || 'UTC';
+      const offset = parseTimezoneOffset(tzStr);
+      const utc = now.getTime() + now.getTimezoneOffset() * 60000;
+      const loc = new Date(utc + offset * 3600000);
+      localClock.textContent = `${String(loc.getHours()).padStart(2,'0')}:${String(loc.getMinutes()).padStart(2,'0')}:${String(loc.getSeconds()).padStart(2,'0')}`;
+      if (city) city.textContent = `Capital Time (${selectedCountry.capital || selectedCountry.name})`;
+      if (tzTag) tzTag.textContent = tzStr;
+    }
+  }, 1000);
+}
+
+function parseTimezoneOffset(tzStr) {
+  if (!tzStr || tzStr === 'UTC') return 0;
+  const m = tzStr.match(/UTC([+-])(\d{2}):?(\d{2})?/);
+  if (!m) return 0;
+  const sign = m[1] === '+' ? 1 : -1;
+  return sign * (parseInt(m[2] || '0', 10) + parseInt(m[3] || '0', 10) / 60);
+}
+
+function startFooterTicker() {
+  const el = document.getElementById('footerTickerText');
+  if (!el) return;
+  let idx = 0;
+  const tickerItems = [...CRAZY_FACTS];
+  setInterval(() => {
+    el.textContent = tickerItems[idx % tickerItems.length];
+    idx++;
+  }, 7500);
+  el.textContent = tickerItems[0];
+}
+
+function showToast(msg, duration = 3200) {
+  const stream = document.getElementById('toastStream');
+  if (!stream) return;
+  const card = document.createElement('div');
+  card.className = 'toast-card';
+  card.textContent = msg;
+  stream.appendChild(card);
+  setTimeout(() => {
+    card.classList.add('out');
+    setTimeout(() => card.remove(), 300);
+  }, duration);
+}
+
+function formatNumber(n) {
+  if (n == null || isNaN(n) || n === 0) return '0';
+  if (n >= 1e9) return `${(n / 1e9).toFixed(1)}B`;
+  if (n >= 1e6) return `${(n / 1e6).toFixed(1)}M`;
+  if (n >= 1e3) return `${(n / 1e3).toFixed(1)}K`;
+  return n.toLocaleString();
+}
+
+// Launch the entire Earth Playground
+boot();

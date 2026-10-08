@@ -1,0 +1,258 @@
+// src/data/planets.js
+// Ultra-HD Solar System telemetry and planet attributes
+
+export const PLANETS_DATA = [
+  {
+    id: 'system',
+    name: 'The Solar System',
+    symbol: '🌌',
+    type: 'Gravitationally Bound Planetary System',
+    tagline: 'Our cosmic sanctuary: 1 central G-type star, 8 major planets, 290+ moons, and millions of asteroids.',
+    diameter: '9.09 Billion km (to Neptune orbit)',
+    distanceSun: 'Heliocentric Center (0 AU)',
+    orbitalPeriod: '230 Million Years (Galactic Year)',
+    rotationPeriod: 'Keplerian Differential Revolution',
+    temperature: '-270°C (Cosmic Void) to 5,500°C (Sun)',
+    gravity: 'Heliocentric Mass Well (99.86% in Sun)',
+    moons: '290+ Planetary Moons',
+    atmosphere: 'Interplanetary Heliosphere (Solar Wind Plasma)',
+    color: '#38bdf8',
+    facts: [
+      'The Solar System was formed 4.6 billion years ago from the gravitational collapse of a giant interstellar molecular cloud.',
+      'All 8 planets orbit the Sun in nearly the exact same flat plane, known as the ecliptic plane, in the same counter-clockwise direction.',
+      'Between Mars and Jupiter lies the vast Asteroid Belt containing over 1.3 million asteroids, while beyond Neptune lies the icy Kuiper Belt.'
+    ]
+  },
+  {
+    id: 'sun',
+    name: 'The Sun',
+    symbol: '☀️',
+    type: 'Yellow Dwarf Star (G2V)',
+    tagline: 'The blazing gravitational anchor of our Solar System containing 99.86% of its mass.',
+    diameter: '1,392,700 km',
+    distanceSun: '0 km (Center)',
+    orbitalPeriod: '230 Million Years (Galactic Orbit)',
+    rotationPeriod: '25 - 35 Earth Days (Differential)',
+    temperature: '5,500°C (Surface) • 15,000,000°C (Core)',
+    gravity: '274.0 m/s² (28x Earth)',
+    moons: '8 Planets, 5 Dwarf Planets',
+    atmosphere: '73.4% Hydrogen, 25.0% Helium, 0.9% Oxygen/Carbon',
+    texture: 'https://cdn.jsdelivr.net/gh/jeromeetienne/threex.planets@master/images/sunmap.jpg',
+    color: '#fbbf24',
+    radius: 1.6,
+    facts: [
+      'Over 1.3 million Earths could fit inside the Sun.',
+      'Light generated in the Sun\'s core takes up to 100,000 years to reach the surface, but only 8 minutes and 20 seconds to reach Earth.',
+      'Every second, the Sun fuses 600 million tons of hydrogen into helium via nuclear fusion.'
+    ]
+  },
+  {
+    id: 'mercury',
+    name: 'Mercury',
+    symbol: '☿️',
+    type: 'Terrestrial Planet (Scorched World)',
+    tagline: 'The smallest planet and closest to the Sun, with extreme day-night temperature swings.',
+    diameter: '4,879 km',
+    distanceSun: '57.9 Million km (0.39 AU)',
+    orbitalPeriod: '88 Earth Days',
+    rotationPeriod: '58.6 Earth Days',
+    temperature: '-180°C to 430°C',
+    gravity: '3.7 m/s² (0.38x Earth)',
+    moons: '0 Moons',
+    atmosphere: 'Ultra-thin exosphere: Oxygen, Sodium, Hydrogen',
+    texture: 'https://cdn.jsdelivr.net/gh/jeromeetienne/threex.planets@master/images/mercurymap.jpg',
+    color: '#94a3b8',
+    radius: 0.55,
+    facts: [
+      'Mercury has no atmosphere to trap heat, so temperatures swing by over 600°C between night and day.',
+      'Despite being closest to the Sun, water ice exists permanently shielded in deep polar craters.',
+      'Its iron core makes up about 75% of the planet\'s total radius.'
+    ]
+  },
+  {
+    id: 'venus',
+    name: 'Venus',
+    symbol: '♀️',
+    type: 'Terrestrial Planet (Runaway Greenhouse)',
+    tagline: 'Earth\'s twin in size, but enveloped in sulfuric acid clouds with crushing surface pressures.',
+    diameter: '12,104 km',
+    distanceSun: '108.2 Million km (0.72 AU)',
+    orbitalPeriod: '224.7 Earth Days',
+    rotationPeriod: '243 Earth Days (Retrograde)',
+    temperature: '465°C (Hottest in Solar System)',
+    gravity: '8.87 m/s² (0.91x Earth)',
+    moons: '0 Moons',
+    atmosphere: '96.5% Carbon Dioxide, 3.5% Nitrogen, Sulfuric Acid clouds',
+    texture: 'https://cdn.jsdelivr.net/gh/jeromeetienne/threex.planets@master/images/venusmap.jpg',
+    color: '#f59e0b',
+    radius: 0.95,
+    facts: [
+      'A day on Venus is longer than its entire year: it rotates slower than its orbital transit around the Sun.',
+      'Venus spins in reverse (clockwise / retrograde) compared to almost all other planets in the Solar System.',
+      'The surface atmospheric pressure is 92 times that of Earth — equal to being 900 meters underwater.'
+    ]
+  },
+  {
+    id: 'earth',
+    name: 'Earth',
+    symbol: '🌍',
+    type: 'Terrestrial Planet (The Blue Marble)',
+    tagline: 'The only known harbor of life in the universe, blessed with liquid oceans and dynamic atmosphere.',
+    diameter: '12,742 km',
+    distanceSun: '149.6 Million km (1.00 AU)',
+    orbitalPeriod: '365.25 Days',
+    rotationPeriod: '23 Hours, 56 Minutes, 4 Seconds',
+    temperature: '-89°C to 56.7°C (Avg: 15°C)',
+    gravity: '9.81 m/s² (1.00x Earth)',
+    moons: '1 Natural Satellite (The Moon)',
+    atmosphere: '78.08% Nitrogen, 20.95% Oxygen, 0.93% Argon, 0.04% CO₂',
+    texture: 'earth_day_4096.jpg',
+    color: '#0ea5e9',
+    radius: 1.0,
+    facts: [
+      'Oceans cover 70.8% of the surface and contain 97% of Earth\'s total water reserves.',
+      'Earth\'s molten iron outer core generates a massive magnetic shield that repels deadly solar wind.',
+      'Earth is the only planet not named after a Greek or Roman deity.'
+    ]
+  },
+  {
+    id: 'moon',
+    name: 'The Moon (Luna)',
+    symbol: '🌕',
+    type: 'Natural Satellite',
+    tagline: 'Earth\'s ancient companion whose gravitational pull drives tidal rhythms and stabilizes our axial tilt.',
+    diameter: '3,474 km',
+    distanceSun: '384,400 km from Earth',
+    orbitalPeriod: '27.3 Earth Days (Tidally Locked)',
+    rotationPeriod: '27.3 Earth Days (Same as orbit)',
+    temperature: '-130°C to 120°C',
+    gravity: '1.62 m/s² (0.166x Earth)',
+    moons: 'Orbits Earth',
+    atmosphere: 'Tenuous exosphere (Helium, Neon, Hydrogen)',
+    texture: 'https://cdn.jsdelivr.net/gh/mrdoob/three.js@dev/examples/textures/planets/moon_1024.jpg',
+    color: '#cbd5e1',
+    radius: 0.42,
+    facts: [
+      'The Moon is tidally locked to Earth, meaning the exact same hemisphere always faces us.',
+      'Footprints left by Apollo astronauts will remain intact for millions of years due to zero erosion.',
+      'The Moon drifts approximately 3.8 cm farther away from Earth every single year.'
+    ]
+  },
+  {
+    id: 'mars',
+    name: 'Mars',
+    symbol: '♂️',
+    type: 'Terrestrial Planet (The Red Planet)',
+    tagline: 'A frozen desert world featuring the largest volcano and deepest canyon system known in the Solar System.',
+    diameter: '6,779 km',
+    distanceSun: '227.9 Million km (1.52 AU)',
+    orbitalPeriod: '687 Earth Days (1.88 Years)',
+    rotationPeriod: '24 Hours, 37 Minutes',
+    temperature: '-125°C to 20°C (Avg: -65°C)',
+    gravity: '3.72 m/s² (0.38x Earth)',
+    moons: '2 Moons (Phobos & Deimos)',
+    atmosphere: '95.3% Carbon Dioxide, 2.6% Nitrogen, 1.9% Argon',
+    texture: 'https://cdn.jsdelivr.net/gh/jeromeetienne/threex.planets@master/images/marsmap1k.jpg',
+    color: '#ef4444',
+    radius: 0.65,
+    facts: [
+      'Home to Olympus Mons, an extinct shield volcano nearly 3 times taller than Mount Everest (22 km high).',
+      'Valles Marineris canyon stretches over 4,000 km across Mars — 10 times longer and 4 times deeper than the Grand Canyon.',
+      'Mars has distinct white polar ice caps composed of frozen water and dry ice (carbon dioxide).'
+    ]
+  },
+  {
+    id: 'jupiter',
+    name: 'Jupiter',
+    symbol: '♃',
+    type: 'Gas Giant (King of Planets)',
+    tagline: 'The colossal titan of our Solar System with swirling atmospheric bands and a storm larger than Earth.',
+    diameter: '139,820 km',
+    distanceSun: '778.5 Million km (5.20 AU)',
+    orbitalPeriod: '11.86 Earth Years',
+    rotationPeriod: '9 Hours, 55 Minutes (Fastest Day)',
+    temperature: '-110°C (Cloud tops)',
+    gravity: '24.79 m/s² (2.53x Earth)',
+    moons: '95 Confirmed Moons (Io, Europa, Ganymede, Callisto)',
+    atmosphere: '89.8% Hydrogen, 10.2% Helium, traces of Methane/Ammonia',
+    texture: 'https://cdn.jsdelivr.net/gh/jeromeetienne/threex.planets@master/images/jupitermap.jpg',
+    color: '#d97706',
+    radius: 1.45,
+    facts: [
+      'The Great Red Spot is a persistent anticyclonic storm that has raged for at least 350 years and could swallow Earth whole.',
+      'Jupiter\'s moon Ganymede is the largest moon in the Solar System — larger than Mercury and Pluto.',
+      'Jupiter radiates more heat into space than it receives from the Sun.'
+    ]
+  },
+  {
+    id: 'saturn',
+    name: 'Saturn',
+    symbol: '♄',
+    type: 'Gas Giant (Jewel of the Solar System)',
+    tagline: 'Adorned with magnificent 3D rings made of billions of icy particles, spanning 282,000 km.',
+    diameter: '116,460 km',
+    distanceSun: '1.43 Billion km (9.58 AU)',
+    orbitalPeriod: '29.45 Earth Years',
+    rotationPeriod: '10 Hours, 33 Minutes',
+    temperature: '-140°C (Cloud tops)',
+    gravity: '10.44 m/s² (1.06x Earth)',
+    moons: '146 Confirmed Moons (Titan, Enceladus, Mimas)',
+    atmosphere: '96.3% Hydrogen, 3.25% Helium, traces of Methane',
+    texture: 'https://cdn.jsdelivr.net/gh/jeromeetienne/threex.planets@master/images/saturnmap.jpg',
+    ringTexture: 'https://cdn.jsdelivr.net/gh/jeromeetienne/threex.planets@master/images/saturnringcolor.jpg',
+    color: '#eab308',
+    radius: 1.25,
+    hasRings: true,
+    facts: [
+      'Saturn\'s ring system spans up to 282,000 km wide, but is astonishingly razor-thin: only 10 to 100 meters thick in most parts!',
+      'Saturn is the only planet in the Solar System that is less dense than water — if you had a bathtub big enough, Saturn would float!',
+      'Its giant moon Titan has a thick nitrogen atmosphere, liquid methane lakes, and clouds that rain liquid hydrocarbons.'
+    ]
+  },
+  {
+    id: 'uranus',
+    name: 'Uranus',
+    symbol: '♅',
+    type: 'Ice Giant (The Sideways Planet)',
+    tagline: 'An icy cyan giant tilted at 98 degrees, essentially rolling on its side around the Sun.',
+    diameter: '50,724 km',
+    distanceSun: '2.87 Billion km (19.2 AU)',
+    orbitalPeriod: '84.0 Earth Years',
+    rotationPeriod: '17 Hours, 14 Minutes (Retrograde)',
+    temperature: '-195°C to -224°C (Coldest atmosphere)',
+    gravity: '8.69 m/s² (0.89x Earth)',
+    moons: '28 Confirmed Moons (Miranda, Ariel, Titania)',
+    atmosphere: '82.5% Hydrogen, 15.2% Helium, 2.3% Methane (gives cyan color)',
+    texture: 'https://cdn.jsdelivr.net/gh/jeromeetienne/threex.planets@master/images/uranusmap.jpg',
+    color: '#06b6d4',
+    radius: 0.95,
+    facts: [
+      'Uranus has an extreme axial tilt of 97.8°, meaning its north and south poles take turns pointing directly at the Sun for 42 years at a time.',
+      'Methane in its upper atmosphere absorbs red light, giving Uranus its serene cyan/aquamarine color.',
+      'Uranus possesses 13 faint, dark planetary rings discovered in 1977.'
+    ]
+  },
+  {
+    id: 'neptune',
+    name: 'Neptune',
+    symbol: '♆',
+    type: 'Ice Giant (The Supersonic Giant)',
+    tagline: 'The outermost major planet, battered by supersonic winds exceeding 2,100 km/h in deep azure clouds.',
+    diameter: '49,244 km',
+    distanceSun: '4.50 Billion km (30.1 AU)',
+    orbitalPeriod: '164.8 Earth Years',
+    rotationPeriod: '16 Hours, 6 Minutes',
+    temperature: '-201°C to -218°C',
+    gravity: '11.15 m/s² (1.14x Earth)',
+    moons: '16 Confirmed Moons (Triton, Nereid, Proteus)',
+    atmosphere: '80.0% Hydrogen, 19.0% Helium, 1.5% Methane',
+    texture: 'https://cdn.jsdelivr.net/gh/jeromeetienne/threex.planets@master/images/neptunemap.jpg',
+    color: '#3b82f6',
+    radius: 0.92,
+    facts: [
+      'Winds on Neptune are the fastest in the Solar System, whipping clouds at supersonic speeds of up to 2,160 km/h (1,300 mph).',
+      'It was the first planet predicted using mathematics before it was ever visually observed through a telescope in 1846.',
+      'Its moon Triton orbits in the opposite direction of Neptune\'s rotation (retrograde) and features nitrogen cryovolcanoes spewing ice miles into space.'
+    ]
+  }
+];
