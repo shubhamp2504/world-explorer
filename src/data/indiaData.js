@@ -157,6 +157,46 @@ export const INDIA_BATTLE_QUESTIONS = [
     hint: 'Deccan plateau state bounded by Maharashtra, Chhattisgarh, Karnataka, and AP; capital Hyderabad',
     difficulty: 'MEDIUM',
     fact: 'The historic Ramappa (Kakatiya Rudreshwara) Temple in Telangana was declared a UNESCO World Heritage site in 2021.'
+  },
+  {
+    id: 'in-13',
+    text: 'Locate UTTARAKHAND — Land of the Valley of Flowers & Origin of the Ganga!',
+    stateCode: 'UK',
+    lat: 30.06,
+    lng: 79.01,
+    hint: 'Himalayan state home to Nanda Devi peak and Jim Corbett National Park; capital Dehradun',
+    difficulty: 'EASY',
+    fact: 'Jim Corbett National Park (established in 1936 as Hailey National Park) is the oldest national park in India and the birthplace of Project Tiger (1973).'
+  },
+  {
+    id: 'in-14',
+    text: 'Find ARUNACHAL PRADESH — Land of the Dawn-Lit Mountains & Easternmost point Kibithu!',
+    stateCode: 'AR',
+    lat: 28.21,
+    lng: 94.72,
+    hint: 'Bordering Bhutan, Myanmar, and China; largest of the Seven Sister states; capital Itanagar',
+    difficulty: 'MEDIUM',
+    fact: 'Arunachal Pradesh has the lowest population density in India (17 persons per km²) according to the Census of India.'
+  },
+  {
+    id: 'in-15',
+    text: 'Locate CHHATTISGARH — The Rice Bowl of Central India & Mineral Heartland!',
+    stateCode: 'CG',
+    lat: 21.27,
+    lng: 81.86,
+    hint: 'Formed from Madhya Pradesh in 2000; drained by the Mahanadi river basin; capital Raipur',
+    difficulty: 'MEDIUM',
+    fact: 'Chhattisgarh contains the spectacular Chitrakote Falls on the Indravati River, commonly referred to as the "Niagara Falls of India".'
+  },
+  {
+    id: 'in-16',
+    text: 'Click on GOA — India\'s Smallest State by Land Area with Pristine Konkan Coastline!',
+    stateCode: 'GA',
+    lat: 15.29,
+    lng: 74.12,
+    hint: 'Nestled between Maharashtra and Karnataka along the Arabian Sea; capital Panaji',
+    difficulty: 'EASY',
+    fact: 'The historic Churches and Convents of Old Goa (including Basilica of Bom Jesus) are a UNESCO World Heritage cultural site.'
   }
 ];
 
@@ -295,5 +335,95 @@ export const KBC_QUIZ_BANK = [
     explanation: 'Madagascar separated from the Indian landmass ~88 million years ago, allowing lemurs and 90% of its flora/fauna to evolve in complete isolation.',
     category: 'Global Biogeography',
     difficulty: 'EASY'
+  },
+  {
+    id: 'kbc-16',
+    question: 'Which pass connects Sikkim with the Tibet Autonomous Region of China and was part of the ancient Silk Route?',
+    options: ['Lipulekh Pass', 'Nathu La Pass', 'Mana Pass', 'Banihal Pass'],
+    answerIndex: 1, // Nathu La
+    explanation: 'Nathu La (altitude 4,310 m) is a mountain pass in the Dongkya Range of the Himalayas connecting Sikkim with Tibet.',
+    category: 'Mountain Passes (UPSC/MPSC)',
+    difficulty: 'MEDIUM'
+  },
+  {
+    id: 'kbc-17',
+    question: 'Which Indian river flows in a rift valley between the Vindhya and Satpura ranges in a westward direction?',
+    options: ['Mahanadi', 'Godavari', 'Narmada', 'Krishna'],
+    answerIndex: 2, // Narmada
+    explanation: 'The Narmada originates from the Amarkantak Plateau and flows westward through a rift valley between the Vindhya and Satpura ranges into the Arabian Sea.',
+    category: 'River Drainage Systems (UPSC)',
+    difficulty: 'MEDIUM'
+  },
+  {
+    id: 'kbc-18',
+    question: 'Which is the only UNESCO Natural World Heritage site in India located in the Brahmaputra valley known for the Great Indian One-Horned Rhinoceros?',
+    options: ['Manas National Park', 'Kaziranga National Park', 'Sundarbans', 'Keoladeo National Park'],
+    answerIndex: 1, // Kaziranga
+    explanation: 'Kaziranga National Park in Assam holds two-thirds of the world\'s great one-horned rhinoceroses and was inscribed as a World Heritage site in 1985.',
+    category: 'National Parks & Wildlife (UPSC)',
+    difficulty: 'EASY'
+  },
+  {
+    id: 'kbc-19',
+    question: 'Which Indian state has the distinction of having the "Living Root Bridges" (Jingkieng Jri) handcrafted from Ficus elastica trees?',
+    options: ['Nagaland', 'Meghalaya', 'Tripura', 'Mizoram'],
+    answerIndex: 1, // Meghalaya
+    explanation: 'The indigenous Khasi and Jaintia peoples of Meghalaya train the aerial roots of rubber fig trees to grow across rivers, creating living suspension bridges.',
+    category: 'Cultural Geography (UPSC)',
+    difficulty: 'EASY'
+  },
+  {
+    id: 'kbc-20',
+    question: 'Which strait separates India from Sri Lanka between the Gulf of Mannar and the Bay of Bengal?',
+    options: ['Malacca Strait', 'Palk Strait', 'Sunda Strait', 'Hormuz Strait'],
+    answerIndex: 1, // Palk Strait
+    explanation: 'The Palk Strait is named after Robert Palk, Governor of Madras (1755–1763), and contains the historic Adam\'s Bridge (Ram Setu) limestone shoals.',
+    category: 'Maritime Geography (UPSC)',
+    difficulty: 'EASY'
+  },
+  {
+    id: 'kbc-21',
+    question: 'What type of soil covers the largest area in peninsular Deccan Trap (Maharashtra, western MP, Gujarat), formed from weathered basaltic lava?',
+    options: ['Alluvial Soil', 'Black Soil (Regur)', 'Laterite Soil', 'Red & Yellow Soil'],
+    answerIndex: 1, // Black Soil (Regur)
+    explanation: 'Black soil (Regur), renowned for cotton cultivation, is rich in clay, lime, iron, and magnesium, and develops deep cracks in hot weather aiding aeration.',
+    category: 'Soil Science & Agriculture (UPSC/MPSC)',
+    difficulty: 'MEDIUM'
+  },
+  {
+    id: 'kbc-22',
+    question: 'Which is the highest peak in the Western Ghats (Sahyadri) and South India?',
+    options: ['Doda Betta', 'Anamudi', 'Kalsubai', 'Mullayanagiri'],
+    answerIndex: 1, // Anamudi
+    explanation: 'Anamudi (2,695 meters) located in the Eravikulam National Park, Idukki district of Kerala, is the highest peak in peninsular India.',
+    category: 'Indian Physiography (UPSC/MPSC)',
+    difficulty: 'MEDIUM'
+  },
+  {
+    id: 'kbc-23',
+    question: 'The Lonar Lake in Buldhana district of Maharashtra was formed by which rare geological process?',
+    options: ['Volcanic crater explosion', 'Hyper-velocity meteorite impact', 'Tectonic fault subsidence', 'Glacial cirque formation'],
+    answerIndex: 1, // Meteorite impact
+    explanation: 'Lonar Lake is an internationally renowned astrobleme created by a high-velocity meteor impact into Deccan basalt rock during the Pleistocene Epoch.',
+    category: 'Geology & World Wonders (MPSC/UPSC)',
+    difficulty: 'MEDIUM'
+  },
+  {
+    id: 'kbc-24',
+    question: 'Which Biosphere Reserve in India was the FIRST to be designated under UNESCO’s Man and the Biosphere (MAB) programme in 2000?',
+    options: ['Sundarbans', 'Nilgiri Biosphere Reserve', 'Gulf of Mannar', 'Nanda Devi'],
+    answerIndex: 1, // Nilgiri
+    explanation: 'The Nilgiri Biosphere Reserve (established in 1986 across Tamil Nadu, Kerala, and Karnataka) was the first Indian biosphere included in the UNESCO MAB network.',
+    category: 'Environmental Geography (UPSC)',
+    difficulty: 'HARD'
+  },
+  {
+    id: 'kbc-25',
+    question: 'The tropic of cancer and the Indian standard meridian (82°30\' E) intersect in which Indian state?',
+    options: ['Madhya Pradesh', 'Chhattisgarh', 'Jharkhand', 'Odisha'],
+    answerIndex: 1, // Chhattisgarh
+    explanation: 'The Tropic of Cancer (23°30\' N) and IST Meridian (82°30\' E) intersect in Koriya (Baikunthpur) district of Chhattisgarh.',
+    category: 'Mathematical Geography (UPSC)',
+    difficulty: 'HARD'
   }
 ];
