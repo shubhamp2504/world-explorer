@@ -610,6 +610,15 @@ function openPlaceModal(fav) {
     voteBtn.style.pointerEvents = 'none';
     renderFavoritesLeaderboard();
     showToast(`❤️ Genuine vote registered for ${fav.name}! Total: ${fav.votes.toLocaleString()}`);
+
+    // Asynchronously sync to Vercel Serverless Redis API if online
+    fetch('/api/vote', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ placeId: fav.id })
+    }).catch(() => {
+      // Offline or local development fallback without serverless runtime
+    });
   };
 
   document.getElementById('btnSharePlace').onclick = () => {
@@ -682,6 +691,22 @@ function initSuggestPlaceSystem() {
     favoritesList.push(newPlace);
     renderFavoritesLeaderboard();
     renderFavoriteMarkers();
+
+    // Asynchronously broadcast to Vercel Serverless Redis API if online
+    fetch('/api/suggest', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        name,
+        country,
+        category,
+        lat,
+        lng,
+        description: desc
+      })
+    }).catch(() => {
+      // Offline or local development fallback
+    });
 
     form.reset();
     modal?.close();
