@@ -109,6 +109,168 @@ export const BATTLE_QUESTIONS = [
     lng: 18.6,
     hint: 'Sweden — between Norway and the Baltic Sea',
     difficulty: 'HARD'
+  },
+  {
+    id: 'bq-13',
+    text: 'Click on ARGENTINA 🇦🇷 — Land of Patagonia & Iguazu Falls!',
+    targetCode: 'AR',
+    lat: -38.4,
+    lng: -63.6,
+    hint: 'Second largest country in South America; capital is Buenos Aires',
+    difficulty: 'EASY'
+  },
+  {
+    id: 'bq-14',
+    text: 'Find INDONESIA 🇮🇩 — World\'s largest archipelago nation with >17,000 islands!',
+    targetCode: 'ID',
+    lat: -0.78,
+    lng: 113.9,
+    hint: 'Spanning between Southeast Asia and Oceania across the equator',
+    difficulty: 'MEDIUM'
+  },
+  {
+    id: 'bq-15',
+    text: 'Locate NEW ZEALAND 🇳🇿 — The Southern Alps & Land of the Long White Cloud!',
+    targetCode: 'NZ',
+    lat: -40.9,
+    lng: 174.8,
+    hint: 'Two main islands southeast of Australia in the southwestern Pacific',
+    difficulty: 'EASY'
+  },
+  {
+    id: 'bq-16',
+    text: 'Click on SAUDI ARABIA 🇸🇦 — The Heart of the Arabian Peninsula!',
+    targetCode: 'SA',
+    lat: 23.8,
+    lng: 45.0,
+    hint: 'Surrounded by the Red Sea and Persian Gulf; capital is Riyadh',
+    difficulty: 'EASY'
+  },
+  {
+    id: 'bq-17',
+    text: 'Find KENYA 🇰🇪 — The Great Rift Valley & Maasai Mara Safari!',
+    targetCode: 'KE',
+    lat: -0.02,
+    lng: 37.9,
+    hint: 'East African nation straddling the Equator with coastline on Indian Ocean',
+    difficulty: 'MEDIUM'
+  },
+  {
+    id: 'bq-18',
+    text: 'Where is GERMANY 🇩🇪 — Economic powerhouse of Central Europe?',
+    targetCode: 'DE',
+    lat: 51.1,
+    lng: 10.4,
+    hint: 'Bordered by 9 countries from the Baltic/North Seas to the Alps; capital Berlin',
+    difficulty: 'EASY'
+  },
+  {
+    id: 'bq-19',
+    text: 'Find MONGOLIA 🇲🇳 — World\'s LEAST Densely Populated Country (2.1 people/km²)!',
+    targetCode: 'MN',
+    lat: 46.8,
+    lng: 103.8,
+    hint: 'Landlocked giant sandwiched between Russia and China',
+    difficulty: 'MEDIUM'
+  },
+  {
+    id: 'bq-20',
+    text: 'Click on CHILE 🇨🇱 — The longest north-to-south country in the world (4,300 km)!',
+    targetCode: 'CL',
+    lat: -35.6,
+    lng: -71.5,
+    hint: 'Narrow ribbon between the Andes Mountains and Pacific Ocean',
+    difficulty: 'EASY'
+  },
+  {
+    id: 'bq-21',
+    text: 'Where is TURKEY 🇹🇷 — Straddling both Europe and Asia across the Bosphorus?',
+    targetCode: 'TR',
+    lat: 38.9,
+    lng: 35.2,
+    hint: 'Peninsular bridge nation connecting southeastern Europe and Western Asia',
+    difficulty: 'EASY'
+  },
+  {
+    id: 'bq-22',
+    text: 'Find TANZANIA 🇹🇿 — Home to Mount Kilimanjaro (highest peak in Africa, 5,895 m)!',
+    targetCode: 'TZ',
+    lat: -6.36,
+    lng: 34.8,
+    hint: 'East African coast south of Kenya, containing the Serengeti and Ngorongoro',
+    difficulty: 'MEDIUM'
+  },
+  {
+    id: 'bq-23',
+    text: 'Click on SOUTH KOREA 🇰🇷 — Peninsula nation in East Asia!',
+    targetCode: 'KR',
+    lat: 35.9,
+    lng: 127.7,
+    hint: 'Southern half of the Korean Peninsula bordering North Korea along the DMZ',
+    difficulty: 'EASY'
+  },
+  {
+    id: 'bq-24',
+    text: 'Where is PERU 🇵🇪 — Home of Machu Picchu and the ancient Inca Empire?',
+    targetCode: 'PE',
+    lat: -9.19,
+    lng: -75.0,
+    hint: 'Western South America bordering Ecuador, Colombia, Brazil, Bolivia, Chile',
+    difficulty: 'EASY'
+  },
+  {
+    id: 'bq-25',
+    text: 'Find GREECE 🇬🇷 — Cradle of Western Civilization and the Olympic Games!',
+    targetCode: 'GR',
+    lat: 39.0,
+    lng: 22.0,
+    hint: 'Southern Balkan peninsula with thousands of islands across Aegean and Ionian seas',
+    difficulty: 'EASY'
+  },
+  {
+    id: 'bq-26',
+    text: 'Click on ETHIOPIA 🇪🇹 — The only African nation never formally colonized!',
+    targetCode: 'ET',
+    lat: 9.14,
+    lng: 40.4,
+    hint: 'Horn of Africa highland nation; origin of Arabica coffee; capital Addis Ababa',
+    difficulty: 'MEDIUM'
+  },
+  {
+    id: 'bq-27',
+    text: 'Locate THAILAND 🇹🇭 — The historic Kingdom of Siam in Southeast Asia!',
+    targetCode: 'TH',
+    lat: 15.8,
+    lng: 100.9,
+    hint: 'Heart of the Indochinese Peninsula; capital is Bangkok',
+    difficulty: 'EASY'
+  },
+  {
+    id: 'bq-28',
+    text: 'Find NEPAL 🇳🇵 — Home to Mount Everest (Sagarmatha, 8,848.86 m)!',
+    targetCode: 'NP',
+    lat: 28.3,
+    lng: 84.1,
+    hint: 'Himalayan nation between India and the Tibetan plateau; only non-quadrilateral flag',
+    difficulty: 'EASY'
+  },
+  {
+    id: 'bq-29',
+    text: 'Click on FINLAND 🇫🇮 — The "Land of a Thousand Lakes" & Happiest Country in the World!',
+    targetCode: 'FI',
+    lat: 61.9,
+    lng: 25.7,
+    hint: 'Nordic country between Sweden, Norway, and Russia; over 188,000 lakes',
+    difficulty: 'EASY'
+  },
+  {
+    id: 'bq-30',
+    text: 'Where is MOROCCO 🇲🇦 — Gateway to the Sahara and Atlas Mountains?',
+    targetCode: 'MA',
+    lat: 31.7,
+    lng: -7.0,
+    hint: 'Northwestern corner of Africa overlooking the Strait of Gibraltar',
+    difficulty: 'EASY'
   }
 ];
 

@@ -153,6 +153,13 @@
 
       <!-- BATTLE ROYALE IN-GAME OVERLAY HUD -->
       <div class="battle-hud" id="battleHud" style="display: none;">
+        <!-- Sub-Mode Selector Pills -->
+        <div class="battle-mode-pills" id="battleModePills">
+          <button class="battle-mode-pill active" data-submode="world">🌍 World Map Challenge</button>
+          <button class="battle-mode-pill" data-submode="india">🇮🇳 Bharat & States (UPSC/MPSC)</button>
+          <button class="battle-mode-pill" data-submode="kbc">🧠 KBC 4-Option Quiz</button>
+        </div>
+
         <div class="battle-top-bar">
           <div class="battle-stat-chip">
             <span class="hud-label">Score</span>
@@ -163,18 +170,40 @@
             <span class="hud-val streak" id="battleStreak">🔥 0</span>
           </div>
           <div class="battle-timer-wrap">
-            <div class="battle-timer-circle" id="battleTimer">10</div>
+            <div class="battle-timer-circle" id="battleTimer">15</div>
           </div>
           <div class="battle-stat-chip">
-            <span class="hud-label">Level</span>
-            <span class="hud-val" id="battleLevel">Level 1</span>
+            <span class="hud-label">Progress</span>
+            <span class="hud-val" id="battleLevel">Q 1/10</span>
+          </div>
+          <div class="battle-lifelines-wrap" id="battleLifelines" style="display: none;">
+            <button class="btn-lifeline" id="btnLifeline5050" title="50:50 Lifeline">50:50</button>
+            <button class="btn-lifeline" id="btnLifelineHint" title="Ask Hint Lifeline">💡 Hint</button>
           </div>
           <button class="btn-end-battle" id="btnEndBattle">✕ Exit</button>
         </div>
+
         <div class="battle-prompt-card">
-          <span class="battle-badge" id="battleDiffBadge">EASY</span>
+          <div class="battle-prompt-top">
+            <span class="battle-badge" id="battleDiffBadge">EASY</span>
+            <span class="battle-category-badge" id="battleCategoryBadge" style="display: none;">UPSC/MPSC</span>
+          </div>
           <h2 class="battle-question" id="battleQuestionText">Click on the country!</h2>
           <p class="battle-hint" id="battleHintText">Tap the map to lock your answer before time runs out!</p>
+          
+          <!-- KBC 4-Option Choices Grid -->
+          <div class="kbc-options-grid" id="kbcOptionsGrid" style="display: none;">
+            <button class="kbc-opt-btn" data-opt="0"><span class="kbc-opt-letter">A</span><span class="kbc-opt-text">Option A</span></button>
+            <button class="kbc-opt-btn" data-opt="1"><span class="kbc-opt-letter">B</span><span class="kbc-opt-text">Option B</span></button>
+            <button class="kbc-opt-btn" data-opt="2"><span class="kbc-opt-letter">C</span><span class="kbc-opt-text">Option C</span></button>
+            <button class="kbc-opt-btn" data-opt="3"><span class="kbc-opt-letter">D</span><span class="kbc-opt-text">Option D</span></button>
+          </div>
+
+          <!-- Post-Answer Explanation Box -->
+          <div class="quiz-explanation-box" id="quizExplanationBox" style="display: none;">
+            <span class="exp-icon">💡</span>
+            <span class="exp-text" id="quizExplanationText"></span>
+          </div>
         </div>
       </div>
 
@@ -322,8 +351,11 @@
       <!-- FAVORITE PLACES LIST & LEADERBOARD -->
       <div class="drawer-view" id="viewFavoritesList" style="display: none;">
         <div class="fav-drawer-header">
-          <h2>❤️ Community Top Voted</h2>
-          <p>Global leaderboards curated & voted by travelers worldwide.</p>
+          <div>
+            <h2>❤️ Community Top Voted</h2>
+            <p>Global leaderboards voted genuinely by users worldwide.</p>
+          </div>
+          <button class="btn-suggest-place-trigger" id="btnOpenSuggestModal">➕ Suggest Place</button>
         </div>
         <div class="fav-leaderboard" id="favLeaderboard"></div>
       </div>
@@ -458,6 +490,60 @@
           <span>💾 Download Story Image</span>
         </button>
       </div>
+    </div>
+  </dialog>
+
+  <!-- SUGGEST / SUBMIT A PLACE MODAL -->
+  <dialog class="suggest-modal" id="suggestPlaceModal">
+    <div class="suggest-modal-card">
+      <div class="suggest-modal-header">
+        <h3>📍 Suggest a World Destination</h3>
+        <button class="btn-close-view" id="btnCloseSuggestModal">✕</button>
+      </div>
+      <p class="suggest-modal-sub">Add your favorite location to our authentic global community voting pool.</p>
+      <form class="suggest-form" id="suggestPlaceForm">
+        <div class="form-group">
+          <label>Place / Landmark Name *</label>
+          <input type="text" id="sugPlaceName" placeholder="e.g., Lonar Meteorite Lake" required maxlength="50" />
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Country / State *</label>
+            <input type="text" id="sugPlaceCountry" placeholder="e.g., India, Maharashtra" required maxlength="40" />
+          </div>
+          <div class="form-group">
+            <label>Category *</label>
+            <select id="sugPlaceCategory" required>
+              <option value="natural">🌊 Natural Beauty</option>
+              <option value="mountain">🏔️ Best Mountain</option>
+              <option value="sunset">🌅 Best Sunset</option>
+              <option value="peaceful">🧘 Most Peaceful</option>
+              <option value="underrated">🤯 Most Underrated</option>
+              <option value="food">🍜 Best Food</option>
+              <option value="festival">🎉 Cultural Heritage</option>
+              <option value="stargazing">🌌 Best Stargazing</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Latitude (°N)</label>
+            <input type="number" step="0.0001" id="sugPlaceLat" placeholder="19.9757" required />
+          </div>
+          <div class="form-group">
+            <label>Longitude (°E)</label>
+            <input type="number" step="0.0001" id="sugPlaceLng" placeholder="76.5074" required />
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Why is this place special? (Authentic Description) *</label>
+          <textarea id="sugPlaceDesc" rows="3" placeholder="Explain the historical, geological or cultural significance..." required maxlength="250"></textarea>
+        </div>
+        <div class="suggest-modal-footer">
+          <button type="button" class="btn-cancel-suggest" id="btnCancelSuggest">Cancel</button>
+          <button type="submit" class="btn-submit-suggest">✅ Submit to Community</button>
+        </div>
+      </form>
     </div>
   </dialog>
 

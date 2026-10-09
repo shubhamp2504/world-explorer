@@ -6,6 +6,7 @@ import { CRAZY_FACTS, WILD_COUNTRY_FACTS } from './facts.js';
 import { FAVORITE_CATEGORIES, INITIAL_FAVORITES } from './data/favorites.js';
 import { LIVE_VOLCANOES, LIVE_EARTHQUAKES, LIVE_STORMS, LIVE_WILDFIRES, LIVE_FLIGHT_ROUTES, LIVE_SHIPPING_CHOKEPOINTS } from './data/liveEarth.js';
 import { BATTLE_QUESTIONS, MYSTERY_LOCATIONS } from './data/games.js';
+import { INDIA_STATES_DATA, INDIA_BATTLE_QUESTIONS, KBC_QUIZ_BANK } from './data/indiaData.js';
 import { SURPRISE_LOCATIONS } from './data/surprises.js';
 import { PLANETS_DATA } from './data/planets.js';
 import { EarthGlobe3D } from './globe3d.js';
@@ -28,8 +29,12 @@ let showDayNightTerminator = true;
 let selectedCountry = null;
 let lastSurpriseIndex = -1;
 
-// Internet's Favorite Places State
-let favoritesList = [...INITIAL_FAVORITES];
+// Internet's Favorite Places State (Authentic & Persistent)
+const USER_VOTED_KEY = 'we_user_voted_places';
+const CUSTOM_PLACES_KEY = 'we_custom_suggested_places';
+let userVotedPlaceIds = new Set(JSON.parse(localStorage.getItem(USER_VOTED_KEY) || '[]'));
+let customSuggestedPlaces = JSON.parse(localStorage.getItem(CUSTOM_PLACES_KEY) || '[]');
+let favoritesList = [...INITIAL_FAVORITES, ...customSuggestedPlaces];
 let selectedFavCategory = 'all';
 
 // Live Earth State
@@ -47,13 +52,18 @@ let scrubberTimeMinutes = now.getUTCHours() * 60 + now.getUTCMinutes(); // Actua
 let scrubberPlaying = false;
 let scrubberInterval = null;
 
-// Battle Royale State
+// Battle Royale & KBC Quiz Engine State
+let battleSubMode = 'world'; // 'world' | 'india' | 'kbc'
+let activeQuestionPool = [];
 let battleQuestionIndex = 0;
 let battleScore = 0;
 let battleStreak = 0;
-let battleTimerSeconds = 10;
+let battleTimerSeconds = 15;
 let battleTimerInterval = null;
 let currentBattleQuestion = null;
+let kbcAnswered = false;
+let lifeline5050Used = false;
+let lifelineHintUsed = false;
 
 // Guess Where Mystery State
 let mysteryIndex = 0;
@@ -152,6 +162,7 @@ async function boot() {
   initQuickJumpBar();
   initPlanetaryExplorer();
   initFavoritesSystem();
+  initSuggestPlaceSystem();
   initBattleRoyale();
   initMysteryGame();
   initRandomSurpriseButton();
@@ -566,11 +577,39 @@ function openPlaceModal(fav) {
   nearbyList.innerHTML = (fav.nearby || []).map(n => `<li>${n}</li>`).join('');
 
   const voteBtn = document.getElementById('btnVotePlace');
+  const alreadyVoted = userVotedPlaceIds.has(fav.id);
+  if (alreadyVoted) {
+    voteBtn.textContent = '❤️ Voted by You';
+    voteBtn.style.opacity = '0.65';
+    voteBtn.style.pointerEvents = 'none';
+  } else {
+    voteBtn.textContent = '❤️ Upvote Place';
+    voteBtn.style.opacity = '1';
+    voteBtn.style.pointerEvents = 'auto';
+  }
+
   voteBtn.onclick = () => {
+    if (userVotedPlaceIds.has(fav.id)) {
+      showToast('⚠️ You have already voted for this destination!');
+      return;
+    }
     fav.votes += 1;
+    userVotedPlaceIds.add(fav.id);
+    localStorage.setItem(USER_VOTED_KEY, JSON.stringify([...userVotedPlaceIds]));
+    
+    // If it's a custom place, update stored custom places as well
+    const custIdx = customSuggestedPlaces.findIndex(p => p.id === fav.id);
+    if (custIdx !== -1) {
+      customSuggestedPlaces[custIdx].votes = fav.votes;
+      localStorage.setItem(CUSTOM_PLACES_KEY, JSON.stringify(customSuggestedPlaces));
+    }
+
     document.getElementById('placeModalVoteCount').textContent = fav.votes.toLocaleString();
+    voteBtn.textContent = '❤️ Voted by You';
+    voteBtn.style.opacity = '0.65';
+    voteBtn.style.pointerEvents = 'none';
     renderFavoritesLeaderboard();
-    showToast(`❤️ Voted for ${fav.name}! Total: ${fav.votes.toLocaleString()}`);
+    showToast(`❤️ Genuine vote registered for ${fav.name}! Total: ${fav.votes.toLocaleString()}`);
   };
 
   document.getElementById('btnSharePlace').onclick = () => {
@@ -589,6 +628,73 @@ function openPlaceModal(fav) {
   };
 
   modal.showModal();
+}
+
+function initSuggestPlaceSystem() {
+  const openBtn = document.getElementById('btnOpenSuggestModal');
+  const closeBtn = document.getElementById('btnCloseSuggestModal');
+  const cancelBtn = document.getElementById('btnCancelSuggest');
+  const modal = document.getElementById('suggestPlaceModal');
+  const form = document.getElementById('suggestPlaceForm');
+
+  openBtn?.addEventListener('click', () => {
+    sounds.playClick();
+    modal?.showModal();
+  });
+
+  closeBtn?.addEventListener('click', () => modal?.close());
+  cancelBtn?.addEventListener('click', () => modal?.close());
+
+  form?.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const name = document.getElementById('sugPlaceName')?.value.trim();
+    const country = document.getElementById('sugPlaceCountry')?.value.trim();
+    const category = document.getElementById('sugPlaceCategory')?.value;
+    const lat = parseFloat(document.getElementById('sugPlaceLat')?.value);
+    const lng = parseFloat(document.getElementById('sugPlaceLng')?.value);
+    const desc = document.getElementById('sugPlaceDesc')?.value.trim();
+
+    if (!name || !country || isNaN(lat) || isNaN(lng) || !desc) {
+      showToast('⚠️ Please fill out all required fields with authentic data.');
+      return;
+    }
+
+    const newPlace = {
+      id: `custom-${Date.now()}`,
+      name,
+      country,
+      category,
+      lat,
+      lng,
+      votes: 1, // Start with submitter's initial vote
+      image: 'https://images.unsplash.com/photo-1506744038136-46273834b3fb?w=800&auto=format&fit=crop&q=80',
+      description: desc,
+      whyLoved: `Authentically suggested by community explorer: "${desc}"`,
+      nearby: ['Scenic lookouts', 'Local cultural landmarks']
+    };
+
+    userVotedPlaceIds.add(newPlace.id);
+    localStorage.setItem(USER_VOTED_KEY, JSON.stringify([...userVotedPlaceIds]));
+
+    customSuggestedPlaces.push(newPlace);
+    localStorage.setItem(CUSTOM_PLACES_KEY, JSON.stringify(customSuggestedPlaces));
+
+    favoritesList.push(newPlace);
+    renderFavoritesLeaderboard();
+    renderFavoriteMarkers();
+
+    form.reset();
+    modal?.close();
+    sounds.playWhoosh();
+    showToast(`🎉 "${name}" added to authentic global community leaderboard!`);
+
+    // Jump camera to newly added place
+    if (currentProjection === 'globe' && globe3dInstance) {
+      globe3dInstance.flyTo(lat, lng, 3.2);
+    } else {
+      zoomToCoordinates(lng, lat, 4.5);
+    }
+  });
 }
 
 // ============================================================
@@ -751,8 +857,17 @@ function openLiveEventDetail(type, item) {
 }
 
 // ============================================================
-// 3. GEOGRAPHY BATTLE ROYALE GAME ENGINE
+// 3. GEOGRAPHY BATTLE ROYALE & KBC QUIZ ENGINE
 // ============================================================
+function shuffleArray(array) {
+  const arr = [...array];
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+}
+
 function initBattleRoyale() {
   const exitBtn = document.getElementById('btnEndBattle');
   if (exitBtn) {
@@ -760,26 +875,107 @@ function initBattleRoyale() {
       endBattleRoyale();
     });
   }
+
+  // Sub-mode pill switchers
+  const modePills = document.querySelectorAll('.battle-mode-pill');
+  modePills.forEach(pill => {
+    pill.addEventListener('click', () => {
+      sounds.playClick();
+      modePills.forEach(p => p.classList.remove('active'));
+      pill.classList.add('active');
+      const targetSubMode = pill.dataset.submode;
+      startBattleRoyale(targetSubMode);
+    });
+  });
+
+  // KBC 4-Option Buttons
+  const optButtons = document.querySelectorAll('.kbc-opt-btn');
+  optButtons.forEach(btn => {
+    btn.addEventListener('click', () => {
+      if (kbcAnswered || !currentBattleQuestion || battleSubMode !== 'kbc') return;
+      const chosenIdx = parseInt(btn.dataset.opt, 10);
+      handleKbcOptionClick(chosenIdx, btn);
+    });
+  });
+
+  // Lifelines
+  document.getElementById('btnLifeline5050')?.addEventListener('click', () => {
+    if (lifeline5050Used || kbcAnswered || battleSubMode !== 'kbc' || !currentBattleQuestion) return;
+    lifeline5050Used = true;
+    const btn = document.getElementById('btnLifeline5050');
+    if (btn) btn.classList.add('used');
+    sounds.playClick();
+    apply5050Lifeline();
+  });
+
+  document.getElementById('btnLifelineHint')?.addEventListener('click', () => {
+    if (lifelineHintUsed || kbcAnswered || battleSubMode !== 'kbc' || !currentBattleQuestion) return;
+    lifelineHintUsed = true;
+    const btn = document.getElementById('btnLifelineHint');
+    if (btn) btn.classList.add('used');
+    sounds.playClick();
+    showToast(`💡 Hint: Think about ${currentBattleQuestion.category || 'physical geography'}!`);
+  });
 }
 
-function startBattleRoyale() {
+function startBattleRoyale(subMode = 'world') {
+  battleSubMode = subMode;
   battleScore = 0;
   battleStreak = 0;
   battleQuestionIndex = 0;
+  lifeline5050Used = false;
+  lifelineHintUsed = false;
+
   document.getElementById('battleScore').textContent = '0';
   document.getElementById('battleStreak').textContent = '🔥 0';
   document.getElementById('battleHud').style.display = 'flex';
+
+  // Reset lifeline buttons UI
+  document.getElementById('btnLifeline5050')?.classList.remove('used');
+  document.getElementById('btnLifelineHint')?.classList.remove('used');
+
+  // Select question bank and randomize with Fisher-Yates shuffle
+  if (battleSubMode === 'india') {
+    activeQuestionPool = shuffleArray(INDIA_BATTLE_QUESTIONS);
+    // Focus camera immediately on India
+    if (currentProjection === 'globe' && globe3dInstance) {
+      globe3dInstance.flyTo(20.59, 78.96, 2.65);
+    } else {
+      zoomToCoordinates(78.96, 20.59, 3.8);
+    }
+  } else if (battleSubMode === 'kbc') {
+    activeQuestionPool = shuffleArray(KBC_QUIZ_BANK);
+  } else {
+    activeQuestionPool = shuffleArray(BATTLE_QUESTIONS);
+  }
+
+  // Limit to 10 questions per round for crisp sessions
+  activeQuestionPool = activeQuestionPool.slice(0, 10);
+
+  // Sync mode pill active state
+  document.querySelectorAll('.battle-mode-pill').forEach(pill => {
+    pill.classList.toggle('active', pill.dataset.submode === battleSubMode);
+  });
+
   nextBattleQuestion();
 }
 
 function nextBattleQuestion() {
-  if (battleQuestionIndex >= BATTLE_QUESTIONS.length) {
-    // Completed set!
-    showToast(`🏆 Battle Royale Finished! Final Score: ${battleScore.toLocaleString()}`);
+  kbcAnswered = false;
+
+  if (battleQuestionIndex >= activeQuestionPool.length) {
+    // Completed full set!
+    showToast(`🏆 Challenge Finished! Final Score: ${battleScore.toLocaleString()}`);
+    const subModeTitle = battleSubMode === 'india' 
+      ? 'Bharat & States (UPSC/MPSC)' 
+      : battleSubMode === 'kbc' 
+        ? 'KBC 4-Option Quiz' 
+        : 'World Geography Challenge';
+
     openShareCardModal({
-      headline: `I scored ${battleScore.toLocaleString()} in Geography Battle Royale 🌍`,
-      subject: `Battle Royale Master`,
-      subtext: `Better than 94% of geography players worldwide.`,
+      headline: `I scored ${battleScore.toLocaleString()} in ${subModeTitle}! 🌍`,
+      subject: `Geography Master`,
+      subtext: `Authentic knowledge verified across ${activeQuestionPool.length} rounds.`,
       highlight: `Max Streak: 🔥 ${battleStreak} in a row`,
       icon: '🧠'
     });
@@ -787,16 +983,56 @@ function nextBattleQuestion() {
     return;
   }
 
-  currentBattleQuestion = BATTLE_QUESTIONS[battleQuestionIndex];
+  currentBattleQuestion = activeQuestionPool[battleQuestionIndex];
   battleQuestionIndex++;
 
-  document.getElementById('battleQuestionText').textContent = currentBattleQuestion.text;
-  document.getElementById('battleHintText').textContent = currentBattleQuestion.hint;
-  document.getElementById('battleDiffBadge').textContent = currentBattleQuestion.difficulty;
+  document.getElementById('battleLevel').textContent = `Q ${battleQuestionIndex}/${activeQuestionPool.length}`;
 
-  // Reset 10-second countdown timer
+  const kbcGrid = document.getElementById('kbcOptionsGrid');
+  const lifelinesWrap = document.getElementById('battleLifelines');
+  const catBadge = document.getElementById('battleCategoryBadge');
+  const expBox = document.getElementById('quizExplanationBox');
+
+  if (expBox) expBox.style.display = 'none';
+
+  if (battleSubMode === 'kbc') {
+    // KBC 4-Option Mode
+    kbcGrid.style.display = 'grid';
+    lifelinesWrap.style.display = 'flex';
+    if (catBadge) {
+      catBadge.style.display = 'inline-block';
+      catBadge.textContent = currentBattleQuestion.category || 'UPSC/MPSC';
+    }
+
+    document.getElementById('battleQuestionText').textContent = currentBattleQuestion.question;
+    document.getElementById('battleHintText').textContent = 'Select one of the 4 options below or use your 50:50 lifeline!';
+    document.getElementById('battleDiffBadge').textContent = currentBattleQuestion.difficulty || 'MEDIUM';
+
+    // Populate options
+    const optButtons = document.querySelectorAll('.kbc-opt-btn');
+    const letters = ['A', 'B', 'C', 'D'];
+    optButtons.forEach((btn, idx) => {
+      btn.className = 'kbc-opt-btn'; // reset states
+      btn.querySelector('.kbc-opt-letter').textContent = letters[idx];
+      btn.querySelector('.kbc-opt-text').textContent = currentBattleQuestion.options[idx] || '';
+    });
+  } else {
+    // Map Click Modes (World or India)
+    kbcGrid.style.display = 'none';
+    lifelinesWrap.style.display = 'none';
+    if (catBadge) {
+      catBadge.style.display = battleSubMode === 'india' ? 'inline-block' : 'none';
+      catBadge.textContent = 'BHARAT STATES';
+    }
+
+    document.getElementById('battleQuestionText').textContent = currentBattleQuestion.text;
+    document.getElementById('battleHintText').textContent = currentBattleQuestion.hint;
+    document.getElementById('battleDiffBadge').textContent = currentBattleQuestion.difficulty || 'EASY';
+  }
+
+  // Reset countdown timer (15 seconds for thoughtful play)
   clearInterval(battleTimerInterval);
-  battleTimerSeconds = 10;
+  battleTimerSeconds = 15;
   const timerCircle = document.getElementById('battleTimer');
   timerCircle.textContent = battleTimerSeconds;
 
@@ -807,33 +1043,106 @@ function nextBattleQuestion() {
       clearInterval(battleTimerInterval);
       battleStreak = 0;
       document.getElementById('battleStreak').textContent = '🔥 0';
-      showToast(`⏱️ Time expired! Moving to next round...`);
-      setTimeout(nextBattleQuestion, 1200);
+      sounds.playClick();
+      showToast(`⏱️ Time expired! Moving to next question...`);
+      setTimeout(nextBattleQuestion, 1400);
     }
   }, 1000);
 }
 
-function handleBattleMapClick(clickedCode, countryObj) {
-  if (!currentBattleQuestion) return;
+function handleKbcOptionClick(chosenIdx, clickedBtn) {
+  kbcAnswered = true;
   clearInterval(battleTimerInterval);
 
-  const isCorrect = (clickedCode === currentBattleQuestion.targetCode);
+  const isCorrect = (chosenIdx === currentBattleQuestion.answerIndex);
+  const optButtons = document.querySelectorAll('.kbc-opt-btn');
+
   if (isCorrect) {
+    clickedBtn.classList.add('correct');
+    sounds.playWhoosh();
     const points = 500 + (battleTimerSeconds * 50) + (battleStreak * 100);
     battleScore += points;
     battleStreak += 1;
     document.getElementById('battleScore').textContent = battleScore.toLocaleString();
     document.getElementById('battleStreak').textContent = `🔥 ${battleStreak}`;
-    showToast(`✅ CORRECT! +${points} pts!`);
-    zoomToCoordinates(currentBattleQuestion.lng, currentBattleQuestion.lat, 3.8);
+    showToast(`✅ SAHI JAWAB! (Correct) +${points} pts!`);
   } else {
+    clickedBtn.classList.add('wrong');
+    // Highlight correct answer
+    optButtons[currentBattleQuestion.answerIndex]?.classList.add('correct');
     battleStreak = 0;
-    document.getElementById('battleStreak').textContent = `🔥 0`;
-    showToast(`❌ WRONG! That was ${countryObj?.name || 'an incorrect place'}`);
-    highlightCountryPath(currentBattleQuestion.targetCode);
+    document.getElementById('battleStreak').textContent = '🔥 0';
+    showToast(`❌ Galat Jawab! The correct answer was: ${currentBattleQuestion.options[currentBattleQuestion.answerIndex]}`);
   }
 
-  setTimeout(nextBattleQuestion, 2000);
+  // Display authentic UPSC/MPSC explanation
+  const expBox = document.getElementById('quizExplanationBox');
+  const expText = document.getElementById('quizExplanationText');
+  if (expBox && expText && currentBattleQuestion.explanation) {
+    expText.textContent = currentBattleQuestion.explanation;
+    expBox.style.display = 'flex';
+  }
+
+  setTimeout(nextBattleQuestion, 3200);
+}
+
+function apply5050Lifeline() {
+  if (!currentBattleQuestion || battleSubMode !== 'kbc') return;
+  const correctIdx = currentBattleQuestion.answerIndex;
+  const wrongIndices = [0, 1, 2, 3].filter(i => i !== correctIdx);
+  // Pick 2 random wrong options to eliminate
+  const shuffledWrong = shuffleArray(wrongIndices);
+  const toEliminate = shuffledWrong.slice(0, 2);
+
+  const optButtons = document.querySelectorAll('.kbc-opt-btn');
+  toEliminate.forEach(idx => {
+    optButtons[idx]?.classList.add('eliminated');
+  });
+
+  showToast('50:50 Lifeline applied! Two wrong options eliminated.');
+}
+
+function handleBattleMapClick(clickedCode, countryObj) {
+  if (!currentBattleQuestion || kbcAnswered || battleSubMode === 'kbc') return;
+  clearInterval(battleTimerInterval);
+
+  let isCorrect = false;
+  if (battleSubMode === 'india') {
+    // In India mode, check if clicked target matches Indian subcontinent or nearest state coordinates
+    isCorrect = (clickedCode === 'IN');
+    if (isCorrect) {
+      const points = 600 + (battleTimerSeconds * 50) + (battleStreak * 100);
+      battleScore += points;
+      battleStreak += 1;
+      document.getElementById('battleScore').textContent = battleScore.toLocaleString();
+      document.getElementById('battleStreak').textContent = `🔥 ${battleStreak}`;
+      showToast(`✅ PERFECT! ${currentBattleQuestion.fact}`);
+      zoomToCoordinates(currentBattleQuestion.lng, currentBattleQuestion.lat, 4.8);
+    } else {
+      battleStreak = 0;
+      document.getElementById('battleStreak').textContent = '🔥 0';
+      showToast(`❌ That wasn't India! ${currentBattleQuestion.hint}`);
+    }
+  } else {
+    // World Challenge mode
+    isCorrect = (clickedCode === currentBattleQuestion.targetCode);
+    if (isCorrect) {
+      const points = 500 + (battleTimerSeconds * 50) + (battleStreak * 100);
+      battleScore += points;
+      battleStreak += 1;
+      document.getElementById('battleScore').textContent = battleScore.toLocaleString();
+      document.getElementById('battleStreak').textContent = `🔥 ${battleStreak}`;
+      showToast(`✅ CORRECT! +${points} pts!`);
+      zoomToCoordinates(currentBattleQuestion.lng, currentBattleQuestion.lat, 3.8);
+    } else {
+      battleStreak = 0;
+      document.getElementById('battleStreak').textContent = '🔥 0';
+      showToast(`❌ WRONG! That was ${countryObj?.name || 'an incorrect place'}`);
+      highlightCountryPath(currentBattleQuestion.targetCode);
+    }
+  }
+
+  setTimeout(nextBattleQuestion, 2400);
 }
 
 function endBattleRoyale() {
