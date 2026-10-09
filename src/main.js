@@ -11,6 +11,7 @@ import { SURPRISE_LOCATIONS } from './data/surprises.js';
 import { PLANETS_DATA } from './data/planets.js';
 import { EarthGlobe3D } from './globe3d.js';
 import { sounds } from './audio.js';
+import { injectSpeedInsights } from '@vercel/speed-insights';
 
 // ============================================================
 // GLOBAL STATE & SYSTEM REGISTRIES
@@ -111,6 +112,9 @@ const NAME_ALIASES = {
 // SYSTEM BOOTSTRAP & DATA SYNC
 // ============================================================
 async function boot() {
+  // Initialize Vercel Speed Insights
+  injectSpeedInsights();
+  
   updateLoading(25, 'Loading textures...');
 
   // Index countries
