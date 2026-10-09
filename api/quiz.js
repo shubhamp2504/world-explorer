@@ -44,12 +44,16 @@ export default async function handler(req, res) {
     // Sanitize questions: DO NOT SEND answerIndex OR targetCode to prevent DevTools cheating
     const clientSafeQuestions = shuffled.map(q => {
       if (mode === 'kbc') {
+        // Compute 2 wrong indices for 50:50 lifeline without revealing the correct index
+        const wrongIndices = [0, 1, 2, 3].filter(i => i !== q.answerIndex);
+        const shuffledWrong = shuffle(wrongIndices).slice(0, 2);
         return {
           id: q.id,
           question: q.question,
           options: q.options,
           category: q.category,
-          difficulty: q.difficulty
+          difficulty: q.difficulty,
+          lifeline5050Eliminate: shuffledWrong // Indices to eliminate when user uses 50:50!
         };
       } else if (mode === 'india') {
         return {

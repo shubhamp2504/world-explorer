@@ -943,7 +943,46 @@ function initBattleRoyale() {
   });
 }
 
-function startBattleRoyale(subMode = 'world') {
+async function fetchServerQuizQuestions(mode) {
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 3500);
+    const res = await fetch(`/api/quiz?mode=${encodeURIComponent(mode)}`, { signal: controller.signal });
+    clearTimeout(timeoutId);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+    if (data.success && Array.isArray(data.questions) && data.questions.length > 0) {
+      return data.questions;
+    }
+  } catch (err) {
+    console.warn(`[Quiz Engine] Serverless /api/quiz unreachable (${err.message}). Using verified local syllabus bank.`);
+  }
+  return null;
+}
+
+async function validateAnswerServerless(questionId, chosenAnswer, subMode) {
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 3500);
+    const res = await fetch('/api/quiz', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ questionId, chosenAnswer, subMode }),
+      signal: controller.signal
+    });
+    clearTimeout(timeoutId);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+    if (data.success) {
+      return data;
+    }
+  } catch (err) {
+    console.warn(`[Quiz Engine] Serverless validation offline (${err.message}). Evaluating locally.`);
+  }
+  return null;
+}
+
+async function startBattleRoyale(subMode = 'world') {
   battleSubMode = subMode;
   battleScore = 0;
   battleStreak = 0;
@@ -959,28 +998,40 @@ function startBattleRoyale(subMode = 'world') {
   document.getElementById('btnLifeline5050')?.classList.remove('used');
   document.getElementById('btnLifelineHint')?.classList.remove('used');
 
-  // Select question bank and randomize with Fisher-Yates shuffle
+  // Sync mode pill active state
+  document.querySelectorAll('.battle-mode-pill').forEach(pill => {
+    pill.classList.toggle('active', pill.dataset.submode === battleSubMode);
+  });
+
+  // Camera orientation
   if (battleSubMode === 'india') {
-    activeQuestionPool = shuffleArray(INDIA_BATTLE_QUESTIONS);
-    // Focus camera immediately on India
     if (currentProjection === 'globe' && globe3dInstance) {
       globe3dInstance.flyTo(20.59, 78.96, 2.65);
     } else {
       zoomToCoordinates(78.96, 20.59, 3.8);
     }
-  } else if (battleSubMode === 'kbc') {
-    activeQuestionPool = shuffleArray(KBC_QUIZ_BANK);
-  } else {
-    activeQuestionPool = shuffleArray(BATTLE_QUESTIONS);
   }
 
-  // Limit to 10 questions per round for crisp sessions
-  activeQuestionPool = activeQuestionPool.slice(0, 10);
+  // Show quick loading state in question text
+  document.getElementById('battleQuestionText').textContent = 'Connecting to Quiz Engine...';
+  document.getElementById('battleHintText').textContent = 'Preparing authentic syllabus challenge...';
 
-  // Sync mode pill active state
-  document.querySelectorAll('.battle-mode-pill').forEach(pill => {
-    pill.classList.toggle('active', pill.dataset.submode === battleSubMode);
-  });
+  // Try fetching fresh randomized, client-safe questions from Vercel Serverless
+  const serverQuestions = await fetchServerQuizQuestions(battleSubMode);
+
+  if (serverQuestions && serverQuestions.length > 0) {
+    activeQuestionPool = serverQuestions;
+  } else {
+    // Verified local offline fallback
+    if (battleSubMode === 'india') {
+      activeQuestionPool = shuffleArray(INDIA_BATTLE_QUESTIONS);
+    } else if (battleSubMode === 'kbc') {
+      activeQuestionPool = shuffleArray(KBC_QUIZ_BANK);
+    } else {
+      activeQuestionPool = shuffleArray(BATTLE_QUESTIONS);
+    }
+    activeQuestionPool = activeQuestionPool.slice(0, 10);
+  }
 
   nextBattleQuestion();
 }
@@ -1075,12 +1126,30 @@ function nextBattleQuestion() {
   }, 1000);
 }
 
-function handleKbcOptionClick(chosenIdx, clickedBtn) {
+async function handleKbcOptionClick(chosenIdx, clickedBtn) {
   kbcAnswered = true;
   clearInterval(battleTimerInterval);
 
-  const isCorrect = (chosenIdx === currentBattleQuestion.answerIndex);
   const optButtons = document.querySelectorAll('.kbc-opt-btn');
+
+  // Verify server-side if online, with fallback to local static bank
+  let isCorrect = false;
+  let correctIndex = -1;
+  let explanation = currentBattleQuestion.explanation || '';
+
+  const serverValidation = await validateAnswerServerless(currentBattleQuestion.id, chosenIdx, 'kbc');
+
+  if (serverValidation) {
+    isCorrect = serverValidation.isCorrect;
+    correctIndex = serverValidation.correctIndex;
+    if (serverValidation.explanation) explanation = serverValidation.explanation;
+  } else {
+    // Local fallback check
+    const localQ = KBC_QUIZ_BANK.find(q => q.id === currentBattleQuestion.id) || currentBattleQuestion;
+    correctIndex = localQ.answerIndex ?? 0;
+    isCorrect = (chosenIdx === correctIndex);
+    if (localQ.explanation) explanation = localQ.explanation;
+  }
 
   if (isCorrect) {
     clickedBtn.classList.add('correct');
@@ -1093,18 +1162,20 @@ function handleKbcOptionClick(chosenIdx, clickedBtn) {
     showToast(`✅ SAHI JAWAB! (Correct) +${points} pts!`);
   } else {
     clickedBtn.classList.add('wrong');
-    // Highlight correct answer
-    optButtons[currentBattleQuestion.answerIndex]?.classList.add('correct');
+    if (correctIndex >= 0 && optButtons[correctIndex]) {
+      optButtons[correctIndex].classList.add('correct');
+    }
     battleStreak = 0;
     document.getElementById('battleStreak').textContent = '🔥 0';
-    showToast(`❌ Galat Jawab! The correct answer was: ${currentBattleQuestion.options[currentBattleQuestion.answerIndex]}`);
+    const correctText = currentBattleQuestion.options[correctIndex] || 'Correct Option';
+    showToast(`❌ Galat Jawab! The correct answer was: ${correctText}`);
   }
 
   // Display authentic UPSC/MPSC explanation
   const expBox = document.getElementById('quizExplanationBox');
   const expText = document.getElementById('quizExplanationText');
-  if (expBox && expText && currentBattleQuestion.explanation) {
-    expText.textContent = currentBattleQuestion.explanation;
+  if (expBox && expText && explanation) {
+    expText.textContent = explanation;
     expBox.style.display = 'flex';
   }
 
@@ -1113,44 +1184,62 @@ function handleKbcOptionClick(chosenIdx, clickedBtn) {
 
 function apply5050Lifeline() {
   if (!currentBattleQuestion || battleSubMode !== 'kbc') return;
-  const correctIdx = currentBattleQuestion.answerIndex;
-  const wrongIndices = [0, 1, 2, 3].filter(i => i !== correctIdx);
-  // Pick 2 random wrong options to eliminate
-  const shuffledWrong = shuffleArray(wrongIndices);
-  const toEliminate = shuffledWrong.slice(0, 2);
+
+  let eliminateIndices = [];
+
+  // If server sent secure precomputed eliminate list
+  if (Array.isArray(currentBattleQuestion.lifeline5050Eliminate) && currentBattleQuestion.lifeline5050Eliminate.length > 0) {
+    eliminateIndices = currentBattleQuestion.lifeline5050Eliminate;
+  } else {
+    // Local fallback computation
+    const localQ = KBC_QUIZ_BANK.find(q => q.id === currentBattleQuestion.id) || currentBattleQuestion;
+    const correctIdx = localQ.answerIndex ?? 0;
+    const wrongIndices = [0, 1, 2, 3].filter(i => i !== correctIdx);
+    eliminateIndices = shuffleArray(wrongIndices).slice(0, 2);
+  }
 
   const optButtons = document.querySelectorAll('.kbc-opt-btn');
-  toEliminate.forEach(idx => {
+  eliminateIndices.forEach(idx => {
     optButtons[idx]?.classList.add('eliminated');
   });
 
   showToast('50:50 Lifeline applied! Two wrong options eliminated.');
 }
 
-function handleBattleMapClick(clickedCode, countryObj) {
+async function handleBattleMapClick(clickedCode, countryObj) {
   if (!currentBattleQuestion || kbcAnswered || battleSubMode === 'kbc') return;
   clearInterval(battleTimerInterval);
 
   let isCorrect = false;
+
+  // Validate server-side or local fallback
+  const serverValidation = await validateAnswerServerless(currentBattleQuestion.id, clickedCode, battleSubMode);
+
   if (battleSubMode === 'india') {
-    // In India mode, check if clicked target matches Indian subcontinent or nearest state coordinates
-    isCorrect = (clickedCode === 'IN');
+    isCorrect = serverValidation ? serverValidation.isCorrect : (clickedCode === 'IN');
+    const localQ = INDIA_BATTLE_QUESTIONS.find(q => q.id === currentBattleQuestion.id) || currentBattleQuestion;
+    const fact = serverValidation?.fact || localQ.fact || 'Authenticated geographic site in India.';
+    const hint = serverValidation?.hint || localQ.hint || 'Locate within the Indian subcontinent.';
+
     if (isCorrect) {
       const points = 600 + (battleTimerSeconds * 50) + (battleStreak * 100);
       battleScore += points;
       battleStreak += 1;
       document.getElementById('battleScore').textContent = battleScore.toLocaleString();
       document.getElementById('battleStreak').textContent = `🔥 ${battleStreak}`;
-      showToast(`✅ PERFECT! ${currentBattleQuestion.fact}`);
+      showToast(`✅ PERFECT! ${fact}`);
       zoomToCoordinates(currentBattleQuestion.lng, currentBattleQuestion.lat, 4.8);
     } else {
       battleStreak = 0;
       document.getElementById('battleStreak').textContent = '🔥 0';
-      showToast(`❌ That wasn't India! ${currentBattleQuestion.hint}`);
+      showToast(`❌ That wasn't India! ${hint}`);
     }
   } else {
     // World Challenge mode
-    isCorrect = (clickedCode === currentBattleQuestion.targetCode);
+    const localQ = BATTLE_QUESTIONS.find(q => q.id === currentBattleQuestion.id) || currentBattleQuestion;
+    const targetCode = serverValidation?.targetCode || localQ.targetCode;
+    isCorrect = serverValidation ? serverValidation.isCorrect : (clickedCode === targetCode);
+
     if (isCorrect) {
       const points = 500 + (battleTimerSeconds * 50) + (battleStreak * 100);
       battleScore += points;
@@ -1163,7 +1252,7 @@ function handleBattleMapClick(clickedCode, countryObj) {
       battleStreak = 0;
       document.getElementById('battleStreak').textContent = '🔥 0';
       showToast(`❌ WRONG! That was ${countryObj?.name || 'an incorrect place'}`);
-      highlightCountryPath(currentBattleQuestion.targetCode);
+      if (targetCode) highlightCountryPath(targetCode);
     }
   }
 
