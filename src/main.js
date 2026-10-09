@@ -4,7 +4,6 @@ import * as topojson from 'topojson-client';
 import { COUNTRIES } from './countries.js';
 import { CRAZY_FACTS, WILD_COUNTRY_FACTS } from './facts.js';
 import { FAVORITE_CATEGORIES, INITIAL_FAVORITES } from './data/favorites.js';
-import { LIVE_VOLCANOES, LIVE_EARTHQUAKES, LIVE_STORMS, LIVE_WILDFIRES, LIVE_FLIGHT_ROUTES, LIVE_SHIPPING_CHOKEPOINTS } from './data/liveEarth.js';
 import { BATTLE_QUESTIONS, MYSTERY_LOCATIONS } from './data/games.js';
 import { INDIA_STATES_DATA, INDIA_BATTLE_QUESTIONS, KBC_QUIZ_BANK } from './data/indiaData.js';
 import { SURPRISE_LOCATIONS } from './data/surprises.js';
@@ -20,10 +19,9 @@ let countriesGeo = null;
 const allCountries = [...COUNTRIES];
 const countryMap = new Map();
 const countryByNameLower = new Map();
-let realLiveEarthquakes = [...LIVE_EARTHQUAKES];
 
 let globe3dInstance = null;
-let currentMode = 'explore';          // explore | favorites | live | battle | mystery
+let currentMode = 'explore';          // explore | favorites | battle | mystery
 let currentProjection = 'flat';       // flat | globe
 let showDayNightTerminator = true;
 let selectedCountry = null;
@@ -39,20 +37,9 @@ let selectedFavCategory = 'all';
 let selectedFavRegion = 'all';
 let favSearchQuery = '';
 
-// Live Earth State
-const liveLayers = {
-  terminator: true,
-  volcanoes: true,
-  earthquakes: true,
-  storms: true,
-  wildfires: true,
-  flights: true,
-  shipping: true
-};
+// UTC Time Reference for Astronomical Day/Night Terminator
 const now = new Date();
 let scrubberTimeMinutes = now.getUTCHours() * 60 + now.getUTCMinutes(); // Actual UTC time
-let scrubberPlaying = false;
-let scrubberInterval = null;
 
 // Battle Royale & KBC Quiz Engine State
 let battleSubMode = 'world'; // 'world' | 'india' | 'kbc'
@@ -788,166 +775,7 @@ function initSuggestPlaceSystem() {
 }
 
 // ============================================================
-// 2. LIVE EARTH SYSTEM (VOLCANOES, STORMS, EARTHQUAKES, SCRUBBER)
-// ============================================================
-function initLiveEarthControls() {
-  // Checkbox listeners
-  const layers = ['Terminator', 'Volcanoes', 'Earthquakes', 'Storms', 'Wildfires', 'Flights', 'Shipping'];
-  layers.forEach(l => {
-    const chk = document.getElementById(`chkLayer${l}`);
-    if (chk) {
-      chk.addEventListener('change', () => {
-        liveLayers[l.toLowerCase()] = chk.checked;
-        chk.closest('.layer-chip')?.classList.toggle('active', chk.checked);
-        renderMapLayers();
-      });
-    }
-  });
-
-  // Scrubber range slider
-  const scrubber = document.getElementById('timeScrubber');
-  const scrubLabel = document.getElementById('scrubTimeLabel');
-  if (scrubber) {
-    scrubber.addEventListener('input', (e) => {
-      scrubberTimeMinutes = parseInt(e.target.value, 10);
-      const h = String(Math.floor(scrubberTimeMinutes / 60)).padStart(2, '0');
-      const m = String(scrubberTimeMinutes % 60).padStart(2, '0');
-      if (scrubLabel) scrubLabel.textContent = `${h}:${m} UTC`;
-      renderMapLayers();
-    });
-  }
-
-  // Play / Pause button
-  const playBtn = document.getElementById('btnScrubPlay');
-  if (playBtn) {
-    playBtn.addEventListener('click', () => {
-      scrubberPlaying = !scrubberPlaying;
-      playBtn.textContent = scrubberPlaying ? '⏸ Pause' : '▶ Play';
-      if (scrubberPlaying) {
-        scrubberInterval = setInterval(() => {
-          scrubberTimeMinutes = (scrubberTimeMinutes + 15) % 1440;
-          if (scrubber) scrubber.value = scrubberTimeMinutes;
-          const h = String(Math.floor(scrubberTimeMinutes / 60)).padStart(2, '0');
-          const m = String(scrubberTimeMinutes % 60).padStart(2, '0');
-          if (scrubLabel) scrubLabel.textContent = `${h}:${m} UTC`;
-          renderMapLayers();
-        }, 150);
-      } else {
-        clearInterval(scrubberInterval);
-      }
-    });
-  }
-}
-
-function renderLiveEarthOverlays() {
-  g.selectAll('.live-earth-group').remove();
-  const earthGroup = g.append('g').attr('class', 'live-earth-group');
-
-  // Volcanoes
-  if (liveLayers.volcanoes) {
-    LIVE_VOLCANOES.forEach(volc => {
-      const p = projection([volc.lng, volc.lat]);
-      if (!p) return;
-      const m = earthGroup.append('g')
-        .attr('class', 'live-event-marker')
-        .attr('transform', `translate(${p[0]},${p[1]})`)
-        .on('click', (e) => { e.stopPropagation(); openLiveEventDetail('volcano', volc); });
-      m.append('text').attr('text-anchor', 'middle').attr('dy', 5).attr('font-size', '16px').text('🌋');
-    });
-  }
-
-  // Earthquakes (Real Live USGS Feed)
-  if (liveLayers.earthquakes) {
-    realLiveEarthquakes.forEach(eq => {
-      const p = projection([eq.lng, eq.lat]);
-      if (!p) return;
-      const m = earthGroup.append('g')
-        .attr('class', 'live-event-marker')
-        .attr('transform', `translate(${p[0]},${p[1]})`)
-        .on('click', (e) => { e.stopPropagation(); openLiveEventDetail('earthquake', eq); });
-      m.append('circle').attr('r', Math.max(3, eq.mag * 2.2)).attr('fill', 'rgba(239, 68, 68, 0.45)').attr('stroke', '#ef4444').attr('stroke-width', 1.5);
-    });
-  }
-
-  // Storms
-  if (liveLayers.storms) {
-    LIVE_STORMS.forEach(storm => {
-      const p = projection([storm.lng, storm.lat]);
-      if (!p) return;
-      const m = earthGroup.append('g')
-        .attr('class', 'live-event-marker')
-        .attr('transform', `translate(${p[0]},${p[1]})`)
-        .on('click', (e) => { e.stopPropagation(); openLiveEventDetail('storm', storm); });
-      m.append('text').attr('text-anchor', 'middle').attr('dy', 6).attr('font-size', '18px').text('🌪️');
-    });
-  }
-
-  // Flights
-  if (liveLayers.flights) {
-    LIVE_FLIGHT_ROUTES.forEach(fl => {
-      const o = projection(fl.origin.reverse ? [fl.origin[1], fl.origin[0]] : fl.origin);
-      const d = projection(fl.dest.reverse ? [fl.dest[1], fl.dest[0]] : fl.dest);
-      if (o && d) {
-        earthGroup.append('line')
-          .attr('class', 'flight-path')
-          .attr('x1', o[0]).attr('y1', o[1])
-          .attr('x2', d[0]).attr('y2', d[1]);
-        const curX = o[0] + (d[0] - o[0]) * fl.progress;
-        const curY = o[1] + (d[1] - o[1]) * fl.progress;
-        earthGroup.append('text')
-          .attr('class', 'flight-icon')
-          .attr('x', curX).attr('y', curY)
-          .text('✈️');
-      }
-    });
-  }
-}
-
-function openLiveEventDetail(type, item) {
-  showDrawerSection('viewLiveEventDetail');
-  const badge = document.getElementById('eventBadge');
-  const title = document.getElementById('eventTitle');
-  const country = document.getElementById('eventCountry');
-  const actVal = document.getElementById('eventActivityVal');
-  const upVal = document.getElementById('eventUpdateVal');
-  const desc = document.getElementById('eventDesc');
-
-  if (type === 'volcano') {
-    badge.textContent = '🌋 ACTIVE VOLCANO';
-    title.textContent = item.name;
-    country.textContent = `${item.country} • Elevation ${item.elevation}`;
-    actVal.textContent = item.status;
-    upVal.textContent = item.update;
-    desc.textContent = item.detail;
-  } else if (type === 'earthquake') {
-    badge.textContent = '🌎 SEISMIC EVENT';
-    title.textContent = `Magnitude ${item.mag} Quake`;
-    country.textContent = item.place;
-    actVal.textContent = `Depth: ${item.depth}`;
-    upVal.textContent = item.time;
-    desc.textContent = `Tsunami warning: ${item.tsunami ? 'ACTIVE WARNING' : 'No tsunami threat detected.'}`;
-  } else if (type === 'storm') {
-    badge.textContent = '🌪️ TROPICAL STORM / CYCLONE';
-    title.textContent = item.name;
-    country.textContent = `${item.category}`;
-    actVal.textContent = `Wind speeds: ${item.wind}`;
-    upVal.textContent = `Tracking: ${item.track}`;
-    desc.textContent = `Atmospheric pressure down to ${item.pressure}. Extreme marine advisory active.`;
-  }
-
-  document.getElementById('btnShareEvent').onclick = () => {
-    openShareCardModal({
-      headline: `Live Earth Event Tracked on World Explorer!`,
-      subject: item.name || item.place,
-      subtext: `Activity Monitored in Real Time`,
-      highlight: `${item.status || item.mag || 'Extreme Global Activity'} 📡`,
-      icon: type === 'volcano' ? '🌋' : (type === 'storm' ? '🌪️' : '🌎')
-    });
-  };
-}
-
-// ============================================================
-// 3. GEOGRAPHY BATTLE ROYALE & KBC QUIZ ENGINE
+// 2. GEOGRAPHY BATTLE ROYALE & KBC QUIZ ENGINE
 // ============================================================
 function shuffleArray(array) {
   const arr = [...array];
@@ -1691,15 +1519,12 @@ function initNavigation() {
 
   // Close modals
   document.getElementById('btnClosePlaceModal')?.addEventListener('click', () => { sounds.playClick(); document.getElementById('placeModal')?.close(); });
-  document.getElementById('btnCloseEventDetail')?.addEventListener('click', () => { sounds.playClick(); showDrawerSection('viewCountryDossier'); });
   document.getElementById('themeToggle')?.addEventListener('click', () => { sounds.playClick(); document.body.classList.toggle('ambience-mystic'); });
 }
 
 function handleModeSwitch(mode) {
   sounds.playClick();
   // Hide all dynamic docks
-  const liveDock = document.getElementById('liveEarthDock');
-  if (liveDock) liveDock.style.display = 'none';
   const favDock = document.getElementById('favoritesFilterDock');
   if (favDock) favDock.style.display = 'none';
   const battleHud = document.getElementById('battleHud');
@@ -1850,37 +1675,6 @@ async function fetchLiveWeather(lat, lng) {
     if (err.name !== 'AbortError') {
       if (descEl) descEl.textContent = 'Live telemetry sync';
     }
-  }
-}
-
-// Real-Time USGS Earthquakes Feed
-async function loadRealLiveUSGSEarthquakes() {
-  try {
-    const res = await fetch('https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/4.5_day.geojson');
-    if (!res.ok) return;
-    const data = await res.json();
-    if (data && data.features && data.features.length > 0) {
-      realLiveEarthquakes = data.features.map((f, idx) => {
-        const coords = f.geometry?.coordinates || [0, 0, 0];
-        const p = f.properties || {};
-        const minsAgo = Math.max(1, Math.round((Date.now() - p.time) / 60000));
-        const timeStr = minsAgo < 60 ? `${minsAgo}m ago` : `${Math.round(minsAgo / 60)}h ago`;
-        return {
-          id: `usgs-eq-${idx}`,
-          place: p.place || 'Active Seismic Zone',
-          mag: p.mag || 4.5,
-          depth: `${Math.round(coords[2] || 10)} km`,
-          lat: coords[1],
-          lng: coords[0],
-          time: timeStr,
-          tsunami: Boolean(p.tsunami),
-          isRealLiveUSGS: true
-        };
-      });
-      renderMapLayers();
-    }
-  } catch (err) {
-    console.warn('USGS feed fetch error (using fallback):', err);
   }
 }
 
