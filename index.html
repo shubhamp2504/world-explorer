@@ -348,15 +348,29 @@
         </div>
       </div>
 
-      <!-- FAVORITE PLACES LIST & LEADERBOARD -->
+      <!-- FAVORITE PLACES LIST & LEADERBOARD (REVAMPED HIERARCHY) -->
       <div class="drawer-view" id="viewFavoritesList" style="display: none;">
         <div class="fav-drawer-header">
           <div>
             <h2>❤️ Community Top Voted</h2>
-            <p>Global leaderboards voted genuinely by users worldwide.</p>
+            <p id="favLeaderboardSubtitle">Authentic global wonders & cultural landmarks.</p>
           </div>
           <button class="btn-suggest-place-trigger" id="btnOpenSuggestModal">➕ Suggest Place</button>
         </div>
+
+        <!-- Quick Search & Region Filter Bar -->
+        <div class="fav-search-wrap">
+          <input type="text" id="favSearchInput" placeholder="Filter by city, state, or wonder..." autocomplete="off" />
+        </div>
+
+        <div class="fav-region-bar" id="favRegionBar">
+          <button class="fav-region-pill active" data-region="all">All Regions</button>
+          <button class="fav-region-pill" data-region="Asia">Asia</button>
+          <button class="fav-region-pill" data-region="Europe">Europe</button>
+          <button class="fav-region-pill" data-region="Americas">Americas</button>
+          <button class="fav-region-pill" data-region="Africa">Africa</button>
+        </div>
+
         <div class="fav-leaderboard" id="favLeaderboard"></div>
       </div>
 

@@ -36,6 +36,8 @@ let userVotedPlaceIds = new Set(JSON.parse(localStorage.getItem(USER_VOTED_KEY) 
 let customSuggestedPlaces = JSON.parse(localStorage.getItem(CUSTOM_PLACES_KEY) || '[]');
 let favoritesList = [...INITIAL_FAVORITES, ...customSuggestedPlaces];
 let selectedFavCategory = 'all';
+let selectedFavRegion = 'all';
+let favSearchQuery = '';
 
 // Live Earth State
 const liveLayers = {
@@ -463,34 +465,73 @@ function highlightCountryPath(code) {
 // ============================================================
 function initFavoritesSystem() {
   const filterScroll = document.getElementById('favFilterScroll');
-  if (!filterScroll) return;
+  if (filterScroll) {
+    filterScroll.innerHTML = FAVORITE_CATEGORIES.map(cat => `
+      <button class="fav-cat-btn ${cat.id === 'all' ? 'active' : ''}" data-cat="${cat.id}">
+        <span>${cat.icon}</span>
+        <span>${cat.label}</span>
+      </button>
+    `).join('');
 
-  filterScroll.innerHTML = FAVORITE_CATEGORIES.map(cat => `
-    <button class="fav-cat-btn ${cat.id === 'all' ? 'active' : ''}" data-cat="${cat.id}">
-      <span>${cat.icon}</span>
-      <span>${cat.label}</span>
-    </button>
-  `).join('');
+    filterScroll.querySelectorAll('.fav-cat-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        filterScroll.querySelectorAll('.fav-cat-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        selectedFavCategory = btn.dataset.cat;
+        renderFavoriteMarkers();
+        renderFavoritesLeaderboard();
+      });
+    });
+  }
 
-  filterScroll.querySelectorAll('.fav-cat-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
-      filterScroll.querySelectorAll('.fav-cat-btn').forEach(b => b.classList.remove('active'));
-      btn.classList.add('active');
-      selectedFavCategory = btn.dataset.cat;
-      renderFavoriteMarkers();
+  // Quick Search Filter within Favorites Drawer
+  const searchInput = document.getElementById('favSearchInput');
+  searchInput?.addEventListener('input', (e) => {
+    favSearchQuery = e.target.value.trim().toLowerCase();
+    renderFavoritesLeaderboard();
+  });
+
+  // Continent / Region Pills
+  const regionBar = document.getElementById('favRegionBar');
+  regionBar?.querySelectorAll('.fav-region-pill').forEach(pill => {
+    pill.addEventListener('click', () => {
+      regionBar.querySelectorAll('.fav-region-pill').forEach(p => p.classList.remove('active'));
+      pill.classList.add('active');
+      selectedFavRegion = pill.dataset.region;
       renderFavoritesLeaderboard();
+      renderFavoriteMarkers();
     });
   });
 
   renderFavoritesLeaderboard();
 }
 
+function getFilteredFavorites() {
+  return favoritesList.filter(f => {
+    // 1. Category filter
+    if (selectedFavCategory !== 'all' && f.category !== selectedFavCategory) {
+      return false;
+    }
+    // 2. Region / Continent filter
+    if (selectedFavRegion !== 'all' && f.continent !== selectedFavRegion) {
+      return false;
+    }
+    // 3. Search query (matches name, city, country, or category)
+    if (favSearchQuery) {
+      const matchName = f.name.toLowerCase().includes(favSearchQuery);
+      const matchCity = (f.city || '').toLowerCase().includes(favSearchQuery);
+      const matchCountry = f.country.toLowerCase().includes(favSearchQuery);
+      const matchCat = f.category.toLowerCase().includes(favSearchQuery);
+      if (!matchName && !matchCity && !matchCountry && !matchCat) return false;
+    }
+    return true;
+  });
+}
+
 function renderFavoriteMarkers() {
   g.selectAll('.favorite-marker-group').remove();
 
-  const filtered = selectedFavCategory === 'all' 
-    ? favoritesList 
-    : favoritesList.filter(f => f.category === selectedFavCategory);
+  const filtered = getFilteredFavorites();
 
   const markerGroup = g.append('g').attr('class', 'favorite-marker-group');
 
@@ -531,24 +572,47 @@ function renderFavoriteMarkers() {
 
 function renderFavoritesLeaderboard() {
   const container = document.getElementById('favLeaderboard');
+  const subEl = document.getElementById('favLeaderboardSubtitle');
   if (!container) return;
 
-  const sorted = [...favoritesList]
-    .filter(f => selectedFavCategory === 'all' || f.category === selectedFavCategory)
-    .sort((a, b) => b.votes - a.votes);
+  const filtered = getFilteredFavorites().sort((a, b) => b.votes - a.votes);
+
+  if (subEl) {
+    subEl.textContent = `Showing ${filtered.length} authentic destinations worldwide.`;
+  }
+
+  if (filtered.length === 0) {
+    container.innerHTML = `
+      <div style="text-align: center; padding: 32px 16px; color: var(--txt-muted);">
+        <div style="font-size: 2rem; margin-bottom: 8px;">🔍</div>
+        <p style="font-size: 0.88rem; font-weight: 600; color: #fff;">No places found</p>
+        <p style="font-size: 0.78rem;">Try clearing your search query or choosing another region.</p>
+      </div>
+    `;
+    return;
+  }
 
   const medals = ['🥇', '🥈', '🥉'];
 
-  container.innerHTML = sorted.map((fav, i) => `
-    <div class="fav-leader-item" data-id="${fav.id}">
-      <span class="fav-lead-rank">${medals[i] || `#${i + 1}`}</span>
-      <div class="fav-lead-info">
-        <div class="fav-lead-name">${fav.name}</div>
-        <div class="fav-lead-sub">${fav.country} • ${fav.category.toUpperCase()}</div>
+  container.innerHTML = filtered.map((fav, i) => {
+    const displayLocation = fav.city ? `${fav.city}, ${fav.country}` : fav.country;
+    return `
+      <div class="fav-leader-item" data-id="${fav.id}">
+        <span class="fav-lead-rank">${medals[i] || `#${i + 1}`}</span>
+        <img class="fav-lead-thumb" src="${fav.image}" alt="${fav.name}" loading="lazy" />
+        <div class="fav-lead-info">
+          <div class="fav-lead-name" title="${fav.name}">${fav.name}</div>
+          <div class="fav-lead-sub" title="${displayLocation}">
+            <span>📍 ${displayLocation}</span>
+          </div>
+          <div style="margin-top: 4px;">
+            <span class="fav-lead-tag">${fav.category.toUpperCase()}</span>
+          </div>
+        </div>
+        <div class="fav-lead-votes">❤️ ${fav.votes.toLocaleString()}</div>
       </div>
-      <div class="fav-lead-votes">❤️ ${fav.votes.toLocaleString()}</div>
-    </div>
-  `).join('');
+    `;
+  }).join('');
 
   container.querySelectorAll('.fav-leader-item').forEach(el => {
     el.addEventListener('click', () => {
@@ -567,7 +631,8 @@ function openPlaceModal(fav) {
 
   document.getElementById('placeModalImg').src = fav.image;
   document.getElementById('placeModalTitle').textContent = fav.name;
-  document.getElementById('placeModalCountry').textContent = `${fav.country}`;
+  const locationText = fav.city ? `${fav.city}, ${fav.country}` : fav.country;
+  document.getElementById('placeModalCountry').textContent = `📍 ${locationText}`;
   document.getElementById('placeModalCat').textContent = fav.category.toUpperCase();
   document.getElementById('placeModalVoteCount').textContent = fav.votes.toLocaleString();
   document.getElementById('placeModalDesc').textContent = fav.description;
