@@ -824,6 +824,7 @@ export class EarthGlobe3D {
     this.interactiveObjects.push(moonLabel);
 
     this.planets['earth'] = {
+      id: 'earth',
       group: this.earthGroup,
       mesh: this.earthMesh,
       atmoMesh: this.atmosphereMesh,
@@ -836,6 +837,7 @@ export class EarthGlobe3D {
     };
 
     this.planets['moon'] = {
+      id: 'moon',
       group: this.moonGroup,
       mesh: this.moonMesh,
       radius: 0.24,
@@ -1104,12 +1106,9 @@ export class EarthGlobe3D {
     this.activeFocusedBody = 'system';
     this.autoRotate = false;
     this.targetCameraLookAt.set(0, 0, 0);
-    this.orbitRadius = 52.0;
     this.targetOrbitRadius = 52.0;
     this.targetOrbitPhi = 0.72; // Elevated 42° pitch
     this.targetOrbitTheta = 0.0;
-    this.orbitPhi = 0.72;
-    this.orbitTheta = 0.0;
     this.updateVisibility(true);
   }
 
@@ -1126,14 +1125,12 @@ export class EarthGlobe3D {
       this.autoRotate = false;
       this.targetCameraLookAt.set(0, 0, 0);
       this.targetOrbitRadius = 5.5;
-      this.orbitRadius = 5.5;
       this.targetOrbitPhi = Math.PI * 0.45;
     } else if (planetId === 'earth') {
       this.autoRotate = true;
       const ePos = this.earthGroup.position;
       this.targetCameraLookAt.copy(ePos);
       this.targetOrbitRadius = this.zoomDistance;
-      this.orbitRadius = this.zoomDistance;
       this.targetOrbitPhi = Math.PI * 0.42;
     } else if (planetId === 'moon') {
       this.autoRotate = false;
@@ -1141,7 +1138,6 @@ export class EarthGlobe3D {
       this.moonGroup.getWorldPosition(mPos);
       this.targetCameraLookAt.copy(mPos);
       this.targetOrbitRadius = 0.88;
-      this.orbitRadius = 0.88;
       this.targetOrbitPhi = Math.PI * 0.45;
     } else if (this.planets[planetId]) {
       this.autoRotate = false;
@@ -1150,7 +1146,6 @@ export class EarthGlobe3D {
       this.targetCameraLookAt.copy(pPos);
       const camDist = Math.max(2.2, p.radius * 3.4);
       this.targetOrbitRadius = camDist;
-      this.orbitRadius = camDist;
       this.targetOrbitPhi = Math.PI * 0.42;
     }
   }
@@ -1279,10 +1274,10 @@ export class EarthGlobe3D {
 
     // Direct camera to look straight at the target latitude and longitude
     const phi = (90 - lat) * (Math.PI / 180);
-    const theta = (lng + 180) * (Math.PI / 180);
+    const theta = (lng + 90) * (Math.PI / 180);
 
     this.targetOrbitPhi = Math.max(0.12, Math.min(Math.PI - 0.12, phi));
-    this.targetOrbitTheta = theta;
+    this.targetOrbitTheta = -theta;
     this.zoomDistance = zoom;
     this.targetOrbitRadius = zoom;
   }
@@ -1446,9 +1441,14 @@ export class EarthGlobe3D {
     const delta = Math.min(this.clock.getDelta(), 0.05);
     const elapsedTime = this.clock.getElapsedTime();
 
-    // 1. Pass uTime to Earth and Sun shaders safely
-    if (this.earthMesh && this.earthMesh.material?.uniforms?.uTime) {
-      this.earthMesh.material.uniforms.uTime.value = elapsedTime;
+    // 1. Pass uTime and cameraWorldPosition to Earth and Sun shaders safely
+    if (this.earthMesh && this.earthMesh.material?.uniforms) {
+      if (this.earthMesh.material.uniforms.uTime) {
+        this.earthMesh.material.uniforms.uTime.value = elapsedTime;
+      }
+      if (this.earthMesh.material.uniforms.cameraWorldPosition) {
+        this.earthMesh.material.uniforms.cameraWorldPosition.value.copy(this.camera.position);
+      }
     }
     if (this.sunMesh && this.sunMesh.material?.uniforms?.uTime) {
       this.sunMesh.material.uniforms.uTime.value = elapsedTime;

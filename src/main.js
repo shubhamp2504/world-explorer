@@ -1609,7 +1609,12 @@ function initSearch() {
           dropdown.classList.remove('open');
           selectCountry(c);
           highlightCountryPath(c.code);
-          zoomToCoordinates(c.lng || 0, c.lat || 0, 4);
+          if (currentProjection === 'globe' && globe3dInstance) {
+            document.querySelectorAll('.planet-pill').forEach(b => b.classList.toggle('active', b.dataset.planet === 'earth'));
+            globe3dInstance.flyTo(c.lat, c.lng, 2.65);
+          } else {
+            zoomToCoordinates(c.lng || 0, c.lat || 0, 4);
+          }
         }
       });
     });
@@ -1636,6 +1641,8 @@ function initQuickJumpBar() {
         selectCountry(c);
         highlightCountryPath(c.code);
         if (currentProjection === 'globe' && globe3dInstance) {
+          // Sync bottom planetary navigation pill to Earth
+          document.querySelectorAll('.planet-pill').forEach(b => b.classList.toggle('active', b.dataset.planet === 'earth'));
           globe3dInstance.flyTo(c.lat, c.lng, 2.65);
         } else {
           zoomToCoordinates(c.lng || 0, c.lat || 0, 4);
