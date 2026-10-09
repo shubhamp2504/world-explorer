@@ -11,6 +11,10 @@ import { SURPRISE_LOCATIONS } from './data/surprises.js';
 import { PLANETS_DATA } from './data/planets.js';
 import { EarthGlobe3D } from './globe3d.js';
 import { sounds } from './audio.js';
+import { inject } from '@vercel/analytics';
+
+// Initialize Vercel Web Analytics
+inject();
 
 // ============================================================
 // GLOBAL STATE & SYSTEM REGISTRIES
