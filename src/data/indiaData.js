@@ -34,7 +34,12 @@ export const INDIA_STATES_DATA = [
   // Union Territories
   { code: 'DL', name: 'Delhi (NCT)', capital: 'New Delhi', region: 'North', majorRiver: 'Yamuna', nationalPark: 'Asola Bhatti Wildlife Sanctuary', lat: 28.7041, lng: 77.1025 },
   { code: 'JK', name: 'Jammu & Kashmir', capital: 'Srinagar (Summer) / Jammu (Winter)', region: 'North', majorRiver: 'Jhelum, Chenab, Tawi', nationalPark: 'Dachigam (Hangul Deer), Kishtwar', lat: 33.7782, lng: 76.5762 },
-  { code: 'LA', name: 'Ladakh', capital: 'Leh', region: 'North', majorRiver: 'Indus, Zanskar, Shyok', nationalPark: 'Hemis National Park (Snow Leopards - Largest in India)', lat: 34.1526, lng: 77.5771 }
+  { code: 'LA', name: 'Ladakh', capital: 'Leh', region: 'North', majorRiver: 'Indus, Zanskar, Shyok', nationalPark: 'Hemis National Park (Snow Leopards - Largest in India)', lat: 34.1526, lng: 77.5771 },
+  { code: 'AN', name: 'Andaman and Nicobar Islands', capital: 'Port Blair', region: 'Island', majorRiver: 'Kalpong', nationalPark: 'Mahatma Gandhi Marine, Campbell Bay', lat: 11.7401, lng: 92.6586 },
+  { code: 'CH', name: 'Chandigarh', capital: 'Chandigarh', region: 'North', majorRiver: 'Sukhna Lake', nationalPark: 'Sukhna Wildlife Sanctuary', lat: 30.7333, lng: 76.7794 },
+  { code: 'DD', name: 'Dadra and Nagar Haveli and Daman and Diu', capital: 'Daman', region: 'West', majorRiver: 'Daman Ganga', nationalPark: 'Vanganga Lake Garden', lat: 20.4283, lng: 72.8397 },
+  { code: 'LD', name: 'Lakshadweep', capital: 'Kavaratti', region: 'Island', majorRiver: 'Arabian Sea Atolls', nationalPark: 'Pitti Bird Sanctuary', lat: 10.5667, lng: 72.6417 },
+  { code: 'PY', name: 'Puducherry', capital: 'Puducherry', region: 'South', majorRiver: 'Gingee, Sankaraparani', nationalPark: 'Ousteri Wetland and Sanctuary', lat: 11.9416, lng: 79.8083 }
 ];
 
 export const INDIA_BATTLE_QUESTIONS = [

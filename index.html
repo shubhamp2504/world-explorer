@@ -159,44 +159,50 @@
 
       <!-- BATTLE ROYALE IN-GAME OVERLAY HUD -->
       <div class="battle-hud" id="battleHud" style="display: none;">
-        <!-- Sub-Mode Selector Pills -->
-        <div class="battle-mode-pills" id="battleModePills">
-          <button class="battle-mode-pill active" data-submode="world">🌍 World Map Challenge</button>
-          <button class="battle-mode-pill" data-submode="india">🇮🇳 Bharat & States (UPSC/MPSC)</button>
-          <button class="battle-mode-pill" data-submode="kbc">🧠 KBC 4-Option Quiz</button>
+        <!-- Top Command Bar -->
+        <div class="battle-hud-top" id="battleHudTop">
+          <div class="battle-mode-pills" id="battleModePills">
+            <button class="battle-mode-pill active" data-submode="world">🌍 World</button>
+            <button class="battle-mode-pill" data-submode="india">🇮🇳 Bharat & States</button>
+            <button class="battle-mode-pill" data-submode="kbc">🧠 KBC Quiz</button>
+          </div>
+
+          <div class="battle-prompt-inline" id="battlePromptInline">
+            <div class="battle-badge-group">
+              <span class="battle-badge" id="battleDiffBadge">EASY</span>
+              <span class="battle-category-badge" id="battleCategoryBadge" style="display: none;">BHARAT STATES</span>
+            </div>
+            <h2 class="battle-question" id="battleQuestionText">Click on the country!</h2>
+          </div>
+
+          <div class="battle-top-right-group">
+            <div class="battle-stat-chip">
+              <span class="hud-label">Score</span>
+              <span class="hud-val" id="battleScore">0</span>
+            </div>
+            <div class="battle-stat-chip">
+              <span class="hud-label">Streak</span>
+              <span class="hud-val streak" id="battleStreak">🔥 0</span>
+            </div>
+            <div class="battle-timer-wrap">
+              <div class="battle-timer-circle" id="battleTimer">15</div>
+            </div>
+            <div class="battle-stat-chip" id="battleProgressChip">
+              <span class="hud-label">Q</span>
+              <span class="hud-val" id="battleLevel">1/10</span>
+            </div>
+            <div class="battle-lifelines-wrap" id="battleLifelines" style="display: none;">
+              <button class="btn-lifeline" id="btnLifeline5050" title="50:50 Lifeline">50:50</button>
+              <button class="btn-lifeline" id="btnLifelineHint" title="Ask Hint Lifeline">💡 Hint</button>
+            </div>
+            <button class="btn-end-battle" id="btnEndBattle" title="Exit Battle Royale">✕</button>
+          </div>
         </div>
 
-        <div class="battle-top-bar">
-          <div class="battle-stat-chip">
-            <span class="hud-label">Score</span>
-            <span class="hud-val" id="battleScore">0</span>
-          </div>
-          <div class="battle-stat-chip">
-            <span class="hud-label">Streak</span>
-            <span class="hud-val streak" id="battleStreak">🔥 0</span>
-          </div>
-          <div class="battle-timer-wrap">
-            <div class="battle-timer-circle" id="battleTimer">15</div>
-          </div>
-          <div class="battle-stat-chip">
-            <span class="hud-label">Progress</span>
-            <span class="hud-val" id="battleLevel">Q 1/10</span>
-          </div>
-          <div class="battle-lifelines-wrap" id="battleLifelines" style="display: none;">
-            <button class="btn-lifeline" id="btnLifeline5050" title="50:50 Lifeline">50:50</button>
-            <button class="btn-lifeline" id="btnLifelineHint" title="Ask Hint Lifeline">💡 Hint</button>
-          </div>
-          <button class="btn-end-battle" id="btnEndBattle">✕ Exit</button>
-        </div>
-
-        <div class="battle-prompt-card">
-          <div class="battle-prompt-top">
-            <span class="battle-badge" id="battleDiffBadge">EASY</span>
-            <span class="battle-category-badge" id="battleCategoryBadge" style="display: none;">UPSC/MPSC</span>
-          </div>
-          <h2 class="battle-question" id="battleQuestionText">Click on the country!</h2>
+        <!-- Bottom Action Dock (Options or Hints or Explanations) -->
+        <div class="battle-hud-dock" id="battleHudDock">
           <p class="battle-hint" id="battleHintText">Tap the map to lock your answer before time runs out!</p>
-          
+
           <!-- KBC 4-Option Choices Grid -->
           <div class="kbc-options-grid" id="kbcOptionsGrid" style="display: none;">
             <button class="kbc-opt-btn" data-opt="0"><span class="kbc-opt-letter">A</span><span class="kbc-opt-text">Option A</span></button>
@@ -211,6 +217,7 @@
               <span class="exp-icon">💡</span>
               <span class="exp-title">Verified Explanation</span>
               <span class="exp-mentor-badge" id="expMentorBadge" style="display: none;">⚡ AI Mentor</span>
+              <button class="btn-next-question" id="btnNextBattleQuestion">Next Question ➡️</button>
             </div>
             <p class="exp-text" id="quizExplanationText"></p>
             <div class="exp-hook-box" id="expHookBox" style="display: none;">
@@ -223,30 +230,36 @@
 
       <!-- GUESS WHERE MYSTERY HUD -->
       <div class="mystery-hud" id="mysteryHud" style="display: none;">
-        <div class="mystery-top-bar" id="mysteryTopBar">
+        <div class="mystery-hud-top" id="mysteryHudTop">
           <div class="mystery-round-badge" id="mysteryRoundBadge">ROUND 1 OF 6</div>
-          <div class="mystery-clue-label">🕵️ Clue Revealed:</div>
-          <div class="mystery-clue-content" id="mysteryClueContent">Loading clue...</div>
+          <div class="mystery-clue-wrap">
+            <span class="mystery-clue-label">🕵️ Clue:</span>
+            <span class="mystery-clue-content" id="mysteryClueContent">Loading clue...</span>
+          </div>
           <div class="mystery-actions" id="mysteryActionsRow">
             <button class="btn-guess-next-clue" id="btnNextClue">Next Clue (+penalty)</button>
             <button class="btn-guess-giveup" id="btnMysteryReveal">Give Up</button>
+            <button class="btn-end-battle" id="btnMysteryExitTop" title="Exit Mystery Game">✕</button>
           </div>
         </div>
-        <div class="mystery-hint-pill" id="mysteryHintPill">📍 Click your guess anywhere on the world map below!</div>
 
-        <!-- Interactive Round Result Banner (Proximity Radar & Next Game) -->
-        <div class="mystery-result-box" id="mysteryResultBox" style="display: none;">
-          <div class="mres-header">
-            <span class="mres-radar" id="mresRadar">🎯</span>
-            <div class="mres-info">
-              <h3 class="mres-title" id="mresTitle">Target: Lisbon, Portugal 🇵🇹</h3>
-              <p class="mres-sub" id="mresSub">Distance: 320 km away • Accuracy: 850 pts</p>
+        <div class="mystery-hud-dock" id="mysteryHudDock">
+          <div class="mystery-hint-pill" id="mysteryHintPill">📍 Click your guess anywhere on the world map below!</div>
+
+          <!-- Interactive Round Result Banner (Proximity Radar & Next Game) -->
+          <div class="mystery-result-box" id="mysteryResultBox" style="display: none;">
+            <div class="mres-header">
+              <span class="mres-radar" id="mresRadar">🎯</span>
+              <div class="mres-info">
+                <h3 class="mres-title" id="mresTitle">Target: Lisbon, Portugal 🇵🇹</h3>
+                <p class="mres-sub" id="mresSub">Distance: 320 km away • Accuracy: 850 pts</p>
+              </div>
             </div>
-          </div>
-          <div class="mres-actions">
-            <button class="btn-guess-next-round" id="btnNextMysteryTarget">Next Mystery Place ➡️</button>
-            <button class="btn-guess-share-round" id="btnShareMystery">Share Score 📲</button>
-            <button class="btn-guess-exit" id="btnExitMystery">Exit ✕</button>
+            <div class="mres-actions">
+              <button class="btn-guess-next-round" id="btnNextMysteryTarget">Next Mystery Place ➡️</button>
+              <button class="btn-guess-share-round" id="btnShareMystery">Share Score 📲</button>
+              <button class="btn-guess-exit" id="btnExitMystery">Exit ✕</button>
+            </div>
           </div>
         </div>
       </div>

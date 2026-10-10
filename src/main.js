@@ -16,6 +16,8 @@ import { sounds } from './audio.js';
 // ============================================================
 let worldData = null;
 let countriesGeo = null;
+let indiaStatesGeo = null;
+let battleAutoAdvanceTimer = null;
 const allCountries = [...COUNTRIES];
 const countryMap = new Map();
 const countryByNameLower = new Map();
@@ -127,6 +129,17 @@ async function boot() {
     countriesGeo = topojson.feature(worldData, worldData.objects.countries);
   } catch (err) {
     console.warn('Network topology fetch error, continuing gracefully:', err);
+  }
+
+  // Fetch verified India States & Union Territories GeoJSON
+  try {
+    const indiaRes = await fetch('/data/india-states.json');
+    if (indiaRes.ok) {
+      indiaStatesGeo = await indiaRes.json();
+      console.log('✅ Loaded India States GeoJSON:', indiaStatesGeo.features?.length, 'states/UTs');
+    }
+  } catch (err) {
+    console.warn('India states fetch error:', err);
   }
 
   updateLoading(65, 'Building Solar System...');
@@ -291,8 +304,23 @@ function renderMapLayers() {
       .on('click', handleCountryClick);
   }
 
-  // 4. Solar Terminator Shadow (Day/Night)
-  if (showDayNightTerminator) {
+  // 3.5 India States & UTs Administrative Boundaries Layer
+  if (indiaStatesGeo && indiaStatesGeo.features) {
+    g.selectAll('.state-path')
+      .data(indiaStatesGeo.features)
+      .join('path')
+      .attr('class', 'state-path')
+      .attr('d', pathGen)
+      .attr('data-state-code', d => d.properties?.stateCode || '')
+      .attr('data-state-name', d => d.properties?.st_nm || d.properties?.name || '')
+      .on('mouseover', handleStateHover)
+      .on('mousemove', handleMouseMove)
+      .on('mouseout', handleStateMouseOut)
+      .on('click', handleStateClick);
+  }
+
+  // 4. Solar Terminator Shadow (Day/Night) - Auto-suppressed during game modes
+  if (showDayNightTerminator && currentMode !== 'battle' && currentMode !== 'mystery') {
     renderSolarTerminator();
   }
 
@@ -394,13 +422,13 @@ function flyCameraToCoordinates(lat, lng, zoomLevel = 4) {
   }
 }
 
-// Zoom & Map Transitions for 2D
-function zoomToCoordinates(lng, lat, scaleLevel = 4) {
+// Zoom & Map Transitions for 2D (Supports optical centering with offsetY)
+function zoomToCoordinates(lng, lat, scaleLevel = 4, offsetY = 0) {
   const p = projection([lng, lat]);
   if (!p) return;
   svg.transition().duration(900).call(
     zoom.transform,
-    d3.zoomIdentity.translate(width / 2 - scaleLevel * p[0], height / 2 - scaleLevel * p[1]).scale(scaleLevel)
+    d3.zoomIdentity.translate(width / 2 - scaleLevel * p[0], (height / 2 + offsetY) - scaleLevel * p[1]).scale(scaleLevel)
   );
 }
 
@@ -426,6 +454,59 @@ function handleCountryHover(event, d) {
   `;
   tt.classList.add('visible');
   positionTooltip(event, tt);
+}
+
+function handleStateHover(event, d) {
+  const name = d.properties?.st_nm || d.properties?.name || 'Indian State';
+  const code = d.properties?.stateCode || '';
+  const tt = document.getElementById('earthTooltip');
+  if (!tt) return;
+  tt.innerHTML = `
+    <div style="font-size:1.4rem;margin-bottom:2px;">🇮🇳</div>
+    <div style="font-weight:800;color:#fbbf24;font-size:0.95rem;">${name}</div>
+    <div style="color:var(--accent-cyan);font-size:0.75rem;">State / Union Territory (${code})</div>
+    <div style="color:var(--txt-muted);font-size:0.72rem;">Bharat &bull; Indian Subcontinent</div>
+  `;
+  tt.classList.add('visible');
+  positionTooltip(event, tt);
+}
+
+function handleStateMouseOut() {
+  document.getElementById('earthTooltip')?.classList.remove('visible');
+}
+
+function handleStateClick(event, d) {
+  event.stopPropagation();
+  const stateCode = d.properties?.stateCode;
+  const stateName = d.properties?.st_nm || d.properties?.name || 'State';
+  const [px, py] = d3.pointer(event, g.node());
+  const coords = projection.invert([px, py]);
+  const clickedLng = coords ? coords[0] : null;
+  const clickedLat = coords ? coords[1] : null;
+
+  // 1. In Battle Royale Mode
+  if (currentMode === 'battle') {
+    if (battleSubMode === 'india') {
+      handleBattleStateClick(stateCode, stateName, d, px, py, clickedLng, clickedLat);
+    } else {
+      const indiaObj = countryMap.get('IN');
+      handleBattleMapClick('IN', indiaObj, clickedLng, clickedLat, px, py);
+    }
+    return;
+  }
+
+  // 2. In Guess Where Mystery Mode
+  if (currentMode === 'mystery') {
+    if (coords) handleMysteryMapGuess(coords[0], coords[1]);
+    return;
+  }
+
+  // 3. Normal Explore Mode
+  const indiaObj = countryMap.get('IN');
+  if (indiaObj) {
+    selectCountry(indiaObj);
+    showToast(`📍 Exploring ${stateName}, Bharat 🇮🇳`);
+  }
 }
 
 function handleMouseMove(event) {
@@ -457,6 +538,22 @@ function handleCountryClick(event, d) {
     const coords = projection.invert([px, py]);
     const clickedLng = coords ? coords[0] : null;
     const clickedLat = coords ? coords[1] : null;
+
+    if (battleSubMode === 'india' && code !== 'IN') {
+      // Clicked outside India in Bharat mode
+      battleAnswerLocked = true;
+      clearInterval(battleTimerInterval);
+      sounds.playWrong();
+      battleStreak = 0;
+      document.getElementById('battleStreak').textContent = '🔥 0';
+      showToast(`❌ That is ${c?.name || 'outside India'}! Click inside Bharat's state borders.`);
+      const localQ = INDIA_BATTLE_QUESTIONS.find(q => q.id === currentBattleQuestion?.id) || currentBattleQuestion;
+      const targetCode = currentBattleQuestion?.stateCode || localQ?.stateCode;
+      if (targetCode) g.selectAll(`.state-path[data-state-code="${targetCode}"]`).classed('target-hint', true);
+      showBattleExplanation(false, localQ?.fact || '', localQ?.hint || '');
+      return;
+    }
+
     handleBattleMapClick(code, c, clickedLng, clickedLat, px, py);
     return;
   }
@@ -979,6 +1076,13 @@ function initBattleRoyale() {
     sounds.playClick();
     showToast(`💡 Hint: Think about ${currentBattleQuestion.category || 'physical geography'}!`);
   });
+
+  // Next Question Button inside explanation box
+  document.getElementById('btnNextBattleQuestion')?.addEventListener('click', () => {
+    sounds.playClick();
+    clearTimeout(battleAutoAdvanceTimer);
+    nextBattleQuestion();
+  });
 }
 
 async function fetchServerQuizQuestions(mode) {
@@ -1053,25 +1157,32 @@ async function startBattleRoyale(subMode = 'world') {
   lifeline5050Used = false;
   lifelineHintUsed = false;
 
+  document.body.classList.add('mode-battle');
   document.getElementById('battleScore').textContent = '0';
   document.getElementById('battleStreak').textContent = '🔥 0';
   document.getElementById('battleHud').style.display = 'flex';
 
-  // Reset lifeline buttons UI
+  // Reset lifeline buttons UI & state classes
   document.getElementById('btnLifeline5050')?.classList.remove('used');
   document.getElementById('btnLifelineHint')?.classList.remove('used');
+  g.selectAll('.state-path').classed('correct-hit', false).classed('wrong-hit', false).classed('target-hint', false);
+  g.selectAll('.country-path').classed('selected', false);
 
   // Sync mode pill active state
   document.querySelectorAll('.battle-mode-pill').forEach(pill => {
     pill.classList.toggle('active', pill.dataset.submode === battleSubMode);
   });
 
-  // Camera orientation
+  // Camera orientation - optical centering between top bar and bottom dock
   if (battleSubMode === 'india') {
     if (currentProjection === 'globe' && globe3dInstance) {
       globe3dInstance.flyTo(20.59, 78.96, 2.65);
     } else {
-      zoomToCoordinates(78.96, 20.59, 3.8);
+      zoomToCoordinates(78.96, 21.5, 3.6, 25);
+    }
+  } else if (battleSubMode === 'world') {
+    if (currentProjection === 'flat') {
+      zoomToCoordinates(15, 20, 1.25, 0);
     }
   }
 
@@ -1298,6 +1409,41 @@ function apply5050Lifeline() {
   showToast('50:50 Lifeline applied! Two wrong options eliminated.');
 }
 
+async function handleBattleStateClick(stateCode, stateName, stateFeature, px, py, clickedLng, clickedLat) {
+  if (!currentBattleQuestion || kbcAnswered || battleAnswerLocked || battleSubMode === 'kbc') return;
+  battleAnswerLocked = true;
+  clearInterval(battleTimerInterval);
+
+  const localQ = INDIA_BATTLE_QUESTIONS.find(q => q.id === currentBattleQuestion.id) || currentBattleQuestion;
+  const targetCode = currentBattleQuestion.stateCode || localQ.stateCode;
+  const fact = currentBattleQuestion.fact || localQ.fact || 'Authenticated geographic landmark in Bharat.';
+  const hint = currentBattleQuestion.hint || localQ.hint || 'Locate within the Indian subcontinent.';
+
+  const isCorrect = (stateCode === targetCode);
+
+  g.selectAll('.state-path').classed('correct-hit', false).classed('wrong-hit', false).classed('target-hint', false);
+
+  if (isCorrect) {
+    sounds.playCorrect();
+    g.selectAll(`.state-path[data-state-code="${stateCode}"]`).classed('correct-hit', true);
+    const points = 600 + (battleTimerSeconds * 50) + (battleStreak * 100);
+    battleScore += points;
+    battleStreak += 1;
+    document.getElementById('battleScore').textContent = battleScore.toLocaleString();
+    document.getElementById('battleStreak').textContent = `🔥 ${battleStreak}`;
+    showToast(`✅ PERFECT STATE! ${stateName} identified (+${points} pts)!`);
+  } else {
+    sounds.playWrong();
+    battleStreak = 0;
+    document.getElementById('battleStreak').textContent = '🔥 0';
+    g.selectAll(`.state-path[data-state-code="${stateCode}"]`).classed('wrong-hit', true);
+    g.selectAll(`.state-path[data-state-code="${targetCode}"]`).classed('target-hint', true);
+    showToast(`❌ That was ${stateName}! Look for target state. ${hint}`);
+  }
+
+  showBattleExplanation(isCorrect, fact, hint);
+}
+
 async function handleBattleMapClick(clickedCode, countryObj, clickedLng = null, clickedLat = null, px = null, py = null) {
   if (!currentBattleQuestion || kbcAnswered || battleAnswerLocked || battleSubMode === 'kbc') return;
   battleAnswerLocked = true;
@@ -1307,16 +1453,9 @@ async function handleBattleMapClick(clickedCode, countryObj, clickedLng = null, 
 
   if (battleSubMode === 'india') {
     const localQ = INDIA_BATTLE_QUESTIONS.find(q => q.id === currentBattleQuestion.id) || currentBattleQuestion;
-    const targetStateLat = currentBattleQuestion.lat || localQ.lat;
-    const targetStateLng = currentBattleQuestion.lng || localQ.lng;
+    const targetCode = currentBattleQuestion.stateCode || localQ.stateCode;
     const fact = localQ.fact || 'Authenticated geographic site in India.';
     const hint = localQ.hint || 'Locate within the Indian subcontinent.';
-
-    // Distance in km from click point to state centroid
-    let distKm = Infinity;
-    if (clickedLng != null && clickedLat != null && targetStateLat != null && targetStateLng != null) {
-      distKm = calculateDistanceKm(clickedLat, clickedLng, targetStateLat, targetStateLng);
-    }
 
     // Determine the closest Indian state to the user's click
     let closestState = null;
@@ -1327,41 +1466,30 @@ async function handleBattleMapClick(clickedCode, countryObj, clickedLng = null, 
       }, null);
     }
 
-    // Pass condition: inside India AND within 450 km of state center or matches closest state
-    const matchesClosest = closestState && closestState.state.code === localQ.stateCode;
-    isCorrect = (clickedCode === 'IN' && (distKm <= 450 || matchesClosest));
-
-    // Draw visual feedback ring on the map at the click coordinates
-    g.selectAll('.battle-feedback-mark').remove();
-    if (px != null && py != null) {
-      g.append('circle')
-        .attr('class', 'battle-feedback-mark')
-        .attr('cx', px).attr('cy', py)
-        .attr('r', 18)
-        .attr('fill', isCorrect ? 'rgba(16, 185, 129, 0.35)' : 'rgba(239, 68, 68, 0.35)')
-        .attr('stroke', isCorrect ? '#10b981' : '#ef4444')
-        .attr('stroke-width', 2.8)
-        .style('filter', `drop-shadow(0 0 10px ${isCorrect ? '#10b981' : '#ef4444'})`);
-    }
+    isCorrect = (clickedCode === 'IN' && closestState && closestState.state.code === targetCode);
+    g.selectAll('.state-path').classed('correct-hit', false).classed('wrong-hit', false).classed('target-hint', false);
 
     if (isCorrect) {
+      sounds.playCorrect();
+      g.selectAll(`.state-path[data-state-code="${targetCode}"]`).classed('correct-hit', true);
       const points = 600 + (battleTimerSeconds * 50) + (battleStreak * 100);
       battleScore += points;
       battleStreak += 1;
       document.getElementById('battleScore').textContent = battleScore.toLocaleString();
       document.getElementById('battleStreak').textContent = `🔥 ${battleStreak}`;
       showToast(`✅ PERFECT STATE TARGET! ${fact}`);
-      zoomToCoordinates(targetStateLng, targetStateLat, 4.8);
     } else {
+      sounds.playWrong();
       battleStreak = 0;
       document.getElementById('battleStreak').textContent = '🔥 0';
-      if (clickedCode !== 'IN') {
-        showToast(`❌ That wasn't India! Look inside the Indian subcontinent.`);
-      } else {
-        const nearName = closestState?.state?.name ? `near ${closestState.state.name}` : 'another state';
-        showToast(`❌ Wrong State Region! You clicked ${nearName} (~${Math.round(distKm)} km away). ${hint}`);
+      if (closestState) {
+        g.selectAll(`.state-path[data-state-code="${closestState.state.code}"]`).classed('wrong-hit', true);
       }
+      g.selectAll(`.state-path[data-state-code="${targetCode}"]`).classed('target-hint', true);
+      showToast(`❌ Wrong State Region! Click directly on state outlines. ${hint}`);
     }
+
+    showBattleExplanation(isCorrect, fact, hint);
   } else {
     // World Challenge mode
     const serverValidation = await validateAnswerServerless(currentBattleQuestion.id, clickedCode, battleSubMode);
@@ -1370,26 +1498,58 @@ async function handleBattleMapClick(clickedCode, countryObj, clickedLng = null, 
     isCorrect = serverValidation ? serverValidation.isCorrect : (clickedCode === targetCode);
 
     if (isCorrect) {
+      sounds.playCorrect();
       const points = 500 + (battleTimerSeconds * 50) + (battleStreak * 100);
       battleScore += points;
       battleStreak += 1;
       document.getElementById('battleScore').textContent = battleScore.toLocaleString();
       document.getElementById('battleStreak').textContent = `🔥 ${battleStreak}`;
       showToast(`✅ CORRECT! +${points} pts!`);
+      highlightCountryPath(clickedCode);
       zoomToCoordinates(currentBattleQuestion.lng, currentBattleQuestion.lat, 3.8);
     } else {
+      sounds.playWrong();
       battleStreak = 0;
       document.getElementById('battleStreak').textContent = '🔥 0';
       showToast(`❌ WRONG! That was ${countryObj?.name || 'an incorrect place'}`);
       if (targetCode) highlightCountryPath(targetCode);
     }
+
+    const fact = currentBattleQuestion.fact || localQ.fact || `${countryObj?.name || 'Target country'} on the world map.`;
+    const hint = currentBattleQuestion.hint || localQ.hint || '';
+    showBattleExplanation(isCorrect, fact, hint);
+  }
+}
+
+function showBattleExplanation(isCorrect, fact, hint) {
+  const expBox = document.getElementById('quizExplanationBox');
+  const expText = document.getElementById('quizExplanationText');
+  const expHookBox = document.getElementById('expHookBox');
+  const expHookText = document.getElementById('expHookText');
+  const expMentorBadge = document.getElementById('expMentorBadge');
+
+  if (expBox && expText) {
+    expBox.style.display = 'flex';
+    expText.textContent = `${isCorrect ? '✅ Verified Fact: ' : 'ℹ️ Verified Fact: '} ${fact}`;
+    if (hint && expHookBox && expHookText) {
+      expHookBox.style.display = 'flex';
+      expHookText.textContent = `UPSC/MPSC Insight: ${hint}`;
+    }
+    if (expMentorBadge) expMentorBadge.style.display = 'inline-block';
   }
 
-  setTimeout(nextBattleQuestion, 2400);
+  clearTimeout(battleAutoAdvanceTimer);
+  battleAutoAdvanceTimer = setTimeout(() => {
+    nextBattleQuestion();
+  }, 4500);
 }
 
 function endBattleRoyale() {
   clearInterval(battleTimerInterval);
+  clearTimeout(battleAutoAdvanceTimer);
+  document.body.classList.remove('mode-battle');
+  g.selectAll('.state-path').classed('correct-hit', false).classed('wrong-hit', false).classed('target-hint', false);
+  g.selectAll('.country-path').classed('selected', false);
   document.getElementById('battleHud').style.display = 'none';
   document.getElementById('tabExplore')?.click();
 }
@@ -1432,13 +1592,19 @@ function initMysteryGame() {
     }
   });
 
-  document.getElementById('btnExitMystery')?.addEventListener('click', () => {
+  const exitMystery = () => {
+    document.body.classList.remove('mode-mystery');
+    g.selectAll('.guess-line').remove();
+    g.selectAll('.guess-marker').remove();
     document.getElementById('mysteryHud').style.display = 'none';
     document.getElementById('tabExplore')?.click();
-  });
+  };
+  document.getElementById('btnExitMystery')?.addEventListener('click', exitMystery);
+  document.getElementById('btnMysteryExitTop')?.addEventListener('click', exitMystery);
 }
 
 function startMysteryGame() {
+  document.body.classList.add('mode-mystery');
   mysteryIndex = (mysteryIndex + 1) % MYSTERY_LOCATIONS.length;
   currentMysteryTarget = MYSTERY_LOCATIONS[mysteryIndex];
   mysteryClueRound = 1;
@@ -1447,12 +1613,10 @@ function startMysteryGame() {
   // Reset HUD visibility
   const hud = document.getElementById('mysteryHud');
   const resBox = document.getElementById('mysteryResultBox');
-  const topBar = document.getElementById('mysteryTopBar');
   const hintPill = document.getElementById('mysteryHintPill');
 
   if (hud) hud.style.display = 'flex';
   if (resBox) resBox.style.display = 'none';
-  if (topBar) topBar.style.display = 'block';
   if (hintPill) {
     hintPill.style.display = 'block';
     hintPill.textContent = '📍 Click your guess anywhere on the world map below!';
