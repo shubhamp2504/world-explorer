@@ -875,6 +875,31 @@ async function validateAnswerServerless(questionId, chosenAnswer, subMode) {
   return null;
 }
 
+// ============================================================
+// ASYNCHRONOUS ZERO-LAG GROQ AI MENTOR CALL
+// ============================================================
+async function requestAiMentorInsight(question, chosenAnswer, correctAnswer, explanation, category) {
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 2800); // 2.8s strict ceiling
+    const res = await fetch('/api/mentor', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ question, chosenAnswer, correctAnswer, explanation, category }),
+      signal: controller.signal
+    });
+    clearTimeout(timeoutId);
+    if (!res.ok) return null;
+    const data = await res.json();
+    if (data.success) {
+      return data;
+    }
+  } catch (err) {
+    // Non-blocking background failure: UI continues effortlessly
+  }
+  return null;
+}
+
 async function startBattleRoyale(subMode = 'world') {
   battleSubMode = subMode;
   battleScore = 0;
@@ -1064,15 +1089,42 @@ async function handleKbcOptionClick(chosenIdx, clickedBtn) {
     showToast(`❌ Galat Jawab! The correct answer was: ${correctText}`);
   }
 
-  // Display authentic UPSC/MPSC explanation
+  // Display initial authentic UPSC/MPSC explanation immediately (0ms latency)
   const expBox = document.getElementById('quizExplanationBox');
   const expText = document.getElementById('quizExplanationText');
-  if (expBox && expText && explanation) {
-    expText.textContent = explanation;
-    expBox.style.display = 'flex';
+  const expMentorBadge = document.getElementById('expMentorBadge');
+  const expHookBox = document.getElementById('expHookBox');
+  const expHookText = document.getElementById('expHookText');
+
+  if (expBox && expText) {
+    if (expMentorBadge) expMentorBadge.style.display = 'none';
+    if (expHookBox) expHookBox.style.display = 'none';
+    if (explanation) {
+      expText.textContent = explanation;
+      expBox.style.display = 'flex';
+    }
   }
 
-  setTimeout(nextBattleQuestion, 3200);
+  // ASYNCHRONOUS GROQ AI MENTOR ENRICHMENT (Zero-lag: runs in parallel while user reads)
+  const qPrompt = currentBattleQuestion.question || '';
+  const chosenText = currentBattleQuestion.options?.[chosenIdx] || '';
+  const correctText = currentBattleQuestion.options?.[correctIndex] || '';
+  const qCategory = currentBattleQuestion.category || 'UPSC/MPSC';
+
+  requestAiMentorInsight(qPrompt, chosenText, correctText, explanation, qCategory).then(aiData => {
+    if (aiData && kbcAnswered && expBox && expBox.style.display !== 'none') {
+      if (aiData.mentorInsight) {
+        expText.textContent = aiData.mentorInsight;
+      }
+      if (expMentorBadge) expMentorBadge.style.display = 'inline-block';
+      if (aiData.hook && expHookBox && expHookText) {
+        expHookText.textContent = aiData.hook;
+        expHookBox.style.display = 'flex';
+      }
+    }
+  });
+
+  setTimeout(nextBattleQuestion, 3800);
 }
 
 function apply5050Lifeline() {

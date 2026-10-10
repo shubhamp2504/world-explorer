@@ -199,10 +199,18 @@
             <button class="kbc-opt-btn" data-opt="3"><span class="kbc-opt-letter">D</span><span class="kbc-opt-text">Option D</span></button>
           </div>
 
-          <!-- Post-Answer Explanation Box -->
+          <!-- Post-Answer Explanation Box with Asynchronous AI Mentor Hook -->
           <div class="quiz-explanation-box" id="quizExplanationBox" style="display: none;">
-            <span class="exp-icon">💡</span>
-            <span class="exp-text" id="quizExplanationText"></span>
+            <div class="exp-header-row">
+              <span class="exp-icon">💡</span>
+              <span class="exp-title">Verified Explanation</span>
+              <span class="exp-mentor-badge" id="expMentorBadge" style="display: none;">⚡ AI Mentor</span>
+            </div>
+            <p class="exp-text" id="quizExplanationText"></p>
+            <div class="exp-hook-box" id="expHookBox" style="display: none;">
+              <span class="hook-icon">🎯</span>
+              <span class="hook-text" id="expHookText"></span>
+            </div>
           </div>
         </div>
       </div>
