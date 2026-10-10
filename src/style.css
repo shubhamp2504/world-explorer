@@ -2311,3 +2311,251 @@ dialog::backdrop {
 .planet-pill.just-selected {
   animation: selectionPulse 0.5s ease-out;
 }
+
+/* ============================================================
+   GUIDE BUTTON & COMPREHENSIVE FEATURES MODAL
+   ============================================================ */
+.btn-guide-hero {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  border-radius: var(--radius-pill);
+  background: rgba(15, 23, 42, 0.85);
+  border: 1px solid rgba(56, 189, 248, 0.4);
+  color: #fff;
+  font-weight: 700;
+  font-size: 0.82rem;
+  letter-spacing: 0.04em;
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.5), 0 0 14px rgba(56, 189, 248, 0.2);
+  backdrop-filter: blur(20px);
+  cursor: pointer;
+  transition: all var(--speed-fast) var(--ease-spring);
+}
+.btn-guide-hero:hover {
+  transform: translateY(-2px) scale(1.03);
+  border-color: rgba(56, 189, 248, 0.85);
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.6), 0 0 20px rgba(56, 189, 248, 0.4);
+}
+.btn-guide-hero:active {
+  transform: translateY(0) scale(0.98);
+}
+.guide-icon {
+  font-size: 1.05rem;
+  filter: drop-shadow(0 0 8px rgba(56, 189, 248, 0.8));
+}
+
+.guide-modal {
+  border: none;
+  background: transparent;
+  padding: 0;
+  max-width: 900px;
+  width: 94vw;
+  margin: auto;
+}
+.guide-modal::backdrop {
+  background: rgba(3, 7, 18, 0.82);
+  backdrop-filter: blur(12px);
+}
+.guide-modal-card {
+  background: rgba(11, 21, 45, 0.94);
+  border: 1px solid rgba(56, 189, 248, 0.35);
+  border-radius: var(--radius-xl);
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.85), 0 0 40px rgba(56, 189, 248, 0.2);
+  padding: 28px 32px;
+  max-height: 88vh;
+  overflow-y: auto;
+  color: #fff;
+}
+.guide-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 12px;
+}
+.guide-badge-pill {
+  font-size: 0.72rem;
+  font-weight: 800;
+  color: var(--accent-cyan);
+  letter-spacing: 0.1em;
+  background: rgba(56, 189, 248, 0.12);
+  border: 1px solid rgba(56, 189, 248, 0.3);
+  padding: 3px 10px;
+  border-radius: 99px;
+  display: inline-block;
+  margin-bottom: 6px;
+}
+.guide-modal-header h2 {
+  font-size: 1.55rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  background: linear-gradient(135deg, #fff 30%, var(--accent-cyan) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+.guide-intro {
+  font-size: 0.92rem;
+  line-height: 1.55;
+  color: var(--txt-sub);
+  margin-bottom: 22px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  padding-bottom: 16px;
+}
+.guide-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 16px;
+  margin-bottom: 24px;
+}
+.guide-feature-card {
+  background: rgba(15, 23, 42, 0.65);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: var(--radius-lg);
+  padding: 18px;
+  display: flex;
+  gap: 14px;
+  transition: all 0.25s ease;
+}
+.guide-feature-card:hover {
+  background: rgba(30, 41, 59, 0.75);
+  border-color: rgba(56, 189, 248, 0.4);
+  transform: translateY(-2px);
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.4);
+}
+.gfc-icon {
+  font-size: 2rem;
+  line-height: 1;
+}
+.gfc-body h3 {
+  font-size: 0.98rem;
+  font-weight: 700;
+  color: #fff;
+  margin-bottom: 6px;
+}
+.gfc-body p {
+  font-size: 0.82rem;
+  line-height: 1.5;
+  color: var(--txt-sub);
+  margin-bottom: 10px;
+}
+.gfc-tag {
+  font-size: 0.72rem;
+  line-height: 1.4;
+  color: var(--accent-amber);
+  background: rgba(245, 158, 11, 0.1);
+  border-left: 2px solid var(--accent-amber);
+  padding: 4px 8px;
+  border-radius: 0 var(--radius-xs) var(--radius-xs) 0;
+}
+.guide-modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  padding-top: 14px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+.btn-guide-start {
+  background: linear-gradient(135deg, var(--accent-cyan), #2563eb);
+  color: #fff;
+  border: none;
+  font-size: 0.92rem;
+  font-weight: 700;
+  padding: 10px 24px;
+  border-radius: var(--radius-pill);
+  cursor: pointer;
+  box-shadow: 0 4px 16px rgba(37, 99, 235, 0.4);
+  transition: all 0.2s ease;
+}
+.btn-guide-start:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 22px rgba(37, 99, 235, 0.6);
+}
+
+/* ============================================================
+   GUESS WHERE ROUND RESULT BOX & RADAR
+   ============================================================ */
+.mystery-result-box {
+  background: rgba(11, 21, 45, 0.95);
+  border: 1px solid var(--accent-purple);
+  border-radius: var(--radius-lg);
+  padding: 16px 20px;
+  width: 100%;
+  box-shadow: 0 0 32px rgba(192, 132, 252, 0.35);
+  backdrop-filter: blur(24px);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  animation: slideUp 0.35s ease;
+}
+.mres-header {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.mres-radar {
+  font-size: 2.2rem;
+  filter: drop-shadow(0 0 10px rgba(192, 132, 252, 0.8));
+}
+.mres-info {
+  flex: 1;
+}
+.mres-title {
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: #fff;
+  margin-bottom: 2px;
+}
+.mres-sub {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--accent-cyan);
+}
+.mres-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  padding-top: 10px;
+}
+.btn-guess-next-round {
+  background: linear-gradient(135deg, var(--accent-purple), #7c3aed);
+  border: none;
+  color: #fff;
+  padding: 8px 18px;
+  border-radius: var(--radius-pill);
+  font-size: 0.82rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+.btn-guess-next-round:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 16px rgba(124, 58, 237, 0.5);
+}
+.btn-guess-share-round {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: #fff;
+  padding: 8px 14px;
+  border-radius: var(--radius-pill);
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+.btn-guess-share-round:hover {
+  background: rgba(255, 255, 255, 0.16);
+}
+.btn-guess-exit {
+  background: transparent;
+  border: none;
+  color: var(--txt-muted);
+  padding: 8px 12px;
+  border-radius: var(--radius-pill);
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+.btn-guess-exit:hover {
+  color: #fff;
+}
+

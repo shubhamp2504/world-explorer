@@ -195,7 +195,7 @@ export class EarthGlobe3D {
   }
 
   createCinematicCosmos() {
-    const starsCount = 3800;
+    const starsCount = 5500;
     const geometry = new THREE.BufferGeometry();
     const positions = new Float32Array(starsCount * 3);
     const colors = new Float32Array(starsCount * 3);
@@ -204,9 +204,9 @@ export class EarthGlobe3D {
 
     for (let i = 0; i < starsCount; i++) {
       const idx = i * 3;
-      // 2 depth layers: near stars (90-150) and far faint stars (200-400)
-      const isFar = Math.random() > 0.5;
-      const radius = isFar ? 200 + Math.random() * 200 : 90 + Math.random() * 150;
+      // 3 depth layers: foreground sparkles (60-120), mid-field (120-220), and deep galactic band (220-450)
+      const layer = Math.random();
+      const radius = layer > 0.7 ? 60 + Math.random() * 60 : (layer > 0.3 ? 120 + Math.random() * 100 : 220 + Math.random() * 230);
       const theta = Math.random() * Math.PI * 2;
       const phi = Math.acos((Math.random() * 2) - 1);
 
@@ -215,15 +215,18 @@ export class EarthGlobe3D {
       positions[idx + 2] = radius * Math.cos(phi);
 
       const tint = Math.random();
-      if (tint > 0.85) {
-        colors[idx] = 1.0; colors[idx + 1] = 0.90; colors[idx + 2] = 0.72; // Solar gold
-      } else if (tint > 0.45) {
-        colors[idx] = 0.70; colors[idx + 1] = 0.88; colors[idx + 2] = 1.0; // Cyan diamond
+      if (tint > 0.75) {
+        colors[idx] = 1.0; colors[idx + 1] = 0.95; colors[idx + 2] = 0.80; // Radiant solar gold
+      } else if (tint > 0.40) {
+        colors[idx] = 0.55; colors[idx + 1] = 0.85; colors[idx + 2] = 1.0; // Cyan diamond
+      } else if (tint > 0.20) {
+        colors[idx] = 0.85; colors[idx + 1] = 0.65; colors[idx + 2] = 1.0; // Violet starlight
       } else {
-        colors[idx] = 0.96; colors[idx + 1] = 0.98; colors[idx + 2] = 1.0; // Starlight
+        colors[idx] = 1.0; colors[idx + 1] = 1.0; colors[idx + 2] = 1.0; // Pure white star
       }
 
-      sizes[i] = (isFar ? 0.4 : 0.8) + Math.random() * 0.8;
+      // Significantly larger and brighter star point sizes
+      sizes[i] = (layer > 0.7 ? 1.4 : 0.9) + Math.random() * 1.5;
       starIndices[i] = i;
     }
 
@@ -233,14 +236,15 @@ export class EarthGlobe3D {
     geometry.setAttribute('starIndex', new THREE.BufferAttribute(starIndices, 1));
 
     const canvas = document.createElement('canvas');
-    canvas.width = 16; canvas.height = 16;
+    canvas.width = 32; canvas.height = 32;
     const ctx = canvas.getContext('2d');
-    const grad = ctx.createRadialGradient(8, 8, 1, 8, 8, 8);
+    const grad = ctx.createRadialGradient(16, 16, 2, 16, 16, 16);
     grad.addColorStop(0, 'rgba(255,255,255,1.0)');
-    grad.addColorStop(0.4, 'rgba(255,255,255,0.7)');
-    grad.addColorStop(1, 'rgba(255,255,255,0)');
+    grad.addColorStop(0.35, 'rgba(224,242,254,0.85)');
+    grad.addColorStop(0.7, 'rgba(56,189,248,0.3)');
+    grad.addColorStop(1, 'rgba(0,0,0,0)');
     ctx.fillStyle = grad;
-    ctx.fillRect(0, 0, 16, 16);
+    ctx.fillRect(0, 0, 32, 32);
     const starTex = new THREE.CanvasTexture(canvas);
 
     const material = new THREE.ShaderMaterial({
@@ -256,9 +260,9 @@ export class EarthGlobe3D {
         varying float vTwinkle;
         void main() {
           vColor = color;
-          vTwinkle = 0.6 + 0.4 * sin(uTime * 0.8 + starIndex);
+          vTwinkle = 0.75 + 0.25 * sin(uTime * 1.2 + starIndex);
           vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
-          gl_PointSize = size * (300.0 / -mvPosition.z) * vTwinkle;
+          gl_PointSize = size * (560.0 / -mvPosition.z) * vTwinkle;
           gl_Position = projectionMatrix * mvPosition;
         }
       `,
@@ -268,7 +272,7 @@ export class EarthGlobe3D {
         varying float vTwinkle;
         void main() {
           vec4 texColor = texture2D(starTexture, gl_PointCoord);
-          gl_FragColor = vec4(vColor * texColor.rgb, texColor.a * vTwinkle * 0.92);
+          gl_FragColor = vec4(vColor * texColor.rgb * 1.85, texColor.a * vTwinkle);
         }
       `,
       transparent: true,
@@ -280,8 +284,12 @@ export class EarthGlobe3D {
     this.starfield = new THREE.Points(geometry, material);
     this.scene.add(this.starfield);
 
-    const cosmicAmbient = new THREE.AmbientLight(0x283854, 1.25);
+    // Radiant cosmic ambient lighting across all planetary bodies (No more murky dark galaxy)
+    const cosmicAmbient = new THREE.AmbientLight(0x64748b, 2.3);
     this.scene.add(cosmicAmbient);
+
+    const cosmicHemisphere = new THREE.HemisphereLight(0x60a5fa, 0x1e293b, 1.25);
+    this.scene.add(cosmicHemisphere);
   }
 
   // ☀️ CENTRAL HELIOCENTRIC SUN AT (0, 0, 0)
@@ -744,7 +752,7 @@ export class EarthGlobe3D {
     });
 
     this.earthMesh = new THREE.Mesh(earthGeometry, earthMaterial);
-    this.earthMesh.rotation.y = -Math.PI / 2;
+    this.earthMesh.rotation.y = 0;
     this.earthMesh.userData = { celestialId: 'earth' };
     this.earthGroup.add(this.earthMesh);
     this.interactiveObjects.push(this.earthMesh);
@@ -1197,7 +1205,7 @@ export class EarthGlobe3D {
     this.utcMinutes = minutes;
     if (this.earthMesh) {
       const utcAngle = (minutes / 1440) * Math.PI * 2;
-      this.earthMesh.rotation.y = -Math.PI / 2 + utcAngle;
+      this.earthMesh.rotation.y = utcAngle;
     }
   }
 

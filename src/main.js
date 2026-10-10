@@ -30,12 +30,23 @@ let lastSurpriseIndex = -1;
 // Internet's Favorite Places State (Authentic & Persistent)
 const USER_VOTED_KEY = 'we_user_voted_places';
 const CUSTOM_PLACES_KEY = 'we_custom_suggested_places';
+const PERSISTED_VOTES_KEY = 'we_persisted_place_votes';
 let userVotedPlaceIds = new Set(JSON.parse(localStorage.getItem(USER_VOTED_KEY) || '[]'));
 let customSuggestedPlaces = JSON.parse(localStorage.getItem(CUSTOM_PLACES_KEY) || '[]');
 let favoritesList = [...INITIAL_FAVORITES, ...customSuggestedPlaces];
 let selectedFavCategory = 'all';
 let selectedFavRegion = 'all';
 let favSearchQuery = '';
+
+// Hydrate saved votes immediately on boot so votes never reset across reloads
+try {
+  const savedVotes = JSON.parse(localStorage.getItem(PERSISTED_VOTES_KEY) || '{}');
+  favoritesList.forEach(fav => {
+    if (savedVotes[fav.id] !== undefined && savedVotes[fav.id] > fav.votes) {
+      fav.votes = savedVotes[fav.id];
+    }
+  });
+} catch (e) {}
 
 // UTC Time Reference for Astronomical Day/Night Terminator
 const now = new Date();
@@ -51,6 +62,7 @@ let battleTimerSeconds = 15;
 let battleTimerInterval = null;
 let currentBattleQuestion = null;
 let kbcAnswered = false;
+let battleAnswerLocked = false;
 let lifeline5050Used = false;
 let lifelineHintUsed = false;
 
@@ -156,6 +168,7 @@ async function boot() {
   initMysteryGame();
   initRandomSurpriseButton();
   initSharingModal();
+  initGuideModal();
   startGlobalClock();
   startFooterTicker();
 
@@ -206,6 +219,13 @@ function initD3Map() {
   svg.call(zoom);
   svg.on('dblclick.zoom', null);
   svg.on('dblclick', () => resetMapView());
+  svg.on('click', (event) => {
+    if (currentMode === 'mystery') {
+      const [px, py] = d3.pointer(event, g.node());
+      const coords = projection.invert([px, py]);
+      if (coords) handleMysteryMapGuess(coords[0], coords[1]);
+    }
+  });
 
   g = svg.append('g');
 
@@ -309,11 +329,11 @@ function renderSolarTerminator() {
   const sunLng = (12 - (utcHours + utcMins / 60)) * 15;
   const sunLat = declination;
 
-  // Antipodal point (center of the night hemisphere where Moon sits)
-  const nightCenterLng = (sunLng + 180) % 360 - 180;
+  // True Antipodal point (center of the night hemisphere where Sun is directly on the opposite side)
+  let nightCenterLng = sunLng >= 0 ? sunLng - 180 : sunLng + 180;
   const nightCenterLat = -declination;
 
-  // 1. Dark Twilight Shading
+  // 1. Dark Twilight Shading (Night Hemisphere centered at true antipodal point)
   const circle = d3.geoCircle()
     .center([nightCenterLng, nightCenterLat])
     .radius(90);
@@ -362,7 +382,19 @@ function startGlobeRotation() {
   svg.on('mousedown.rot touchstart.rot', () => { isGlobeRotating = false; });
 }
 
-// Zoom & Map Transitions
+// Unified 3D and 2D Camera Navigation
+function flyCameraToCoordinates(lat, lng, zoomLevel = 4) {
+  if (lat == null || lng == null) return;
+  if (currentProjection === 'globe' && globe3dInstance) {
+    // Smooth cinematic 3D globe camera sweep
+    globe3dInstance.flyTo(lat, lng, Math.max(2.2, 5.5 - zoomLevel * 0.6));
+  } else {
+    // 2D SVG Map transition
+    zoomToCoordinates(lng, lat, zoomLevel);
+  }
+}
+
+// Zoom & Map Transitions for 2D
 function zoomToCoordinates(lng, lat, scaleLevel = 4) {
   const p = projection([lng, lat]);
   if (!p) return;
@@ -421,13 +453,18 @@ function handleCountryClick(event, d) {
 
   // 1. In Battle Royale Mode
   if (currentMode === 'battle') {
-    handleBattleMapClick(code, c);
+    const [px, py] = d3.pointer(event, g.node());
+    const coords = projection.invert([px, py]);
+    const clickedLng = coords ? coords[0] : null;
+    const clickedLat = coords ? coords[1] : null;
+    handleBattleMapClick(code, c, clickedLng, clickedLat, px, py);
     return;
   }
 
   // 2. In Guess Where Mystery Mode
   if (currentMode === 'mystery') {
-    const coords = projection.invert([event.offsetX, event.offsetY]);
+    const [px, py] = d3.pointer(event, g.node());
+    const coords = projection.invert([px, py]);
     if (coords) handleMysteryMapGuess(coords[0], coords[1]);
     return;
   }
@@ -450,7 +487,62 @@ function highlightCountryPath(code) {
 // ============================================================
 // 1. INTERNET'S FAVORITE PLACES SYSTEM (VOTING & FILTERING)
 // ============================================================
+function loadPersistedVotes() {
+  try {
+    return JSON.parse(localStorage.getItem(PERSISTED_VOTES_KEY) || '{}');
+  } catch (e) {
+    return {};
+  }
+}
+
+function savePersistedVote(placeId, count) {
+  try {
+    const map = loadPersistedVotes();
+    map[placeId] = count;
+    localStorage.setItem(PERSISTED_VOTES_KEY, JSON.stringify(map));
+  } catch (e) {}
+}
+
+async function syncGlobalVotes() {
+  const localVotes = loadPersistedVotes();
+  let localUpdated = false;
+  favoritesList.forEach(fav => {
+    if (localVotes[fav.id] !== undefined && localVotes[fav.id] > fav.votes) {
+      fav.votes = localVotes[fav.id];
+      localUpdated = true;
+    }
+  });
+  if (localUpdated) {
+    renderFavoritesLeaderboard();
+  }
+
+  try {
+    const res = await fetch('/api/vote');
+    if (!res.ok) return;
+    const data = await res.json();
+    if (data.success && data.votes && typeof data.votes === 'object') {
+      let redisUpdated = false;
+      const combined = { ...localVotes };
+      favoritesList.forEach(fav => {
+        const remoteCount = data.votes[fav.id];
+        if (remoteCount !== undefined && remoteCount > fav.votes) {
+          fav.votes = remoteCount;
+          combined[fav.id] = remoteCount;
+          redisUpdated = true;
+        }
+      });
+      if (redisUpdated) {
+        localStorage.setItem(PERSISTED_VOTES_KEY, JSON.stringify(combined));
+        renderFavoritesLeaderboard();
+      }
+    }
+  } catch (err) {
+    // Offline or local development fallback
+  }
+}
+
 function initFavoritesSystem() {
+  syncGlobalVotes();
   const filterScroll = document.getElementById('favFilterScroll');
   if (filterScroll) {
     filterScroll.innerHTML = FAVORITE_CATEGORIES.map(cat => `
@@ -519,41 +611,51 @@ function renderFavoriteMarkers() {
   g.selectAll('.favorite-marker-group').remove();
 
   const filtered = getFilteredFavorites();
-
   const markerGroup = g.append('g').attr('class', 'favorite-marker-group');
 
   filtered.forEach(fav => {
     const p = projection([fav.lng, fav.lat]);
     if (!p) return;
 
+    const isHeritage = (fav.category === 'heritage');
+    const badgeColor = isHeritage ? '#f59e0b' : '#38bdf8';
+    const badgeGlow = isHeritage ? 'rgba(245, 158, 11, 0.6)' : 'rgba(56, 189, 248, 0.6)';
+
     const gMarker = markerGroup.append('g')
       .datum(fav)
       .attr('class', 'favorite-marker')
       .attr('transform', `translate(${p[0]},${p[1]})`)
+      .style('cursor', 'pointer')
       .on('click', (e) => {
         e.stopPropagation();
         openPlaceModal(fav);
+        flyCameraToCoordinates(fav.lat, fav.lng, 4.5);
       });
 
-    // Pulsing glowing ring
+    // Elegant Pulsing Glowing Outer Halo
     gMarker.append('circle')
       .attr('class', 'marker-glow-circle')
-      .attr('r', 10)
+      .attr('r', 12)
       .attr('fill', 'none')
-      .attr('stroke', '#f43f5e')
-      .attr('stroke-width', 2);
+      .attr('stroke', badgeColor)
+      .attr('stroke-width', 1.8)
+      .attr('opacity', 0.85);
 
-    // Center icon pin
+    // Inner Glowing Badge Center
     gMarker.append('circle')
-      .attr('r', 8)
-      .attr('fill', '#f43f5e');
+      .attr('r', 9)
+      .attr('fill', '#0b152d')
+      .attr('stroke', badgeColor)
+      .attr('stroke-width', 1.5)
+      .style('filter', `drop-shadow(0 0 8px ${badgeGlow})`);
 
+    // Cultural / Wonder Symbol
     gMarker.append('text')
       .attr('text-anchor', 'middle')
-      .attr('dy', 4)
+      .attr('dy', 3.5)
       .attr('font-size', '10px')
       .attr('fill', '#fff')
-      .text('❤️');
+      .text(isHeritage ? '🏛️' : '✨');
   });
 }
 
@@ -606,7 +708,7 @@ function renderFavoritesLeaderboard() {
       const fav = favoritesList.find(f => f.id === el.dataset.id);
       if (fav) {
         openPlaceModal(fav);
-        zoomToCoordinates(fav.lng, fav.lat, 4.5);
+        flyCameraToCoordinates(fav.lat, fav.lng, 4.5);
       }
     });
   });
@@ -648,6 +750,7 @@ function openPlaceModal(fav) {
     fav.votes += 1;
     userVotedPlaceIds.add(fav.id);
     localStorage.setItem(USER_VOTED_KEY, JSON.stringify([...userVotedPlaceIds]));
+    savePersistedVote(fav.id, fav.votes);
     
     // If it's a custom place, update stored custom places as well
     const custIdx = customSuggestedPlaces.findIndex(p => p.id === fav.id);
@@ -685,7 +788,7 @@ function openPlaceModal(fav) {
 
   document.getElementById('btnFlyPlace').onclick = () => {
     modal.close();
-    zoomToCoordinates(fav.lng, fav.lat, 5);
+    flyCameraToCoordinates(fav.lat, fav.lng, 5);
   };
 
   modal.showModal();
@@ -956,6 +1059,8 @@ async function startBattleRoyale(subMode = 'world') {
 
 function nextBattleQuestion() {
   kbcAnswered = false;
+  battleAnswerLocked = false;
+  g.selectAll('.battle-feedback-mark').remove();
 
   if (battleQuestionIndex >= activeQuestionPool.length) {
     // Completed full set!
@@ -1151,20 +1256,51 @@ function apply5050Lifeline() {
   showToast('50:50 Lifeline applied! Two wrong options eliminated.');
 }
 
-async function handleBattleMapClick(clickedCode, countryObj) {
-  if (!currentBattleQuestion || kbcAnswered || battleSubMode === 'kbc') return;
+async function handleBattleMapClick(clickedCode, countryObj, clickedLng = null, clickedLat = null, px = null, py = null) {
+  if (!currentBattleQuestion || kbcAnswered || battleAnswerLocked || battleSubMode === 'kbc') return;
+  battleAnswerLocked = true;
   clearInterval(battleTimerInterval);
 
   let isCorrect = false;
 
-  // Validate server-side or local fallback
-  const serverValidation = await validateAnswerServerless(currentBattleQuestion.id, clickedCode, battleSubMode);
-
   if (battleSubMode === 'india') {
-    isCorrect = serverValidation ? serverValidation.isCorrect : (clickedCode === 'IN');
     const localQ = INDIA_BATTLE_QUESTIONS.find(q => q.id === currentBattleQuestion.id) || currentBattleQuestion;
-    const fact = serverValidation?.fact || localQ.fact || 'Authenticated geographic site in India.';
-    const hint = serverValidation?.hint || localQ.hint || 'Locate within the Indian subcontinent.';
+    const targetStateLat = currentBattleQuestion.lat || localQ.lat;
+    const targetStateLng = currentBattleQuestion.lng || localQ.lng;
+    const fact = localQ.fact || 'Authenticated geographic site in India.';
+    const hint = localQ.hint || 'Locate within the Indian subcontinent.';
+
+    // Distance in km from click point to state centroid
+    let distKm = Infinity;
+    if (clickedLng != null && clickedLat != null && targetStateLat != null && targetStateLng != null) {
+      distKm = calculateDistanceKm(clickedLat, clickedLng, targetStateLat, targetStateLng);
+    }
+
+    // Determine the closest Indian state to the user's click
+    let closestState = null;
+    if (clickedLat != null && clickedLng != null) {
+      closestState = INDIA_STATES_DATA.reduce((best, s) => {
+        const d = calculateDistanceKm(clickedLat, clickedLng, s.lat, s.lng);
+        return (!best || d < best.d) ? { state: s, d } : best;
+      }, null);
+    }
+
+    // Pass condition: inside India AND within 450 km of state center or matches closest state
+    const matchesClosest = closestState && closestState.state.code === localQ.stateCode;
+    isCorrect = (clickedCode === 'IN' && (distKm <= 450 || matchesClosest));
+
+    // Draw visual feedback ring on the map at the click coordinates
+    g.selectAll('.battle-feedback-mark').remove();
+    if (px != null && py != null) {
+      g.append('circle')
+        .attr('class', 'battle-feedback-mark')
+        .attr('cx', px).attr('cy', py)
+        .attr('r', 18)
+        .attr('fill', isCorrect ? 'rgba(16, 185, 129, 0.35)' : 'rgba(239, 68, 68, 0.35)')
+        .attr('stroke', isCorrect ? '#10b981' : '#ef4444')
+        .attr('stroke-width', 2.8)
+        .style('filter', `drop-shadow(0 0 10px ${isCorrect ? '#10b981' : '#ef4444'})`);
+    }
 
     if (isCorrect) {
       const points = 600 + (battleTimerSeconds * 50) + (battleStreak * 100);
@@ -1172,15 +1308,21 @@ async function handleBattleMapClick(clickedCode, countryObj) {
       battleStreak += 1;
       document.getElementById('battleScore').textContent = battleScore.toLocaleString();
       document.getElementById('battleStreak').textContent = `🔥 ${battleStreak}`;
-      showToast(`✅ PERFECT! ${fact}`);
-      zoomToCoordinates(currentBattleQuestion.lng, currentBattleQuestion.lat, 4.8);
+      showToast(`✅ PERFECT STATE TARGET! ${fact}`);
+      zoomToCoordinates(targetStateLng, targetStateLat, 4.8);
     } else {
       battleStreak = 0;
       document.getElementById('battleStreak').textContent = '🔥 0';
-      showToast(`❌ That wasn't India! ${hint}`);
+      if (clickedCode !== 'IN') {
+        showToast(`❌ That wasn't India! Look inside the Indian subcontinent.`);
+      } else {
+        const nearName = closestState?.state?.name ? `near ${closestState.state.name}` : 'another state';
+        showToast(`❌ Wrong State Region! You clicked ${nearName} (~${Math.round(distKm)} km away). ${hint}`);
+      }
     }
   } else {
     // World Challenge mode
+    const serverValidation = await validateAnswerServerless(currentBattleQuestion.id, clickedCode, battleSubMode);
     const localQ = BATTLE_QUESTIONS.find(q => q.id === currentBattleQuestion.id) || currentBattleQuestion;
     const targetCode = serverValidation?.targetCode || localQ.targetCode;
     isCorrect = serverValidation ? serverValidation.isCorrect : (clickedCode === targetCode);
@@ -1213,6 +1355,9 @@ function endBattleRoyale() {
 // ============================================================
 // 4. GUESS WHERE I AM (GEOGUESSR PROGRESSIVE MYSTERY)
 // ============================================================
+let lastMysteryScore = 0;
+let lastMysteryDistance = 0;
+
 function initMysteryGame() {
   document.getElementById('btnNextClue')?.addEventListener('click', () => {
     if (mysteryClueRound < 6) {
@@ -1225,7 +1370,29 @@ function initMysteryGame() {
   });
 
   document.getElementById('btnMysteryReveal')?.addEventListener('click', () => {
-    revealMysteryTarget(0);
+    if (!currentMysteryTarget) return;
+    revealMysteryTarget(0, 8000);
+  });
+
+  document.getElementById('btnNextMysteryTarget')?.addEventListener('click', () => {
+    startMysteryGame();
+  });
+
+  document.getElementById('btnShareMystery')?.addEventListener('click', () => {
+    if (currentMysteryTarget) {
+      openShareCardModal({
+        headline: `I solved Mystery Geo with Clue Round ${mysteryClueRound}! 🕵️`,
+        subject: currentMysteryTarget.name,
+        subtext: `${currentMysteryTarget.country} • Accuracy: ${lastMysteryScore}/1000 pts`,
+        highlight: `Guess was ${Math.round(lastMysteryDistance).toLocaleString()} km away!`,
+        icon: '📍'
+      });
+    }
+  });
+
+  document.getElementById('btnExitMystery')?.addEventListener('click', () => {
+    document.getElementById('mysteryHud').style.display = 'none';
+    document.getElementById('tabExplore')?.click();
   });
 }
 
@@ -1235,7 +1402,23 @@ function startMysteryGame() {
   mysteryClueRound = 1;
   mysteryScore = 1000;
 
-  document.getElementById('mysteryHud').style.display = 'flex';
+  // Reset HUD visibility
+  const hud = document.getElementById('mysteryHud');
+  const resBox = document.getElementById('mysteryResultBox');
+  const topBar = document.getElementById('mysteryTopBar');
+  const hintPill = document.getElementById('mysteryHintPill');
+
+  if (hud) hud.style.display = 'flex';
+  if (resBox) resBox.style.display = 'none';
+  if (topBar) topBar.style.display = 'block';
+  if (hintPill) {
+    hintPill.style.display = 'block';
+    hintPill.textContent = '📍 Click your guess anywhere on the world map below!';
+  }
+
+  g.selectAll('.guess-line').remove();
+  g.selectAll('.guess-marker').remove();
+
   showMysteryClue();
 }
 
@@ -1251,9 +1434,13 @@ function handleMysteryMapGuess(lng, lat) {
   // Calculate Haversine distance
   const dKm = calculateDistanceKm(lat, lng, currentMysteryTarget.lat, currentMysteryTarget.lng);
   const accuracyScore = Math.max(50, Math.round(mysteryScore * Math.max(0, 1 - (dKm / 5000))));
+  lastMysteryScore = accuracyScore;
+  lastMysteryDistance = dKm;
 
-  // Draw animated line from guess to target on SVG
+  // Draw animated trajectory & pins from guess to target on SVG
   g.selectAll('.guess-line').remove();
+  g.selectAll('.guess-marker').remove();
+
   const pGuess = projection([lng, lat]);
   const pTarget = projection([currentMysteryTarget.lng, currentMysteryTarget.lat]);
 
@@ -1265,27 +1452,66 @@ function handleMysteryMapGuess(lng, lat) {
       .attr('stroke', '#38bdf8')
       .attr('stroke-width', 3)
       .attr('stroke-dasharray', '6,6');
+
+    // Guess pin
+    g.append('circle')
+      .attr('class', 'guess-marker')
+      .attr('cx', pGuess[0]).attr('cy', pGuess[1])
+      .attr('r', 8)
+      .attr('fill', '#f59e0b')
+      .attr('stroke', '#fff')
+      .attr('stroke-width', 2);
+
+    // Target pin
+    g.append('circle')
+      .attr('class', 'guess-marker')
+      .attr('cx', pTarget[0]).attr('cy', pTarget[1])
+      .attr('r', 10)
+      .attr('fill', '#10b981')
+      .attr('stroke', '#fff')
+      .attr('stroke-width', 2);
   }
 
   zoomToCoordinates(currentMysteryTarget.lng, currentMysteryTarget.lat, 4.5);
 
-  showToast(`🎯 Guess was ${Math.round(dKm).toLocaleString()} km away! Score: ${accuracyScore} pts`);
-  revealMysteryTarget(accuracyScore, dKm);
+  // Proximity radar assessment
+  const isHot = dKm < 350;
+  const isWarm = dKm < 1200;
+  const radarIcon = isHot ? '🔥' : (isWarm ? '🌡️' : '❄️');
+  const tempWord = isHot ? '🔥 BURNING HOT!' : (isWarm ? '🌡️ WARM & CLOSE!' : '❄️ CHILLY / FAR!');
+
+  // Display Round Result Box
+  const resBox = document.getElementById('mysteryResultBox');
+  if (resBox) {
+    document.getElementById('mresRadar').textContent = radarIcon;
+    document.getElementById('mresTitle').textContent = `Target: ${currentMysteryTarget.name}, ${currentMysteryTarget.country}`;
+    document.getElementById('mresSub').textContent = `${tempWord} Distance: ~${Math.round(dKm).toLocaleString()} km • Score: +${accuracyScore} pts`;
+    resBox.style.display = 'flex';
+  }
+
+  const hintPill = document.getElementById('mysteryHintPill');
+  if (hintPill) {
+    hintPill.textContent = `🎯 Revealed: ${currentMysteryTarget.name}, ${currentMysteryTarget.country}! See result above.`;
+  }
+
+  showToast(`${radarIcon} ${tempWord} ${Math.round(dKm).toLocaleString()} km away! +${accuracyScore} pts`);
 }
 
 function revealMysteryTarget(score, distanceKm = 0) {
-  openShareCardModal({
-    headline: `I guessed ${Math.round(distanceKm).toLocaleString()} km away in Mystery Geo! 🕵️`,
-    subject: currentMysteryTarget.name,
-    subtext: `${currentMysteryTarget.country} • Accuracy: ${score}/1000 pts`,
-    highlight: `Solved with Clue Round ${mysteryClueRound}!`,
-    icon: '📍'
-  });
+  lastMysteryScore = score;
+  lastMysteryDistance = distanceKm;
+  if (!currentMysteryTarget) return;
 
-  setTimeout(() => {
-    document.getElementById('mysteryHud').style.display = 'none';
-    document.getElementById('tabExplore')?.click();
-  }, 1500);
+  const resBox = document.getElementById('mysteryResultBox');
+  if (resBox) {
+    document.getElementById('mresRadar').textContent = '💡';
+    document.getElementById('mresTitle').textContent = `Target: ${currentMysteryTarget.name}, ${currentMysteryTarget.country}`;
+    document.getElementById('mresSub').textContent = `Revealed Location! Full answer unlocked.`;
+    resBox.style.display = 'flex';
+  }
+
+  zoomToCoordinates(currentMysteryTarget.lng, currentMysteryTarget.lat, 4.5);
+  showToast(`💡 Target Revealed: ${currentMysteryTarget.name}, ${currentMysteryTarget.country}`);
 }
 
 function calculateDistanceKm(lat1, lon1, lat2, lon2) {
@@ -1358,7 +1584,7 @@ function populateSurpriseModal(item) {
 
   document.getElementById('btnSurpExplore').onclick = () => {
     modal.close();
-    zoomToCoordinates(item.lng, item.lat, 6);
+    flyCameraToCoordinates(item.lat, item.lng, 4.5);
   };
 
   document.getElementById('btnSurpShare').onclick = () => {
@@ -1401,6 +1627,25 @@ function openShareCardModal({ headline, subject, subtext, highlight, icon }) {
   document.getElementById('shareStoryIcon').textContent = icon || '🌍';
 
   document.getElementById('shareCardModal')?.showModal();
+}
+
+function initGuideModal() {
+  const modal = document.getElementById('guideModal');
+  const openBtn = document.getElementById('btnOpenGuide');
+  const closeBtn = document.getElementById('btnCloseGuideModal');
+  const startBtn = document.getElementById('btnGuideStartExplore');
+
+  openBtn?.addEventListener('click', () => {
+    modal?.showModal();
+  });
+
+  closeBtn?.addEventListener('click', () => {
+    modal?.close();
+  });
+
+  startBtn?.addEventListener('click', () => {
+    modal?.close();
+  });
 }
 
 // ============================================================
@@ -1457,7 +1702,16 @@ function initNavigation() {
             openPlaceModal(item);
           },
           (lat, lng) => {
-            // Clicked surface point -> accurately select nearest country and display dossier
+            // Clicked surface point -> route based on active mode
+            if (currentMode === 'mystery') {
+              handleMysteryMapGuess(lng, lat);
+              return;
+            }
+            if (currentMode === 'battle') {
+              const c = findCountryAt(lat, lng);
+              handleBattleMapClick(c ? c.code : null, c, lng, lat);
+              return;
+            }
             const c = findCountryAt(lat, lng);
             if (c) {
               selectCountry(c);
@@ -1589,14 +1843,26 @@ function handleModeSwitch(mode) {
     showDrawerSection('viewCountryDossier');
     renderMapLayers();
   } else if (mode === 'favorites') {
+    // Directly show 2D flat map for responsive destination viewing and voting
+    if (currentProjection !== 'flat') {
+      document.getElementById('btnFlatView')?.click();
+    }
     if (globe3dInstance) globe3dInstance.setMarkers(favoritesList, 'favorite');
     document.getElementById('favoritesFilterDock').style.display = 'block';
     showDrawerSection('viewFavoritesList');
     renderFavoriteMarkers();
   } else if (mode === 'battle') {
+    // Switch to 2D flat map for instant full-world click precision
+    if (currentProjection !== 'flat') {
+      document.getElementById('btnFlatView')?.click();
+    }
     if (globe3dInstance) globe3dInstance.clearMarkers();
     startBattleRoyale();
   } else if (mode === 'mystery') {
+    // Switch to 2D flat map so entire world is immediately visible and clickable
+    if (currentProjection !== 'flat') {
+      document.getElementById('btnFlatView')?.click();
+    }
     if (globe3dInstance) globe3dInstance.clearMarkers();
     startMysteryGame();
   }

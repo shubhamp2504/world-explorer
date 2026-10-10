@@ -67,6 +67,12 @@
         <span class="surprise-text">SURPRISE ME</span>
       </button>
 
+      <!-- END-USER FEATURES & HOW-TO GUIDE -->
+      <button class="btn-guide-hero" id="btnOpenGuide" title="All Features & How to Play Manual">
+        <span class="guide-icon">🧭</span>
+        <span class="guide-text">GUIDE & FEATURES</span>
+      </button>
+
       <div class="live-clock-badge" id="liveUtcClock">--:--:-- UTC</div>
       <button class="btn-icon" id="btnSoundToggle" title="Toggle Cosmic Ambience & Audio">🔇</button>
       <button class="btn-icon" id="themeToggle" title="Toggle Ambience Mode">✨</button>
@@ -217,16 +223,32 @@
 
       <!-- GUESS WHERE MYSTERY HUD -->
       <div class="mystery-hud" id="mysteryHud" style="display: none;">
-        <div class="mystery-top-bar">
+        <div class="mystery-top-bar" id="mysteryTopBar">
           <div class="mystery-round-badge" id="mysteryRoundBadge">ROUND 1 OF 6</div>
           <div class="mystery-clue-label">🕵️ Clue Revealed:</div>
           <div class="mystery-clue-content" id="mysteryClueContent">Loading clue...</div>
-          <div class="mystery-actions">
+          <div class="mystery-actions" id="mysteryActionsRow">
             <button class="btn-guess-next-clue" id="btnNextClue">Next Clue (+penalty)</button>
             <button class="btn-guess-giveup" id="btnMysteryReveal">Give Up</button>
           </div>
         </div>
-        <div class="mystery-hint-pill">📍 Click your guess on the world map below!</div>
+        <div class="mystery-hint-pill" id="mysteryHintPill">📍 Click your guess anywhere on the world map below!</div>
+
+        <!-- Interactive Round Result Banner (Proximity Radar & Next Game) -->
+        <div class="mystery-result-box" id="mysteryResultBox" style="display: none;">
+          <div class="mres-header">
+            <span class="mres-radar" id="mresRadar">🎯</span>
+            <div class="mres-info">
+              <h3 class="mres-title" id="mresTitle">Target: Lisbon, Portugal 🇵🇹</h3>
+              <p class="mres-sub" id="mresSub">Distance: 320 km away • Accuracy: 850 pts</p>
+            </div>
+          </div>
+          <div class="mres-actions">
+            <button class="btn-guess-next-round" id="btnNextMysteryTarget">Next Mystery Place ➡️</button>
+            <button class="btn-guess-share-round" id="btnShareMystery">Share Score 📲</button>
+            <button class="btn-guess-exit" id="btnExitMystery">Exit ✕</button>
+          </div>
+        </div>
       </div>
 
       <!-- MAP FOOTER STATUS TICKER -->
@@ -542,6 +564,82 @@
           <button type="submit" class="btn-submit-suggest">✅ Submit to Community</button>
         </div>
       </form>
+    </div>
+  </dialog>
+
+  <!-- COMPREHENSIVE END-USER FEATURES GUIDE MODAL -->
+  <dialog class="guide-modal" id="guideModal">
+    <div class="guide-modal-card">
+      <div class="guide-modal-header">
+        <div class="guide-title-wrap">
+          <span class="guide-badge-pill">🧭 EXPLORER MANUAL</span>
+          <h2>World Explorer: All Features & How to Play</h2>
+        </div>
+        <button class="btn-close-view" id="btnCloseGuideModal">✕</button>
+      </div>
+
+      <p class="guide-intro">
+        Welcome to <strong>World Explorer</strong> — a 0% lag, 60 FPS interactive 3D Solar System & World Geography suite built with photorealistic NASA imagery, verified UPSC syllabus data, and real-time astronomical solar lighting.
+      </p>
+
+      <div class="guide-grid">
+        <!-- Card 1: 3D Solar System & Globe -->
+        <div class="guide-feature-card">
+          <div class="gfc-icon">🌌</div>
+          <div class="gfc-body">
+            <h3>3D Solar System & Live Globe</h3>
+            <p>Explore all 8 planetary bodies + Sun in physically modeled orbits. Click any planet pill to fly in close and inspect atmospheric composition, orbital period, moons, and scale.</p>
+            <div class="gfc-tag">☀️ Real-Time Day/Night cycle accurately matches the Sun's current zenith UTC position worldwide!</div>
+          </div>
+        </div>
+
+        <!-- Card 2: 195 Country Dossiers -->
+        <div class="guide-feature-card">
+          <div class="gfc-icon">🌐</div>
+          <div class="gfc-body">
+            <h3>Interactive World Dossiers</h3>
+            <p>Click any sovereign country or use the <strong>Quick Jump</strong> bar / Search to view comprehensive country profiles: live local weather, capital, currencies, flags, and demographic facts.</p>
+            <div class="gfc-tag">⚡ Seamless switch between 3D Globe (🌐) and 2D Projection (🗺️) anytime.</div>
+          </div>
+        </div>
+
+        <!-- Card 3: Favorite Places & Community Voting -->
+        <div class="guide-feature-card">
+          <div class="gfc-icon">❤️</div>
+          <div class="gfc-body">
+            <h3>Curated Wonders & Global Voting</h3>
+            <p>Browse authentic cultural monuments and natural wonders with high-definition photography. Upvote your favorite destinations — tallies sync globally in real-time!</p>
+            <div class="gfc-tag">🏛️ Filter by UNESCO Heritage, Best Mountain, Sunsets, Food, or submit your own destination!</div>
+          </div>
+        </div>
+
+        <!-- Card 4: Battle Royale Geography Quiz -->
+        <div class="guide-feature-card">
+          <div class="gfc-icon">🧠</div>
+          <div class="gfc-body">
+            <h3>Battle Royale: 3 Game Modes</h3>
+            <p><strong>1. World Map:</strong> Tap nations against the timer.<br>
+            <strong>2. Bharat & States:</strong> UPSC/MPSC state challenge with geographic distance scoring.<br>
+            <strong>3. KBC 4-Option Quiz:</strong> Trivia with 50:50 lifelines and explanations powered by Groq AI.</p>
+            <div class="gfc-tag">🔥 Build streaks to multiply your score!</div>
+          </div>
+        </div>
+
+        <!-- Card 5: Guess Where & Surprise Me -->
+        <div class="guide-feature-card">
+          <div class="gfc-icon">🕵️</div>
+          <div class="gfc-body">
+            <h3>Guess Where & Surprise Me</h3>
+            <p><strong>Guess Where:</strong> Progressive GeoGuessr mystery! Read up to 6 clues (climate, language, cuisine, landmarks) and click your guess with a proximity distance radar.<br>
+            <strong>Surprise Me:</strong> Spin the globe to discover Earth's rarest secrets (Point Nemo, Socotra, Darvaza Crater)!</p>
+            <div class="gfc-tag">📲 Generate viral 9:16 story cards to share with friends!</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="guide-modal-footer">
+        <button class="btn-guide-start" id="btnGuideStartExplore">🚀 Start Exploring Now</button>
+      </div>
     </div>
   </dialog>
 
