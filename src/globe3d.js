@@ -1212,27 +1212,32 @@ export class EarthGlobe3D {
     markerList.forEach(item => {
       const pos = this.latLngToVector3(item.lat, item.lng, 1.002);
       const normal = pos.clone().normalize();
-      const color = type === 'favorite' ? 0xfbbf24 : (item.color || 0x38bdf8);
+      const isHeritage = (item.category === 'heritage');
+      const color = isHeritage ? 0xf59e0b : (type === 'favorite' ? 0xfbbf24 : (item.color || 0x38bdf8));
 
       const beaconGroup = new THREE.Group();
       beaconGroup.position.copy(pos);
       beaconGroup.userData = { item, type };
 
-      const beamGeom = new THREE.CylinderGeometry(0.003, 0.003, 0.08, 6);
-      const beamMat = new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.85 });
+      // Holographic vertical beam
+      const beamHeight = isHeritage ? 0.11 : 0.08;
+      const beamGeom = new THREE.CylinderGeometry(isHeritage ? 0.004 : 0.003, isHeritage ? 0.004 : 0.003, beamHeight, 6);
+      const beamMat = new THREE.MeshBasicMaterial({ color, transparent: true, opacity: isHeritage ? 0.95 : 0.85 });
       const beamMesh = new THREE.Mesh(beamGeom, beamMat);
       beamMesh.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), normal);
-      beamMesh.position.addScaledVector(normal, 0.04);
+      beamMesh.position.addScaledVector(normal, beamHeight * 0.5);
       beaconGroup.add(beamMesh);
 
-      const diamondGeom = new THREE.OctahedronGeometry(0.014, 0);
-      const diamondMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+      // Top floating gem / monument cap
+      const diamondGeom = isHeritage ? new THREE.OctahedronGeometry(0.018, 0) : new THREE.OctahedronGeometry(0.014, 0);
+      const diamondMat = new THREE.MeshBasicMaterial({ color: isHeritage ? 0xfffbeb : 0xffffff });
       const diamondMesh = new THREE.Mesh(diamondGeom, diamondMat);
-      diamondMesh.position.addScaledVector(normal, 0.082);
+      diamondMesh.position.addScaledVector(normal, beamHeight + 0.005);
       beaconGroup.add(diamondMesh);
 
-      const ringGeom = new THREE.RingGeometry(0.015, 0.024, 16);
-      const ringMat = new THREE.MeshBasicMaterial({ color, side: THREE.DoubleSide, transparent: true, opacity: 0.75 });
+      // Pulsing concentric ground rings
+      const ringGeom = new THREE.RingGeometry(isHeritage ? 0.018 : 0.015, isHeritage ? 0.030 : 0.024, 16);
+      const ringMat = new THREE.MeshBasicMaterial({ color, side: THREE.DoubleSide, transparent: true, opacity: isHeritage ? 0.90 : 0.75 });
       const ringMesh = new THREE.Mesh(ringGeom, ringMat);
       ringMesh.lookAt(normal.clone().multiplyScalar(2));
       beaconGroup.add(ringMesh);

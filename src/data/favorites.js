@@ -14,6 +14,7 @@ export const FAVORITE_CATEGORIES = [
   { id: 'instagram', label: 'Instagrammable', icon: '📸' },
   { id: 'stargazing', label: 'Best Stargazing', icon: '🌌' },
   { id: 'city', label: 'Best City', icon: '🏙️' },
+  { id: 'heritage', label: 'Historic Wonder', icon: '🏛️' },
   { id: 'natural', label: 'Natural Beauty', icon: '🌊' }
 ];
 
@@ -209,5 +210,73 @@ export const INITIAL_FAVORITES = [
     description: 'Iconic triple-tower hotel with the world\'s largest rooftop infinity pool, ArtScience Museum lotus, and glowing solar-powered Supertrees.',
     whyLoved: 'A breathtaking real-life example of sustainable biophilic architecture and a futuristic green garden city.',
     nearby: ['Supertree Grove & Skyway', 'Cloud Forest 35m Waterfall', 'Chinatown Hawker Centers']
+  },
+  {
+    id: 'fav-hist-dholavira',
+    name: 'Dholavira: Harappan Metropolis',
+    city: 'Khadir Bet, Kutch',
+    district: 'Kutch (Gujarat)',
+    country: 'India',
+    countryCode: 'IN',
+    category: 'heritage',
+    votes: 38400,
+    lat: 23.8864,
+    lng: 70.2178,
+    continent: 'Asia',
+    image: '/places/dholavira.png',
+    description: 'A 4,500-year-old Indus Valley metropolis engineered with monumental stone fortifications and a cascading rainwater harvesting reservoir system.',
+    whyLoved: 'Built in the Great Rann of Kutch with zero perennial rivers—ancient engineers preserved precious seasonal monsoon runoff using interconnected rock-cut stepwells.',
+    nearby: ['White Rann of Kutch Salt Desert', 'Fossil Park', 'Kalo Dungar Black Hill']
+  },
+  {
+    id: 'fav-hist-ellora',
+    name: 'Kailasa Monolithic Temple, Ellora',
+    city: 'Chhatrapati Sambhajinagar',
+    district: 'Maharashtra',
+    country: 'India',
+    countryCode: 'IN',
+    category: 'heritage',
+    votes: 42350,
+    lat: 20.0238,
+    lng: 75.1793,
+    continent: 'Asia',
+    image: '/places/ellora.png',
+    description: 'World’s largest monolithic rock-cut monument, carved top-down from a single basalt cliff by Rashtrakuta architects in the 8th century CE.',
+    whyLoved: 'Workers carved downwards through solid mountain basalt, removing 200,000 tonnes of volcanic rock with zero room for error or scaffolding.',
+    nearby: ['Ajanta Fresco Caves', 'Daulatabad Fort', 'Bibi Ka Maqbara']
+  },
+  {
+    id: 'fav-hist-hampi',
+    name: 'Vijayanagara Ruins & Stone Chariot, Hampi',
+    city: 'Vijayanagara (Hampi)',
+    district: 'Karnataka',
+    country: 'India',
+    countryCode: 'IN',
+    category: 'heritage',
+    votes: 36900,
+    lat: 15.3350,
+    lng: 76.4600,
+    continent: 'Asia',
+    image: '/places/hampi.png',
+    description: 'UNESCO World Heritage capital of the Vijayanagara Empire (14th–16th century CE), set in a surreal boulder-strewn landscape along the Tungabhadra River.',
+    whyLoved: 'In 1500 CE, Vijayanagara was the second largest city on Earth after Beijing. Features the iconic stone chariot and 56 musical pillars at Vittala Temple.',
+    nearby: ['Virupaksha Temple', 'Matanga Hill Sunset View', 'Lotus Mahal']
+  },
+  {
+    id: 'fav-hist-lothal',
+    name: 'Lothal Ancient Tidal Dockyard',
+    city: 'Saragwala, Ahmedabad District',
+    district: 'Gujarat',
+    country: 'India',
+    countryCode: 'IN',
+    category: 'heritage',
+    votes: 33100,
+    lat: 22.5222,
+    lng: 72.2497,
+    continent: 'Asia',
+    image: '/places/lothal.png',
+    description: 'The world’s earliest known tidal basin dockyard, connecting Harappan trade vessels to Mesopotamia and ancient Egypt through the Gulf of Khambhat.',
+    whyLoved: 'Showcases brilliant hydrodynamic tidal locks: high tide floated ships into the basin; sluice gates retained water during low tide for safe unloading.',
+    nearby: ['Archaeological Museum Lothal', 'Nalsarovar Bird Sanctuary', 'Adalaj Stepwell']
   }
 ];

@@ -29,5 +29,6 @@ dist-ssr
 verify_*.png
 test_*.png
 *.png
+!public/places/*.png
 *.mjs
 scratch/
