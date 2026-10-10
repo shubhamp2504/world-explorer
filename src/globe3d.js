@@ -64,7 +64,7 @@ export class EarthGlobe3D {
     this.planets = {};
     this.interactiveObjects = [];
     this.billboardLabels = [];
-    this.lastOrreryState = true;
+    this.lastOrreryState = null;
 
     // Active Camera Mode ('system', 'sun', 'earth', 'moon', 'mercury', etc.)
     this.activeFocusedBody = 'system';
@@ -127,8 +127,8 @@ export class EarthGlobe3D {
     this.camera.position.copy(this.targetCameraPos);
     this.camera.lookAt(this.currentCameraLookAt);
 
-    // Camera Key Light for brilliant planetary illumination (Only 1 camera light for entire scene!)
-    this.cameraLight = new THREE.DirectionalLight(0xfff8ee, 1.4);
+    // Camera Key Light for brilliant planetary illumination (fill light for dark side inspection)
+    this.cameraLight = new THREE.DirectionalLight(0xfff8ee, 0.75);
     this.cameraLight.position.set(0, 0, 1);
     this.camera.add(this.cameraLight);
     this.scene.add(this.camera);
@@ -187,8 +187,8 @@ export class EarthGlobe3D {
 
     // 12. Start in Whole Solar System Orrery View
     this.viewWholeSolarSystem();
-    // Start camera far out in deep space for cinematic intro sweep
-    this.camera.position.set(0, 800, 1000);
+    // Start camera in elevated deep space for smooth cinematic intro sweep
+    this.camera.position.set(0, 95, 120);
 
     // 13. Render Loop
     this.animate();
@@ -225,8 +225,8 @@ export class EarthGlobe3D {
         colors[idx] = 1.0; colors[idx + 1] = 1.0; colors[idx + 2] = 1.0; // Pure white star
       }
 
-      // Significantly larger and brighter star point sizes
-      sizes[i] = (layer > 0.7 ? 1.4 : 0.9) + Math.random() * 1.5;
+      // Delicate, realistic stellar diamonds in deep cosmos (subtle background, not foreground blobs)
+      sizes[i] = (layer > 0.7 ? 0.65 : 0.40) + Math.random() * 0.55;
       starIndices[i] = i;
     }
 
@@ -262,7 +262,7 @@ export class EarthGlobe3D {
           vColor = color;
           vTwinkle = 0.75 + 0.25 * sin(uTime * 1.2 + starIndex);
           vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
-          gl_PointSize = size * (560.0 / -mvPosition.z) * vTwinkle;
+          gl_PointSize = max(1.6, size * (360.0 / -mvPosition.z)) * vTwinkle;
           gl_Position = projectionMatrix * mvPosition;
         }
       `,
@@ -272,7 +272,7 @@ export class EarthGlobe3D {
         varying float vTwinkle;
         void main() {
           vec4 texColor = texture2D(starTexture, gl_PointCoord);
-          gl_FragColor = vec4(vColor * texColor.rgb * 1.85, texColor.a * vTwinkle);
+          gl_FragColor = vec4(vColor * texColor.rgb * 1.15, texColor.a * vTwinkle * 0.85);
         }
       `,
       transparent: true,
@@ -284,11 +284,11 @@ export class EarthGlobe3D {
     this.starfield = new THREE.Points(geometry, material);
     this.scene.add(this.starfield);
 
-    // Radiant cosmic ambient lighting across all planetary bodies (No more murky dark galaxy)
-    const cosmicAmbient = new THREE.AmbientLight(0x64748b, 2.3);
+    // Radiant cosmic ambient lighting across all planetary bodies (Balanced for clear feature visibility without bloom washout)
+    const cosmicAmbient = new THREE.AmbientLight(0xffffff, 0.85);
     this.scene.add(cosmicAmbient);
 
-    const cosmicHemisphere = new THREE.HemisphereLight(0x60a5fa, 0x1e293b, 1.25);
+    const cosmicHemisphere = new THREE.HemisphereLight(0x93c5fd, 0x1e293b, 0.45);
     this.scene.add(cosmicHemisphere);
   }
 
@@ -476,13 +476,13 @@ export class EarthGlobe3D {
     this.sunGroup.add(this.sunHalo);
 
     // 6. Central Omnidirectional Solar PointLight with uniform astronomical reach
-    this.sunPointLight = new THREE.PointLight(0xfff8ee, 3.8, 0, 0);
+    this.sunPointLight = new THREE.PointLight(0xfff8ee, 3.2, 0, 0);
     this.sunPointLight.position.set(0, 0, 0);
     this.sunGroup.add(this.sunPointLight);
 
     // Floating Billboard HUD Label
-    const sunLabel = this.createBillboardLabel('☀️ Sun', '#f59e0b', 0.42);
-    sunLabel.position.set(0, 2.1, 0);
+    const sunLabel = this.createBillboardLabel('☀️ Sun', '#f59e0b', 0.95);
+    sunLabel.position.set(0, 3.2, 0);
     sunLabel.userData = { celestialId: 'sun' };
     this.sunGroup.add(sunLabel);
     this.billboardLabels.push(sunLabel);
@@ -588,14 +588,14 @@ export class EarthGlobe3D {
     this.orbitLines = {};
 
     const orbitRadii = [
-      { id: 'mercury', r: 4.2,  col: 0x94a3b8 },
-      { id: 'venus',   r: 6.8,  col: 0xfde047 },
+      { id: 'mercury', r: 4.5,  col: 0x94a3b8 },
+      { id: 'venus',   r: 7.2,  col: 0xfde047 },
       { id: 'earth',   r: 9.8,  col: 0x38bdf8 },
-      { id: 'mars',    r: 13.2, col: 0xf87171 },
-      { id: 'jupiter', r: 20.0, col: 0xfb923c },
-      { id: 'saturn',  r: 26.0, col: 0xfef08a },
-      { id: 'uranus',  r: 31.5, col: 0xa5f3fc },
-      { id: 'neptune', r: 36.5, col: 0x60a5fa }
+      { id: 'mars',    r: 13.8, col: 0xf87171 },
+      { id: 'jupiter', r: 20.8, col: 0xfb923c },
+      { id: 'saturn',  r: 27.2, col: 0xfef08a },
+      { id: 'uranus',  r: 32.8, col: 0xa5f3fc },
+      { id: 'neptune', r: 38.0, col: 0x60a5fa }
     ];
 
     orbitRadii.forEach(o => {
@@ -618,13 +618,13 @@ export class EarthGlobe3D {
       this.orbitsGroup.add(orbitLine);
     });
 
-    // Asteroid Belt: 500 fine stardust particles between Mars (13.2) and Jupiter (20.0)
+    // Asteroid Belt: 500 fine stardust particles between Mars (13.8) and Jupiter (20.8)
     const asteroidCount = 500;
     const asteroidGeom = new THREE.BufferGeometry();
     const asteroidPositions = new Float32Array(asteroidCount * 3);
     for (let i = 0; i < asteroidCount; i++) {
       const idx = i * 3;
-      const r = 15.2 + Math.random() * 2.6;
+      const r = 16.5 + Math.random() * 2.8;
       const theta = Math.random() * Math.PI * 2;
       const yOffset = (Math.random() - 0.5) * 0.45;
       asteroidPositions[idx] = Math.cos(theta) * r;
@@ -672,7 +672,7 @@ export class EarthGlobe3D {
     this.solarSystemGroup.add(this.earthGroup);
 
     // Optimized 80x80 Sphere Geometry (Smooth, razor-sharp, lightweight)
-    const earthGeometry = new THREE.SphereGeometry(1.0, 80, 80);
+    const earthGeometry = new THREE.SphereGeometry(1.18, 80, 80);
     const earthMaterial = new THREE.ShaderMaterial({
       uniforms: {
         dayTexture: { value: dayTex },
@@ -714,8 +714,8 @@ export class EarthGlobe3D {
           // Physical Sunlight Incident Angle
           float sunDot = dot(N, sunDir);
 
-          // Clean, smooth physical day-to-night cosine transition (NO artificial orange stripe)
-          float dayFactor = smoothstep(-0.04, 0.10, sunDot);
+          // Clean, smooth physical day-to-night cosine transition
+          float dayFactor = smoothstep(-0.06, 0.12, sunDot);
 
           // Sample Authentic NASA Blue Marble Textures
           vec4 dayColor = texture2D(dayTexture, vUv);
@@ -726,16 +726,16 @@ export class EarthGlobe3D {
           vec3 crispDay = pow(dayColor.rgb, vec3(1.02));
           crispDay = mix(crispDay, crispDay * vec3(0.86, 0.96, 1.10), specularMask * 0.35);
 
-          // 2. Realistic Ocean Specular Sheen (Tight physical reflection, ZERO giant blown-out light spot)
+          // 2. Realistic Ocean Specular Sheen
           vec3 halfVector = normalize(sunDir + viewDir);
           float NdotH = max(dot(N, halfVector), 0.0);
-          float subtleGlint = pow(NdotH, 160.0) * specularMask * 0.32 * dayFactor;
+          float subtleGlint = pow(NdotH, 160.0) * specularMask * 0.35 * dayFactor;
           vec3 litDay = crispDay + vec3(0.92, 0.96, 1.0) * subtleGlint;
 
-          // 3. Crisp Golden Night City Lights & Deep Cosmic Velvet Oceans
+          // 3. Crisp Golden Night City Lights & Radiant Cosmic Spacefill (Earth is NEVER pitch-black)
           float nightLum = max(max(nightColor.r, nightColor.g), nightColor.b);
-          vec3 cityLights = vec3(1.0, 0.88, 0.58) * pow(nightLum, 1.25) * 3.8;
-          vec3 nightTerrain = dayColor.rgb * vec3(0.015, 0.03, 0.08);
+          vec3 cityLights = vec3(1.0, 0.88, 0.55) * pow(nightLum, 1.2) * 4.2;
+          vec3 nightTerrain = dayColor.rgb * vec3(0.38, 0.46, 0.58);
           vec3 darkNight = nightTerrain + cityLights;
 
           // 4. Natural Physical Blend from Daylight to Night
@@ -743,8 +743,8 @@ export class EarthGlobe3D {
 
           // 5. Authentic Atmospheric Rayleigh Blue Rim (Thin, delicate horizon line)
           float fresnel = 1.0 - max(dot(N, viewDir), 0.0);
-          float atmosphericGlow = pow(fresnel, 4.0) * (dayFactor * 0.65 + 0.15);
-          vec3 atmosphereLimb = vec3(0.28, 0.68, 1.0) * atmosphericGlow * 0.80;
+          float atmosphericGlow = pow(fresnel, 2.8) * 0.95;
+          vec3 atmosphereLimb = vec3(0.24, 0.68, 1.0) * atmosphericGlow;
 
           gl_FragColor = vec4(finalSurface + atmosphereLimb, 1.0);
         }
@@ -757,21 +757,23 @@ export class EarthGlobe3D {
     this.earthGroup.add(this.earthMesh);
     this.interactiveObjects.push(this.earthMesh);
 
-    // Delicate Wispy Cloud Layer (48x48)
-    const cloudsGeom = new THREE.SphereGeometry(1.006, 48, 48);
+    // Delicate Wispy Cloud Layer
+    const cloudsGeom = new THREE.SphereGeometry(1.188, 48, 48);
     const cloudsMat = new THREE.MeshStandardMaterial({
       map: cloudsTex,
       transparent: true,
-      opacity: 0.18,
+      opacity: 0.32,
       depthWrite: false,
-      roughness: 0.95
+      roughness: 0.85,
+      emissive: new THREE.Color(0xffffff),
+      emissiveIntensity: 0.28
     });
     this.cloudsMesh = new THREE.Mesh(cloudsGeom, cloudsMat);
     this.cloudsMesh.rotation.y = -Math.PI / 2;
     this.earthGroup.add(this.cloudsMesh);
 
-    // Thin, delicate atmospheric shell hugging Earth (36x36)
-    const atmoGeom = new THREE.SphereGeometry(1.018, 36, 36);
+    // Thin, delicate atmospheric shell hugging Earth
+    const atmoGeom = new THREE.SphereGeometry(1.205, 36, 36);
     const atmoMat = new THREE.ShaderMaterial({
       vertexShader: `
         varying vec3 vNormal;
@@ -783,8 +785,8 @@ export class EarthGlobe3D {
       fragmentShader: `
         varying vec3 vNormal;
         void main() {
-          float intensity = pow(0.68 - dot(vNormal, vec3(0.0, 0.0, 1.0)), 3.2);
-          gl_FragColor = vec4(0.28, 0.72, 1.0, 1.0) * intensity * 0.70;
+          float intensity = pow(0.72 - dot(vNormal, vec3(0.0, 0.0, 1.0)), 2.8);
+          gl_FragColor = vec4(0.28, 0.72, 1.0, 1.0) * intensity * 0.85;
         }
       `,
       blending: THREE.AdditiveBlending,
@@ -796,20 +798,23 @@ export class EarthGlobe3D {
 
     // 🌙 Real Orbiting 3D Moon
     this.moonGroup = new THREE.Group();
-    this.moonGroup.position.set(1.5, 0.25, 0);
+    this.moonGroup.position.set(2.1, 0.35, 0);
     this.moonGroup.userData = { celestialId: 'moon' };
     this.earthGroup.add(this.moonGroup);
 
     const moonTex = this.textureLoader.load(TEXTURES.moon);
     moonTex.colorSpace = THREE.SRGBColorSpace;
     const moonBump = this.textureLoader.load(TEXTURES.moonBump);
-    const moonGeom = new THREE.SphereGeometry(0.24, 36, 36);
+    const moonGeom = new THREE.SphereGeometry(0.38, 36, 36);
     const moonMat = new THREE.MeshStandardMaterial({
       map: moonTex,
       bumpMap: moonBump,
       bumpScale: 0.02,
-      roughness: 0.90,
-      metalness: 0.02
+      roughness: 0.70,
+      metalness: 0.02,
+      emissive: new THREE.Color(0xffffff),
+      emissiveMap: moonTex,
+      emissiveIntensity: 0.38
     });
     this.moonMesh = new THREE.Mesh(moonGeom, moonMat);
     this.moonMesh.userData = { celestialId: 'moon' };
@@ -817,15 +822,15 @@ export class EarthGlobe3D {
     this.interactiveObjects.push(this.moonMesh);
 
     // Billboard Labels for Earth & Moon
-    const earthLabel = this.createBillboardLabel('🌍 Earth', '#38bdf8', 0.38);
-    earthLabel.position.set(0, 1.55, 0);
+    const earthLabel = this.createBillboardLabel('🌍 Earth', '#38bdf8', 0.95);
+    earthLabel.position.set(0, 2.1, 0);
     earthLabel.userData = { celestialId: 'earth' };
     this.earthGroup.add(earthLabel);
     this.billboardLabels.push(earthLabel);
     this.interactiveObjects.push(earthLabel);
 
-    const moonLabel = this.createBillboardLabel('🌕 Moon', '#cbd5e1', 0.28);
-    moonLabel.position.set(0, 0.45, 0);
+    const moonLabel = this.createBillboardLabel('🌕 Moon', '#cbd5e1', 0.65);
+    moonLabel.position.set(0, 0.75, 0);
     moonLabel.userData = { celestialId: 'moon' };
     this.moonGroup.add(moonLabel);
     this.billboardLabels.push(moonLabel);
@@ -837,7 +842,7 @@ export class EarthGlobe3D {
       mesh: this.earthMesh,
       atmoMesh: this.atmosphereMesh,
       cloudsMesh: this.cloudsMesh,
-      radius: 1.0,
+      radius: 1.18,
       orbitR: 9.8,
       orbitSpeed: 0.011,
       angle: 0.0,
@@ -848,8 +853,8 @@ export class EarthGlobe3D {
       id: 'moon',
       group: this.moonGroup,
       mesh: this.moonMesh,
-      radius: 0.24,
-      orbitR: 1.5,
+      radius: 0.38,
+      orbitR: 2.1,
       orbitSpeed: 0.038,
       angle: 1.2,
       rotSpeed: 0.0002
@@ -859,13 +864,13 @@ export class EarthGlobe3D {
   // 🪐 OTHER SOLAR SYSTEM PLANETS
   createOtherPlanets() {
     const planetDefs = [
-      { id: 'mercury', name: '☿ Mercury', r: 4.2,  radius: 0.28, tex: TEXTURES.mercury, bump: TEXTURES.mercuryBump, bumpScale: 0.025, speed: 0.024, rot: 0.002, col: '#94a3b8', atmoCol: [0.6, 0.6, 0.7] },
-      { id: 'venus',   name: '♀ Venus',   r: 6.8,  radius: 0.42, tex: TEXTURES.venus,   bump: TEXTURES.venusBump,   bumpScale: 0.018, speed: 0.016, rot: -0.001, col: '#fde047', atmoCol: [1.0, 0.85, 0.4] },
-      { id: 'mars',    name: '♂ Mars',    r: 13.2, radius: 0.35, tex: TEXTURES.mars,    bump: TEXTURES.marsBump,    bumpScale: 0.035, speed: 0.009, rot: 0.003, col: '#f87171', atmoCol: [1.0, 0.4, 0.2] },
-      { id: 'jupiter', name: '♃ Jupiter', r: 20.0, radius: 1.35, tex: TEXTURES.jupiter, speed: 0.005, rot: 0.006, col: '#fb923c', atmoCol: [1.0, 0.7, 0.3] },
-      { id: 'saturn',  name: '♄ Saturn',  r: 26.0, radius: 1.10, tex: TEXTURES.saturn,  ringTex: TEXTURES.saturnRing, ringPattern: TEXTURES.saturnRingPattern, speed: 0.0038, rot: 0.005, col: '#fef08a', atmoCol: [1.0, 0.9, 0.5] },
-      { id: 'uranus',  name: '♅ Uranus',  r: 31.5, radius: 0.72, tex: TEXTURES.uranus,  speed: 0.0026, rot: 0.003, col: '#a5f3fc', atmoCol: [0.5, 0.9, 1.0] },
-      { id: 'neptune', name: '♆ Neptune', r: 36.5, radius: 0.68, tex: TEXTURES.neptune, speed: 0.0020, rot: 0.0032, col: '#60a5fa', atmoCol: [0.3, 0.5, 1.0] }
+      { id: 'mercury', name: '☿ Mercury', r: 4.5,  radius: 0.52, tex: TEXTURES.mercury, bump: TEXTURES.mercuryBump, bumpScale: 0.025, speed: 0.024, rot: 0.002, col: '#a3b8cc', atmoCol: [0.65, 0.75, 0.90] },
+      { id: 'venus',   name: '♀ Venus',   r: 7.2,  radius: 0.82, tex: TEXTURES.venus,   bump: TEXTURES.venusBump,   bumpScale: 0.018, speed: 0.016, rot: -0.001, col: '#fbbf24', atmoCol: [1.0, 0.85, 0.35] },
+      { id: 'mars',    name: '♂ Mars',    r: 13.8, radius: 0.68, tex: TEXTURES.mars,    bump: TEXTURES.marsBump,    bumpScale: 0.035, speed: 0.009, rot: 0.003, col: '#f87171', atmoCol: [1.0, 0.45, 0.25] },
+      { id: 'jupiter', name: '♃ Jupiter', r: 20.8, radius: 1.75, tex: TEXTURES.jupiter, speed: 0.005, rot: 0.006, col: '#fb923c', atmoCol: [1.0, 0.75, 0.40] },
+      { id: 'saturn',  name: '♄ Saturn',  r: 27.2, radius: 1.40, tex: TEXTURES.saturn,  ringTex: TEXTURES.saturnRing, ringPattern: TEXTURES.saturnRingPattern, speed: 0.0038, rot: 0.005, col: '#fef08a', atmoCol: [1.0, 0.90, 0.55] },
+      { id: 'uranus',  name: '♅ Uranus',  r: 32.8, radius: 1.05, tex: TEXTURES.uranus,  speed: 0.0026, rot: 0.003, col: '#67e8f9', atmoCol: [0.45, 0.95, 1.0] },
+      { id: 'neptune', name: '♆ Neptune', r: 38.0, radius: 1.00, tex: TEXTURES.neptune, speed: 0.0020, rot: 0.0032, col: '#3b82f6', atmoCol: [0.35, 0.60, 1.0] }
     ];
 
     planetDefs.forEach((p, index) => {
@@ -880,8 +885,11 @@ export class EarthGlobe3D {
 
       const matConfig = {
         map: tex,
-        roughness: 0.78,
-        metalness: 0.08
+        roughness: 0.68,
+        metalness: 0.05,
+        emissive: new THREE.Color(0xffffff),
+        emissiveMap: tex,
+        emissiveIntensity: 0.12
       };
       if (p.bump) {
         matConfig.bumpMap = this.textureLoader.load(p.bump);
@@ -896,7 +904,7 @@ export class EarthGlobe3D {
       this.interactiveObjects.push(mesh);
 
       // Atmosphere
-      const pAtmoGeom = new THREE.SphereGeometry(p.radius * 1.04, 36, 36);
+      const pAtmoGeom = new THREE.SphereGeometry(p.radius * 1.05, 36, 36);
       const pAtmoMat = new THREE.ShaderMaterial({
         uniforms: {
           uColor: { value: new THREE.Vector3(p.atmoCol[0], p.atmoCol[1], p.atmoCol[2]) }
@@ -912,8 +920,9 @@ export class EarthGlobe3D {
           uniform vec3 uColor;
           varying vec3 vNormal;
           void main() {
-            float intensity = pow(0.68 - dot(vNormal, vec3(0.0, 0.0, 1.0)), 3.2);
-            gl_FragColor = vec4(uColor, 1.0) * intensity * 0.70;
+            float rim = 1.0 - max(dot(vNormal, vec3(0.0, 0.0, 1.0)), 0.0);
+            float intensity = pow(rim, 3.2);
+            gl_FragColor = vec4(uColor, 1.0) * intensity * 0.85;
           }
         `,
         blending: THREE.AdditiveBlending,
@@ -952,7 +961,7 @@ export class EarthGlobe3D {
               float ringAlpha = texture2D(ringAlphaMap, vUv).r;
               float edgeFalloff = smoothstep(0.0, 0.08, vUv.y) * smoothstep(1.0, 0.92, vUv.y);
               float finalAlpha = texColor.a * (0.4 + 0.6 * ringAlpha) * edgeFalloff;
-              gl_FragColor = vec4(texColor.rgb * 1.15, finalAlpha * 0.95);
+              gl_FragColor = vec4(texColor.rgb, finalAlpha * 0.95);
             }
           `,
           side: THREE.DoubleSide,
@@ -965,8 +974,8 @@ export class EarthGlobe3D {
       }
 
       // Billboard HUD Label
-      const label = this.createBillboardLabel(p.name, p.col, 0.34);
-      label.position.set(0, p.radius * 1.5 + 0.35, 0);
+      const label = this.createBillboardLabel(p.name, p.col, 0.85);
+      label.position.set(0, p.radius + 1.1, 0);
       label.userData = { celestialId: p.id };
       group.add(label);
       this.billboardLabels.push(label);
@@ -990,26 +999,33 @@ export class EarthGlobe3D {
   }
 
   // Sleek Glassmorphic Floating HUD Label
-  createBillboardLabel(text, color = '#38bdf8', scale = 0.35) {
+  createBillboardLabel(text, color = '#38bdf8', scale = 0.85) {
     const canvas = document.createElement('canvas');
-    canvas.width = 256; canvas.height = 64;
+    canvas.width = 384; canvas.height = 96;
     const ctx = canvas.getContext('2d');
 
     // Rounded Pill Glass Background
-    ctx.fillStyle = 'rgba(10, 18, 38, 0.88)';
+    ctx.fillStyle = 'rgba(6, 14, 32, 0.92)';
     ctx.strokeStyle = color;
-    ctx.lineWidth = 3;
+    ctx.lineWidth = 4;
     ctx.beginPath();
-    ctx.roundRect(4, 4, 248, 56, 28);
+    ctx.roundRect(6, 6, 372, 84, 42);
     ctx.fill();
     ctx.stroke();
 
-    // Text Label
+    // Subtle inner glowing highlight
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.25)';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.roundRect(10, 10, 364, 76, 38);
+    ctx.stroke();
+
+    // High-contrast crisp text
     ctx.fillStyle = '#ffffff';
-    ctx.font = 'bold 24px system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+    ctx.font = 'bold 36px "Space Grotesk", system-ui, -apple-system, sans-serif';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText(text, 128, 33);
+    ctx.fillText(text, 192, 49);
 
     const labelTex = new THREE.CanvasTexture(canvas);
     const labelMat = new THREE.SpriteMaterial({
@@ -1018,7 +1034,8 @@ export class EarthGlobe3D {
       depthTest: false
     });
     const sprite = new THREE.Sprite(labelMat);
-    sprite.scale.set(scale * 3.8, scale * 0.95, 1);
+    sprite.scale.set(scale * 4.2, scale * 1.05, 1);
+    sprite.visible = true;
     return sprite;
   }
 
