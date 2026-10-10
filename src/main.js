@@ -516,24 +516,66 @@ async function syncGlobalVotes() {
     renderFavoritesLeaderboard();
   }
 
+  // 1. Fetch live community vote tallies from Upstash Redis
   try {
     const res = await fetch('/api/vote');
-    if (!res.ok) return;
-    const data = await res.json();
-    if (data.success && data.votes && typeof data.votes === 'object') {
-      let redisUpdated = false;
-      const combined = { ...localVotes };
-      favoritesList.forEach(fav => {
-        const remoteCount = data.votes[fav.id];
-        if (remoteCount !== undefined && remoteCount > fav.votes) {
-          fav.votes = remoteCount;
-          combined[fav.id] = remoteCount;
-          redisUpdated = true;
+    if (res.ok) {
+      const data = await res.json();
+      if (data.success && data.votes && typeof data.votes === 'object') {
+        let redisUpdated = false;
+        const combined = { ...localVotes };
+        favoritesList.forEach(fav => {
+          const remoteCount = data.votes[fav.id];
+          if (remoteCount !== undefined && remoteCount > fav.votes) {
+            fav.votes = remoteCount;
+            combined[fav.id] = remoteCount;
+            redisUpdated = true;
+          }
+        });
+        if (redisUpdated) {
+          localStorage.setItem(PERSISTED_VOTES_KEY, JSON.stringify(combined));
+          renderFavoritesLeaderboard();
         }
-      });
-      if (redisUpdated) {
-        localStorage.setItem(PERSISTED_VOTES_KEY, JSON.stringify(combined));
-        renderFavoritesLeaderboard();
+      }
+    }
+  } catch (err) {
+    // Offline or local development fallback
+  }
+
+  // 2. Fetch verified heritage wonders from Neon Postgres DB
+  try {
+    const pRes = await fetch('/api/places');
+    if (pRes.ok) {
+      const pData = await pRes.json();
+      if (pData.success && Array.isArray(pData.places)) {
+        let placesAdded = false;
+        pData.places.forEach(p => {
+          if (!favoritesList.some(existing => existing.id === p.id)) {
+            const countryStr = p.state_or_country ? (p.state_or_country.includes(',') ? p.state_or_country.split(',').pop().trim() : p.state_or_country) : 'India';
+            favoritesList.push({
+              id: p.id,
+              name: p.name,
+              city: p.city || '',
+              country: countryStr,
+              continent: 'Asia',
+              category: 'heritage',
+              lat: parseFloat(p.lat),
+              lng: parseFloat(p.lng),
+              votes: localVotes[p.id] || 1200,
+              image: p.image_url || 'https://images.unsplash.com/photo-1590050752117-238cb0fb12b1?w=800&auto=format&fit=crop&q=80',
+              description: p.history_hook || 'Ancient UNESCO architectural wonder.',
+              whyLoved: p.architectural_significance || 'Cultural and geological landmark of global significance.',
+              nearby: ['Archaeological Heritage Zone', 'Historical Monument']
+            });
+            placesAdded = true;
+          }
+        });
+        if (placesAdded) {
+          renderFavoritesLeaderboard();
+          if (currentMode === 'favorites') {
+            renderFavoriteMarkers();
+          }
+        }
       }
     }
   } catch (err) {
