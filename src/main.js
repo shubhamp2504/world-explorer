@@ -24,7 +24,7 @@ const countryByNameLower = new Map();
 
 let globe3dInstance = null;
 let currentMode = 'explore';          // explore | favorites | battle | mystery
-let currentProjection = 'flat';       // flat | globe
+let currentProjection = 'globe';      // flat | globe (synced with initial active 3D container)
 let showDayNightTerminator = true;
 let selectedCountry = null;
 let lastSurpriseIndex = -1;
@@ -194,10 +194,12 @@ async function boot() {
     }
   }, 2500);
 
-  // Launch directly into Photorealistic 3D Solar System Orrery
+  // Launch directly into Photorealistic 3D Solar System Orrery (only in explore mode)
   setTimeout(() => {
+    if (currentMode !== 'explore') return;
     document.getElementById('btnGlobeView')?.click();
     setTimeout(() => {
+      if (currentMode !== 'explore') return;
       if (globe3dInstance) {
         globe3dInstance.viewWholeSolarSystem();
       }
@@ -1173,18 +1175,21 @@ async function startBattleRoyale(subMode = 'world') {
     pill.classList.toggle('active', pill.dataset.submode === battleSubMode);
   });
 
-  // Camera orientation - optical centering between top bar and bottom dock
-  if (battleSubMode === 'india') {
-    if (currentProjection === 'globe' && globe3dInstance) {
-      globe3dInstance.flyTo(20.59, 78.96, 2.65);
-    } else {
-      zoomToCoordinates(78.96, 21.5, 3.6, 25);
-    }
-  } else if (battleSubMode === 'world') {
-    if (currentProjection === 'flat') {
-      zoomToCoordinates(15, 20, 1.25, 0);
-    }
+  // Ensure 2D flat map for games for full click precision & state outlines
+  if (currentProjection !== 'flat') {
+    document.getElementById('btnFlatView')?.click();
   }
+
+  // Camera orientation - optical centering between top bar and bottom dock
+  setTimeout(() => {
+    if (battleSubMode === 'india') {
+      zoomToCoordinates(78.96, 21.5, 3.6, 25);
+    } else if (battleSubMode === 'world') {
+      zoomToCoordinates(15, 20, 1.25, 0);
+    } else if (battleSubMode === 'kbc') {
+      zoomToCoordinates(78.96, 21.5, 2.2, 0);
+    }
+  }, 80);
 
   // Show quick loading state in question text
   document.getElementById('battleQuestionText').textContent = 'Connecting to Quiz Engine...';
@@ -1244,8 +1249,12 @@ function nextBattleQuestion() {
   const lifelinesWrap = document.getElementById('battleLifelines');
   const catBadge = document.getElementById('battleCategoryBadge');
   const expBox = document.getElementById('quizExplanationBox');
+  const guidancePill = document.getElementById('battleGuidancePill');
 
   if (expBox) expBox.style.display = 'none';
+  if (guidancePill) {
+    guidancePill.style.display = battleSubMode === 'kbc' ? 'none' : 'flex';
+  }
 
   if (battleSubMode === 'kbc') {
     // KBC 4-Option Mode
@@ -1527,13 +1536,21 @@ function showBattleExplanation(isCorrect, fact, hint) {
   const expHookBox = document.getElementById('expHookBox');
   const expHookText = document.getElementById('expHookText');
   const expMentorBadge = document.getElementById('expMentorBadge');
+  const expIcon = document.getElementById('expResultIcon');
+  const expTitle = document.getElementById('expResultTitle');
+
+  // Hide guidance pill while explanation is showing
+  const guidancePill = document.getElementById('battleGuidancePill');
+  if (guidancePill) guidancePill.style.display = 'none';
 
   if (expBox && expText) {
     expBox.style.display = 'flex';
-    expText.textContent = `${isCorrect ? '✅ Verified Fact: ' : 'ℹ️ Verified Fact: '} ${fact}`;
+    if (expIcon) expIcon.textContent = isCorrect ? '✨' : '❌';
+    if (expTitle) expTitle.textContent = isCorrect ? 'BINGO! Correct Target' : 'Target Missed - Learning Insight';
+    expText.textContent = fact;
     if (hint && expHookBox && expHookText) {
       expHookBox.style.display = 'flex';
-      expHookText.textContent = `UPSC/MPSC Insight: ${hint}`;
+      expHookText.textContent = `UPSC/MPSC Reference: ${hint}`;
     }
     if (expMentorBadge) expMentorBadge.style.display = 'inline-block';
   }
@@ -1541,7 +1558,7 @@ function showBattleExplanation(isCorrect, fact, hint) {
   clearTimeout(battleAutoAdvanceTimer);
   battleAutoAdvanceTimer = setTimeout(() => {
     nextBattleQuestion();
-  }, 4500);
+  }, 4800);
 }
 
 function endBattleRoyale() {
@@ -1605,6 +1622,12 @@ function initMysteryGame() {
 
 function startMysteryGame() {
   document.body.classList.add('mode-mystery');
+  if (currentProjection !== 'flat') {
+    document.getElementById('btnFlatView')?.click();
+  }
+  setTimeout(() => {
+    resetMapView();
+  }, 80);
   mysteryIndex = (mysteryIndex + 1) % MYSTERY_LOCATIONS.length;
   currentMysteryTarget = MYSTERY_LOCATIONS[mysteryIndex];
   mysteryClueRound = 1;

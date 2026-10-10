@@ -157,37 +157,35 @@
         </div>
       </div>
 
-      <!-- BATTLE ROYALE IN-GAME OVERLAY HUD -->
+      <!-- BATTLE ROYALE IN-GAME OVERLAY HUD (PROFESSIONAL GAMING ARENA) -->
       <div class="battle-hud" id="battleHud" style="display: none;">
         <!-- Top Command Bar -->
         <div class="battle-hud-top" id="battleHudTop">
-          <div class="battle-mode-pills" id="battleModePills">
-            <button class="battle-mode-pill active" data-submode="world">🌍 World</button>
-            <button class="battle-mode-pill" data-submode="india">🇮🇳 Bharat & States</button>
-            <button class="battle-mode-pill" data-submode="kbc">🧠 KBC Quiz</button>
-          </div>
-
-          <div class="battle-prompt-inline" id="battlePromptInline">
-            <div class="battle-badge-group">
-              <span class="battle-badge" id="battleDiffBadge">EASY</span>
-              <span class="battle-category-badge" id="battleCategoryBadge" style="display: none;">BHARAT STATES</span>
+          <div class="battle-arena-left">
+            <div class="arena-brand-chip">
+              <span class="arena-icon">⚡</span>
+              <span class="arena-name">ARENA</span>
             </div>
-            <h2 class="battle-question" id="battleQuestionText">Click on the country!</h2>
+            <div class="battle-mode-pills" id="battleModePills">
+              <button class="battle-mode-pill active" data-submode="world">🌍 World</button>
+              <button class="battle-mode-pill" data-submode="india">🇮🇳 Bharat & States</button>
+              <button class="battle-mode-pill" data-submode="kbc">🧠 KBC 4-Option</button>
+            </div>
           </div>
 
           <div class="battle-top-right-group">
-            <div class="battle-stat-chip">
-              <span class="hud-label">Score</span>
+            <div class="battle-stat-chip score-chip">
+              <span class="hud-label">SCORE</span>
               <span class="hud-val" id="battleScore">0</span>
             </div>
-            <div class="battle-stat-chip">
-              <span class="hud-label">Streak</span>
+            <div class="battle-stat-chip streak-chip">
+              <span class="hud-label">STREAK</span>
               <span class="hud-val streak" id="battleStreak">🔥 0</span>
             </div>
             <div class="battle-timer-wrap">
               <div class="battle-timer-circle" id="battleTimer">15</div>
             </div>
-            <div class="battle-stat-chip" id="battleProgressChip">
+            <div class="battle-stat-chip round-chip" id="battleProgressChip">
               <span class="hud-label">Q</span>
               <span class="hud-val" id="battleLevel">1/10</span>
             </div>
@@ -195,13 +193,26 @@
               <button class="btn-lifeline" id="btnLifeline5050" title="50:50 Lifeline">50:50</button>
               <button class="btn-lifeline" id="btnLifelineHint" title="Ask Hint Lifeline">💡 Hint</button>
             </div>
-            <button class="btn-end-battle" id="btnEndBattle" title="Exit Battle Royale">✕</button>
+            <button class="btn-end-battle" id="btnEndBattle" title="Exit Battle Arena">✕ Exit</button>
           </div>
+        </div>
+
+        <!-- Prominent Floating Question Banner -->
+        <div class="battle-question-banner" id="battleQuestionBanner">
+          <div class="battle-badge-group">
+            <span class="battle-badge" id="battleDiffBadge">EASY</span>
+            <span class="battle-category-badge" id="battleCategoryBadge" style="display: none;">BHARAT STATES</span>
+          </div>
+          <h2 class="battle-question" id="battleQuestionText">Click on the country!</h2>
         </div>
 
         <!-- Bottom Action Dock (Options or Hints or Explanations) -->
         <div class="battle-hud-dock" id="battleHudDock">
-          <p class="battle-hint" id="battleHintText">Tap the map to lock your answer before time runs out!</p>
+          <!-- Guidance strip during map-clicking modes -->
+          <div class="battle-guidance-pill" id="battleGuidancePill">
+            <span class="guidance-dot">🎯</span>
+            <span class="battle-hint" id="battleHintText">Tap the map to lock your answer before time runs out!</span>
+          </div>
 
           <!-- KBC 4-Option Choices Grid -->
           <div class="kbc-options-grid" id="kbcOptionsGrid" style="display: none;">
@@ -211,11 +222,11 @@
             <button class="kbc-opt-btn" data-opt="3"><span class="kbc-opt-letter">D</span><span class="kbc-opt-text">Option D</span></button>
           </div>
 
-          <!-- Post-Answer Explanation Box with Asynchronous AI Mentor Hook -->
+          <!-- Post-Answer Celebration / Explanation Box with Asynchronous AI Mentor Hook -->
           <div class="quiz-explanation-box" id="quizExplanationBox" style="display: none;">
             <div class="exp-header-row">
-              <span class="exp-icon">💡</span>
-              <span class="exp-title">Verified Explanation</span>
+              <span class="exp-icon" id="expResultIcon">💡</span>
+              <span class="exp-title" id="expResultTitle">Verified Syllabus Insight</span>
               <span class="exp-mentor-badge" id="expMentorBadge" style="display: none;">⚡ AI Mentor</span>
               <button class="btn-next-question" id="btnNextBattleQuestion">Next Question ➡️</button>
             </div>
@@ -228,19 +239,27 @@
         </div>
       </div>
 
-      <!-- GUESS WHERE MYSTERY HUD -->
+      <!-- GUESS WHERE MYSTERY HUD (PROFESSIONAL GEOGUESSR ARENA) -->
       <div class="mystery-hud" id="mysteryHud" style="display: none;">
         <div class="mystery-hud-top" id="mysteryHudTop">
-          <div class="mystery-round-badge" id="mysteryRoundBadge">ROUND 1 OF 6</div>
-          <div class="mystery-clue-wrap">
-            <span class="mystery-clue-label">🕵️ Clue:</span>
-            <span class="mystery-clue-content" id="mysteryClueContent">Loading clue...</span>
+          <div class="battle-arena-left">
+            <div class="arena-brand-chip mystery-brand">
+              <span class="arena-icon">🕵️</span>
+              <span class="arena-name">GEOGUESSR</span>
+            </div>
+            <div class="mystery-round-badge" id="mysteryRoundBadge">ROUND 1 OF 6</div>
           </div>
           <div class="mystery-actions" id="mysteryActionsRow">
             <button class="btn-guess-next-clue" id="btnNextClue">Next Clue (+penalty)</button>
             <button class="btn-guess-giveup" id="btnMysteryReveal">Give Up</button>
-            <button class="btn-end-battle" id="btnMysteryExitTop" title="Exit Mystery Game">✕</button>
+            <button class="btn-end-battle" id="btnMysteryExitTop" title="Exit Mystery Arena">✕ Exit</button>
           </div>
+        </div>
+
+        <!-- Dedicated Prominent Mystery Clue Banner -->
+        <div class="mystery-clue-banner" id="mysteryClueBanner">
+          <span class="mystery-clue-label">CLUE INTEL</span>
+          <p class="mystery-clue-content" id="mysteryClueContent">Loading clue...</p>
         </div>
 
         <div class="mystery-hud-dock" id="mysteryHudDock">

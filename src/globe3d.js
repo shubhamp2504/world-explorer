@@ -1451,6 +1451,11 @@ export class EarthGlobe3D {
   animate() {
     requestAnimationFrame(() => this.animate());
 
+    // Zero-lag optimization: skip expensive WebGL & post-processing when 3D container is hidden
+    if (this.container && (this.container.style.display === 'none' || this.container.offsetParent === null)) {
+      return;
+    }
+
     const delta = Math.min(this.clock.getDelta(), 0.05);
     const elapsedTime = this.clock.getElapsedTime();
 
