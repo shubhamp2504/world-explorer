@@ -21,6 +21,7 @@ const TEXTURES = {
   saturnRingAlpha: '/textures/planets/8k_saturn_ring_alpha.png',
   uranus: '/textures/planets/2k_uranus.jpg',
   neptune: '/textures/planets/2k_neptune.jpg',
+  pluto: '/textures/planets/2k_pluto.jpg',
   sun: '/textures/planets/2k_sun.jpg'
 };
 
@@ -591,7 +592,8 @@ export class EarthGlobe3D {
       { id: 'jupiter', r: 20.8, col: 0xfb923c },
       { id: 'saturn',  r: 27.2, col: 0xfef08a },
       { id: 'uranus',  r: 32.8, col: 0xa5f3fc },
-      { id: 'neptune', r: 38.0, col: 0x60a5fa }
+      { id: 'neptune', r: 38.0, col: 0x60a5fa },
+      { id: 'pluto',   r: 43.5, col: 0xe2e8f0 }
     ];
 
     orbitRadii.forEach(o => {
@@ -636,6 +638,29 @@ export class EarthGlobe3D {
     });
     this.asteroidBelt = new THREE.Points(asteroidGeom, asteroidMat);
     this.solarSystemGroup.add(this.asteroidBelt);
+
+    // Kuiper Belt: 600 icy cometary bodies spanning 40.0 to 48.0 AU where Pluto resides
+    const kuiperCount = 600;
+    const kuiperGeom = new THREE.BufferGeometry();
+    const kuiperPositions = new Float32Array(kuiperCount * 3);
+    for (let i = 0; i < kuiperCount; i++) {
+      const idx = i * 3;
+      const r = 40.0 + Math.random() * 8.0;
+      const theta = Math.random() * Math.PI * 2;
+      const yOffset = (Math.random() - 0.5) * 1.8;
+      kuiperPositions[idx] = Math.cos(theta) * r;
+      kuiperPositions[idx + 1] = yOffset;
+      kuiperPositions[idx + 2] = Math.sin(theta) * r;
+    }
+    kuiperGeom.setAttribute('position', new THREE.BufferAttribute(kuiperPositions, 3));
+    const kuiperMat = new THREE.PointsMaterial({
+      color: 0xbae6fd,
+      size: 0.055,
+      transparent: true,
+      opacity: 0.65
+    });
+    this.kuiperBelt = new THREE.Points(kuiperGeom, kuiperMat);
+    this.solarSystemGroup.add(this.kuiperBelt);
   }
 
   // 🌍 AUTHENTIC RAZOR-SHARP ULTRA-HD EARTH ENGINE
@@ -867,7 +892,8 @@ export class EarthGlobe3D {
       { id: 'jupiter', name: '♃ Jupiter', r: 20.8, radius: 1.75, tex: TEXTURES.jupiter, speed: 0.005, rot: 0.006, col: '#fb923c', atmoCol: [1.0, 0.75, 0.40] },
       { id: 'saturn',  name: '♄ Saturn',  r: 27.2, radius: 1.40, tex: TEXTURES.saturn,  ringTex: TEXTURES.saturnRing, ringAlpha: TEXTURES.saturnRingAlpha, speed: 0.0038, rot: 0.005, col: '#fef08a', atmoCol: [1.0, 0.90, 0.55] },
       { id: 'uranus',  name: '♅ Uranus',  r: 32.8, radius: 1.05, tex: TEXTURES.uranus,  speed: 0.0026, rot: 0.003, col: '#67e8f9', atmoCol: [0.45, 0.95, 1.0] },
-      { id: 'neptune', name: '♆ Neptune', r: 38.0, radius: 1.00, tex: TEXTURES.neptune, speed: 0.0020, rot: 0.0032, col: '#3b82f6', atmoCol: [0.35, 0.60, 1.0] }
+      { id: 'neptune', name: '♆ Neptune', r: 38.0, radius: 1.00, tex: TEXTURES.neptune, speed: 0.0020, rot: 0.0032, col: '#3b82f6', atmoCol: [0.35, 0.60, 1.0] },
+      { id: 'pluto',   name: '♇ Pluto',   r: 43.5, radius: 0.44, tex: TEXTURES.pluto,   bump: TEXTURES.pluto, bumpScale: 0.035, speed: 0.0016, rot: -0.002, col: '#e2e8f0', atmoCol: [0.70, 0.85, 1.0] }
     ];
 
     planetDefs.forEach((p, index) => {
@@ -988,16 +1014,20 @@ export class EarthGlobe3D {
               float edgeFalloff = smoothstep(0.0, 0.02, vUv.x) * smoothstep(1.0, 0.98, vUv.x);
               float finalAlpha = smoothstep(0.05, 0.65, density) * edgeFalloff * 0.95;
 
-              // Dramatic planetary shadow cast by Saturn onto the rings
+              // Realistic, continuous illuminated ring plane with authentic lighting
               vec3 d = vWorldPos - uSaturnPos;
               vec3 toSun = normalize(-uSaturnPos);
-              float dotSun = dot(d, toSun);
+              float dotSun = dot(normalize(d), toSun);
+              
+              // Soft natural planetary self-shading gradient without harsh cuts
               float shadow = 1.0;
-              if (dotSun < 0.0) {
-                float perpDist = length(d - toSun * dotSun);
-                shadow = smoothstep(uSaturnRadius * 0.92, uSaturnRadius * 1.04, perpDist);
+              if (dotSun < -0.35) {
+                float distCenter = length(d);
+                if (distCenter < uSaturnRadius * 1.35) {
+                  shadow = smoothstep(uSaturnRadius * 0.95, uSaturnRadius * 1.35, distCenter);
+                }
               }
-              vec3 finalColor = icyGold * mix(0.12, 1.0, shadow);
+              vec3 finalColor = icyGold * mix(0.45, 1.0, shadow);
 
               gl_FragColor = vec4(finalColor, finalAlpha);
             }
@@ -1168,8 +1198,9 @@ export class EarthGlobe3D {
   viewWholeSolarSystem() {
     this.activeFocusedBody = 'system';
     this.autoRotate = false;
-    this.targetCameraLookAt.set(0, 0, 0);
-    this.targetOrbitRadius = 52.0;
+    // Center the entire Solar System expanse in the left viewport away from the right HUD drawer
+    this.targetCameraLookAt.set(6.0, 0, 0);
+    this.targetOrbitRadius = 66.0;
     this.targetOrbitPhi = 0.72; // Elevated 42° pitch
     this.targetOrbitTheta = 0.0;
     this.updateVisibility(true);
@@ -1227,6 +1258,9 @@ export class EarthGlobe3D {
     }
     if (this.asteroidBelt) {
       this.asteroidBelt.visible = isOrrery;
+    }
+    if (this.kuiperBelt) {
+      this.kuiperBelt.visible = isOrrery;
     }
     if (this.orbitsGroup) {
       this.orbitsGroup.children.forEach(line => {
@@ -1621,9 +1655,12 @@ export class EarthGlobe3D {
       this.sunHalo.material.rotation += 0.00015;
     }
 
-    // Asteroid belt slow drift
+    // Asteroid & Kuiper belts slow orbital drift
     if (this.asteroidBelt && this.asteroidBelt.visible) {
       this.asteroidBelt.rotation.y += 0.00018;
+    }
+    if (this.kuiperBelt && this.kuiperBelt.visible) {
+      this.kuiperBelt.rotation.y += 0.00008;
     }
 
     // 3. Smooth momentum drag & auto rotation
@@ -1645,7 +1682,9 @@ export class EarthGlobe3D {
     this.orbitRadius += (this.targetOrbitRadius - this.orbitRadius) * orbitEase;
 
     // 5. Compute target camera look-at position based on active focused body
-    if (this.activeFocusedBody === 'system' || this.activeFocusedBody === 'sun') {
+    if (this.activeFocusedBody === 'system') {
+      this.targetCameraLookAt.set(6.0, 0, 0);
+    } else if (this.activeFocusedBody === 'sun') {
       this.targetCameraLookAt.set(0, 0, 0);
     } else if (this.activeFocusedBody === 'earth') {
       this.targetCameraLookAt.copy(this.earthGroup.position);

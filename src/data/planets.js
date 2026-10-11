@@ -254,5 +254,28 @@ export const PLANETS_DATA = [
       'It was the first planet predicted using mathematics before it was ever visually observed through a telescope in 1846.',
       'Its moon Triton orbits in the opposite direction of Neptune\'s rotation (retrograde) and features nitrogen cryovolcanoes spewing ice miles into space.'
     ]
+  },
+  {
+    id: 'pluto',
+    name: 'Pluto',
+    symbol: '♇',
+    type: 'Dwarf Planet (Kuiper Belt World)',
+    tagline: 'The iconic frozen frontier world adorned with the vast nitrogen-ice heart of Tombaugh Regio.',
+    diameter: '2,376 km',
+    distanceSun: '5.91 Billion km (39.5 AU)',
+    orbitalPeriod: '248 Earth Years',
+    rotationPeriod: '6.4 Earth Days (Retrograde)',
+    temperature: '-228°C to -238°C (Extreme Cryo-desert)',
+    gravity: '0.62 m/s² (0.063x Earth)',
+    moons: '5 Confirmed Moons (Charon, Styx, Nix, Kerberos, Hydra)',
+    atmosphere: 'Tenuous nitrogen, methane & carbon monoxide exosphere',
+    texture: '/textures/planets/2k_pluto.jpg',
+    color: '#e2e8f0',
+    radius: 0.42,
+    facts: [
+      'Pluto features a massive heart-shaped nitrogen ice glacier named Tombaugh Regio (Sputnik Planitia) spanning over 1,000 km.',
+      'Pluto and its largest moon Charon form a binary dwarf planet system, both tidally locked and orbiting a common center of gravity outside Pluto itself.',
+      'Discovered in 1930 by Clyde Tombaugh, Pluto orbits in an inclined (17°) elliptical path that occasionally brings it closer to the Sun than Neptune.'
+    ]
   }
 ];

@@ -412,7 +412,7 @@ input, select {
   border-radius: var(--radius-pill);
   backdrop-filter: blur(24px);
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6), 0 0 20px rgba(56, 189, 248, 0.25);
-  max-width: calc(100vw - 440px);
+  max-width: calc(100vw - 420px);
 }
 .celestial-dock-tag {
   font-size: 0.68rem;
@@ -424,11 +424,20 @@ input, select {
 .planet-selector-scroll {
   display: flex;
   align-items: center;
-  gap: 5px;
+  gap: 6px;
   overflow-x: auto;
-  scrollbar-width: none;
+  scroll-behavior: smooth;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(56, 189, 248, 0.4) transparent;
+  padding-bottom: 2px;
 }
-.planet-selector-scroll::-webkit-scrollbar { display: none; }
+.planet-selector-scroll::-webkit-scrollbar {
+  height: 4px;
+}
+.planet-selector-scroll::-webkit-scrollbar-thumb {
+  background: rgba(56, 189, 248, 0.4);
+  border-radius: 4px;
+}
 .planet-pill {
   background: rgba(255, 255, 255, 0.04);
   border: 1px solid rgba(255, 255, 255, 0.1);
