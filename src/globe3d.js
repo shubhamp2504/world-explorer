@@ -861,7 +861,7 @@ export class EarthGlobe3D {
   // 🪐 OTHER SOLAR SYSTEM PLANETS
   createOtherPlanets() {
     const planetDefs = [
-      { id: 'mercury', name: '☿ Mercury', r: 4.5,  radius: 0.52, tex: TEXTURES.mercury, bump: TEXTURES.mercury, bumpScale: 0.025, speed: 0.024, rot: 0.002, col: '#a3b8cc', atmoCol: [0.65, 0.75, 0.90] },
+      { id: 'mercury', name: '☿ Mercury', r: 4.5,  radius: 0.52, tex: TEXTURES.mercury, bump: TEXTURES.mercury, bumpScale: 0.035, speed: 0.024, rot: 0.002, col: '#f59e0b', atmoCol: [0.90, 0.65, 0.30] },
       { id: 'venus',   name: '♀ Venus',   r: 7.2,  radius: 0.82, tex: TEXTURES.venus,   speed: 0.016, rot: -0.001, col: '#fbbf24', atmoCol: [1.0, 0.85, 0.35] },
       { id: 'mars',    name: '♂ Mars',    r: 13.8, radius: 0.68, tex: TEXTURES.mars,    bump: TEXTURES.mars,    bumpScale: 0.035, speed: 0.009, rot: 0.003, col: '#f87171', atmoCol: [1.0, 0.45, 0.25] },
       { id: 'jupiter', name: '♃ Jupiter', r: 20.8, radius: 1.75, tex: TEXTURES.jupiter, speed: 0.005, rot: 0.006, col: '#fb923c', atmoCol: [1.0, 0.75, 0.40] },
@@ -900,40 +900,40 @@ export class EarthGlobe3D {
       group.add(mesh);
       this.interactiveObjects.push(mesh);
 
-      // Atmosphere
-      const pAtmoGeom = new THREE.SphereGeometry(p.radius * 1.05, 36, 36);
-      const pAtmoMat = new THREE.ShaderMaterial({
-        uniforms: {
-          uColor: { value: new THREE.Vector3(p.atmoCol[0], p.atmoCol[1], p.atmoCol[2]) }
-        },
-        vertexShader: `
-          varying vec3 vNormal;
-          void main() {
-            vNormal = normalize(normalMatrix * normal);
-            gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-          }
-        `,
-        fragmentShader: `
-          uniform vec3 uColor;
-          varying vec3 vNormal;
-          void main() {
-            float rim = 1.0 - max(dot(vNormal, vec3(0.0, 0.0, 1.0)), 0.0);
-            float intensity = pow(rim, 3.2);
-            gl_FragColor = vec4(uColor, 1.0) * intensity * 0.85;
-          }
-        `,
-        blending: THREE.AdditiveBlending,
-        side: THREE.BackSide,
-        transparent: true
-      });
-      const pAtmoMesh = new THREE.Mesh(pAtmoGeom, pAtmoMat);
-      group.add(pAtmoMesh);
+        // Atmosphere (Soft limb glow that does not burn or bleed over rings)
+        const pAtmoGeom = new THREE.SphereGeometry(p.radius * 1.025, 36, 36);
+        const pAtmoMat = new THREE.ShaderMaterial({
+          uniforms: {
+            uColor: { value: new THREE.Vector3(p.atmoCol[0], p.atmoCol[1], p.atmoCol[2]) }
+          },
+          vertexShader: `
+            varying vec3 vNormal;
+            void main() {
+              vNormal = normalize(normalMatrix * normal);
+              gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+            }
+          `,
+          fragmentShader: `
+            uniform vec3 uColor;
+            varying vec3 vNormal;
+            void main() {
+              float rim = 1.0 - max(dot(vNormal, vec3(0.0, 0.0, 1.0)), 0.0);
+              float intensity = pow(rim, 4.5);
+              gl_FragColor = vec4(uColor, 1.0) * intensity * 0.35;
+            }
+          `,
+          blending: THREE.AdditiveBlending,
+          side: THREE.BackSide,
+          transparent: true
+        });
+        const pAtmoMesh = new THREE.Mesh(pAtmoGeom, pAtmoMat);
+        group.add(pAtmoMesh);
 
       let ringMesh = null;
       if (p.ringTex) {
-        const innerR = p.radius * 1.30;
-        const outerR = p.radius * 2.50;
-        const ringGeom = new THREE.RingGeometry(innerR, outerR, 96, 32);
+        const innerR = p.radius * 1.20;
+        const outerR = p.radius * 2.70;
+        const ringGeom = new THREE.RingGeometry(innerR, outerR, 128, 32);
         ringGeom.rotateX(Math.PI / 2);
 
         // Map radial strip texture coordinates onto ring
@@ -955,25 +955,51 @@ export class EarthGlobe3D {
         const ringMat = new THREE.ShaderMaterial({
           uniforms: {
             ringMap: { value: ringT },
-            ringAlphaMap: { value: ringAlphaT }
+            ringAlphaMap: { value: ringAlphaT },
+            uSaturnPos: { value: group.position },
+            uSaturnRadius: { value: p.radius }
           },
           vertexShader: `
             varying vec2 vUv;
+            varying vec3 vWorldPos;
             void main() {
               vUv = uv;
-              gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+              vec4 worldPos = modelMatrix * vec4(position, 1.0);
+              vWorldPos = worldPos.xyz;
+              gl_Position = projectionMatrix * viewMatrix * worldPos;
             }
           `,
           fragmentShader: `
             uniform sampler2D ringMap;
             uniform sampler2D ringAlphaMap;
+            uniform vec3 uSaturnPos;
+            uniform float uSaturnRadius;
             varying vec2 vUv;
+            varying vec3 vWorldPos;
             void main() {
               vec4 texColor = texture2D(ringMap, vUv);
               float ringAlpha = texture2D(ringAlphaMap, vUv).r;
-              float edgeFalloff = smoothstep(0.0, 0.04, vUv.x) * smoothstep(1.0, 0.96, vUv.x);
-              float finalAlpha = texColor.a * (0.2 + 0.8 * ringAlpha) * edgeFalloff;
-              gl_FragColor = vec4(texColor.rgb, finalAlpha * 0.95);
+
+              // Prominent golden sunlight reflection on ice crystals with pristine ringlet definition
+              vec3 icyGold = texColor.rgb * 1.55 + vec3(0.08, 0.06, 0.03);
+
+              // Sharp, distinct density profile with clear Cassini division gap
+              float density = max(texColor.a, ringAlpha);
+              float edgeFalloff = smoothstep(0.0, 0.02, vUv.x) * smoothstep(1.0, 0.98, vUv.x);
+              float finalAlpha = smoothstep(0.05, 0.65, density) * edgeFalloff * 0.95;
+
+              // Dramatic planetary shadow cast by Saturn onto the rings
+              vec3 d = vWorldPos - uSaturnPos;
+              vec3 toSun = normalize(-uSaturnPos);
+              float dotSun = dot(d, toSun);
+              float shadow = 1.0;
+              if (dotSun < 0.0) {
+                float perpDist = length(d - toSun * dotSun);
+                shadow = smoothstep(uSaturnRadius * 0.92, uSaturnRadius * 1.04, perpDist);
+              }
+              vec3 finalColor = icyGold * mix(0.12, 1.0, shadow);
+
+              gl_FragColor = vec4(finalColor, finalAlpha);
             }
           `,
           side: THREE.DoubleSide,
@@ -1181,9 +1207,14 @@ export class EarthGlobe3D {
       const p = this.planets[planetId];
       const pPos = p.group.position;
       this.targetCameraLookAt.copy(pPos);
-      const camDist = Math.max(2.2, p.radius * 3.4);
-      this.targetOrbitRadius = camDist;
-      this.targetOrbitPhi = Math.PI * 0.42;
+      if (planetId === 'saturn') {
+        this.targetOrbitRadius = p.radius * 4.5;
+        this.targetOrbitPhi = 0.88; // Elevated 50° angle to reveal full disk of rings
+      } else {
+        const camDist = Math.max(2.2, p.radius * 3.4);
+        this.targetOrbitRadius = camDist;
+        this.targetOrbitPhi = Math.PI * 0.42;
+      }
     }
   }
 
