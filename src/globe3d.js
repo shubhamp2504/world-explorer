@@ -10,22 +10,18 @@ const TEXTURES = {
   night: 'https://raw.githubusercontent.com/mrdoob/three.js/master/examples/textures/planets/earth_night_4096.jpg',
   normal: 'https://raw.githubusercontent.com/mrdoob/three.js/master/examples/textures/planets/earth_normal_2048.jpg',
   specular: 'https://raw.githubusercontent.com/mrdoob/three.js/master/examples/textures/planets/earth_specular_2048.jpg',
-  clouds: 'https://raw.githubusercontent.com/mrdoob/three.js/master/examples/textures/planets/earth_clouds_1024.png',
-  moon: 'https://cdn.jsdelivr.net/gh/mrdoob/three.js@dev/examples/textures/planets/moon_1024.jpg',
-  moonBump: 'https://cdn.jsdelivr.net/gh/jeromeetienne/threex.planets@master/images/moonbump1k.jpg',
-  mercury: 'https://cdn.jsdelivr.net/gh/jeromeetienne/threex.planets@master/images/mercurymap.jpg',
-  mercuryBump: 'https://cdn.jsdelivr.net/gh/jeromeetienne/threex.planets@master/images/mercurybump.jpg',
-  venus: 'https://cdn.jsdelivr.net/gh/jeromeetienne/threex.planets@master/images/venusmap.jpg',
-  venusBump: 'https://cdn.jsdelivr.net/gh/jeromeetienne/threex.planets@master/images/venusbump.jpg',
-  mars: 'https://cdn.jsdelivr.net/gh/jeromeetienne/threex.planets@master/images/marsmap1k.jpg',
-  marsBump: 'https://cdn.jsdelivr.net/gh/jeromeetienne/threex.planets@master/images/marsbump1k.jpg',
-  jupiter: 'https://cdn.jsdelivr.net/gh/jeromeetienne/threex.planets@master/images/jupitermap.jpg',
-  saturn: 'https://cdn.jsdelivr.net/gh/jeromeetienne/threex.planets@master/images/saturnmap.jpg',
-  saturnRing: 'https://cdn.jsdelivr.net/gh/jeromeetienne/threex.planets@master/images/saturnringcolor.jpg',
-  saturnRingPattern: 'https://cdn.jsdelivr.net/gh/jeromeetienne/threex.planets@master/images/saturnringpattern.gif',
-  uranus: 'https://cdn.jsdelivr.net/gh/jeromeetienne/threex.planets@master/images/uranusmap.jpg',
-  neptune: 'https://cdn.jsdelivr.net/gh/jeromeetienne/threex.planets@master/images/neptunemap.jpg',
-  sun: 'https://cdn.jsdelivr.net/gh/jeromeetienne/threex.planets@master/images/sunmap.jpg'
+  clouds: '/textures/planets/2k_earth_clouds.jpg',
+  moon: '/textures/planets/2k_moon.jpg',
+  mercury: '/textures/planets/2k_mercury.jpg',
+  venus: '/textures/planets/2k_venus.jpg',
+  mars: '/textures/planets/2k_mars.jpg',
+  jupiter: '/textures/planets/2k_jupiter.jpg',
+  saturn: '/textures/planets/2k_saturn.jpg',
+  saturnRing: '/textures/planets/2k_saturn_rings.png',
+  saturnRingAlpha: '/textures/planets/8k_saturn_ring_alpha.png',
+  uranus: '/textures/planets/2k_uranus.jpg',
+  neptune: '/textures/planets/2k_neptune.jpg',
+  sun: '/textures/planets/2k_sun.jpg'
 };
 
 export class EarthGlobe3D {
@@ -757,16 +753,18 @@ export class EarthGlobe3D {
     this.earthGroup.add(this.earthMesh);
     this.interactiveObjects.push(this.earthMesh);
 
-    // Delicate Wispy Cloud Layer
+    // Delicate Wispy Cloud Layer (2K Ultra HD Cloud Deck)
     const cloudsGeom = new THREE.SphereGeometry(1.188, 48, 48);
     const cloudsMat = new THREE.MeshStandardMaterial({
       map: cloudsTex,
+      alphaMap: cloudsTex,
       transparent: true,
-      opacity: 0.32,
+      opacity: 0.65,
       depthWrite: false,
       roughness: 0.85,
       emissive: new THREE.Color(0xffffff),
-      emissiveIntensity: 0.28
+      emissiveMap: cloudsTex,
+      emissiveIntensity: 0.12
     });
     this.cloudsMesh = new THREE.Mesh(cloudsGeom, cloudsMat);
     this.cloudsMesh.rotation.y = -Math.PI / 2;
@@ -796,7 +794,7 @@ export class EarthGlobe3D {
     this.atmosphereMesh = new THREE.Mesh(atmoGeom, atmoMat);
     this.earthGroup.add(this.atmosphereMesh);
 
-    // 🌙 Real Orbiting 3D Moon
+    // 🌙 Real Orbiting 3D Moon (2K Ultra HD LRO Albedo Map)
     this.moonGroup = new THREE.Group();
     this.moonGroup.position.set(2.1, 0.35, 0);
     this.moonGroup.userData = { celestialId: 'moon' };
@@ -804,17 +802,16 @@ export class EarthGlobe3D {
 
     const moonTex = this.textureLoader.load(TEXTURES.moon);
     moonTex.colorSpace = THREE.SRGBColorSpace;
-    const moonBump = this.textureLoader.load(TEXTURES.moonBump);
-    const moonGeom = new THREE.SphereGeometry(0.38, 36, 36);
+    const moonGeom = new THREE.SphereGeometry(0.38, 48, 48);
     const moonMat = new THREE.MeshStandardMaterial({
       map: moonTex,
-      bumpMap: moonBump,
-      bumpScale: 0.02,
-      roughness: 0.70,
+      bumpMap: moonTex,
+      bumpScale: 0.025,
+      roughness: 0.75,
       metalness: 0.02,
       emissive: new THREE.Color(0xffffff),
       emissiveMap: moonTex,
-      emissiveIntensity: 0.38
+      emissiveIntensity: 0.12
     });
     this.moonMesh = new THREE.Mesh(moonGeom, moonMat);
     this.moonMesh.userData = { celestialId: 'moon' };
@@ -864,11 +861,11 @@ export class EarthGlobe3D {
   // 🪐 OTHER SOLAR SYSTEM PLANETS
   createOtherPlanets() {
     const planetDefs = [
-      { id: 'mercury', name: '☿ Mercury', r: 4.5,  radius: 0.52, tex: TEXTURES.mercury, bump: TEXTURES.mercuryBump, bumpScale: 0.025, speed: 0.024, rot: 0.002, col: '#a3b8cc', atmoCol: [0.65, 0.75, 0.90] },
-      { id: 'venus',   name: '♀ Venus',   r: 7.2,  radius: 0.82, tex: TEXTURES.venus,   bump: TEXTURES.venusBump,   bumpScale: 0.018, speed: 0.016, rot: -0.001, col: '#fbbf24', atmoCol: [1.0, 0.85, 0.35] },
-      { id: 'mars',    name: '♂ Mars',    r: 13.8, radius: 0.68, tex: TEXTURES.mars,    bump: TEXTURES.marsBump,    bumpScale: 0.035, speed: 0.009, rot: 0.003, col: '#f87171', atmoCol: [1.0, 0.45, 0.25] },
+      { id: 'mercury', name: '☿ Mercury', r: 4.5,  radius: 0.52, tex: TEXTURES.mercury, bump: TEXTURES.mercury, bumpScale: 0.025, speed: 0.024, rot: 0.002, col: '#a3b8cc', atmoCol: [0.65, 0.75, 0.90] },
+      { id: 'venus',   name: '♀ Venus',   r: 7.2,  radius: 0.82, tex: TEXTURES.venus,   speed: 0.016, rot: -0.001, col: '#fbbf24', atmoCol: [1.0, 0.85, 0.35] },
+      { id: 'mars',    name: '♂ Mars',    r: 13.8, radius: 0.68, tex: TEXTURES.mars,    bump: TEXTURES.mars,    bumpScale: 0.035, speed: 0.009, rot: 0.003, col: '#f87171', atmoCol: [1.0, 0.45, 0.25] },
       { id: 'jupiter', name: '♃ Jupiter', r: 20.8, radius: 1.75, tex: TEXTURES.jupiter, speed: 0.005, rot: 0.006, col: '#fb923c', atmoCol: [1.0, 0.75, 0.40] },
-      { id: 'saturn',  name: '♄ Saturn',  r: 27.2, radius: 1.40, tex: TEXTURES.saturn,  ringTex: TEXTURES.saturnRing, ringPattern: TEXTURES.saturnRingPattern, speed: 0.0038, rot: 0.005, col: '#fef08a', atmoCol: [1.0, 0.90, 0.55] },
+      { id: 'saturn',  name: '♄ Saturn',  r: 27.2, radius: 1.40, tex: TEXTURES.saturn,  ringTex: TEXTURES.saturnRing, ringAlpha: TEXTURES.saturnRingAlpha, speed: 0.0038, rot: 0.005, col: '#fef08a', atmoCol: [1.0, 0.90, 0.55] },
       { id: 'uranus',  name: '♅ Uranus',  r: 32.8, radius: 1.05, tex: TEXTURES.uranus,  speed: 0.0026, rot: 0.003, col: '#67e8f9', atmoCol: [0.45, 0.95, 1.0] },
       { id: 'neptune', name: '♆ Neptune', r: 38.0, radius: 1.00, tex: TEXTURES.neptune, speed: 0.0020, rot: 0.0032, col: '#3b82f6', atmoCol: [0.35, 0.60, 1.0] }
     ];
@@ -934,11 +931,26 @@ export class EarthGlobe3D {
 
       let ringMesh = null;
       if (p.ringTex) {
-        const ringGeom = new THREE.RingGeometry(p.radius * 1.35, p.radius * 2.45, 64);
+        const innerR = p.radius * 1.30;
+        const outerR = p.radius * 2.50;
+        const ringGeom = new THREE.RingGeometry(innerR, outerR, 96, 32);
         ringGeom.rotateX(Math.PI / 2);
+
+        // Map radial strip texture coordinates onto ring
+        const pos = ringGeom.attributes.position;
+        const uvs = ringGeom.attributes.uv;
+        for (let i = 0; i < pos.count; i++) {
+          const x = pos.getX(i);
+          const z = pos.getZ(i);
+          const r = Math.sqrt(x * x + z * z);
+          const u = Math.max(0.0, Math.min(1.0, (r - innerR) / (outerR - innerR)));
+          uvs.setXY(i, u, 0.5);
+        }
+        uvs.needsUpdate = true;
+
         const ringT = this.textureLoader.load(p.ringTex);
         ringT.colorSpace = THREE.SRGBColorSpace;
-        const ringAlphaT = p.ringPattern ? this.textureLoader.load(p.ringPattern) : null;
+        const ringAlphaT = p.ringAlpha ? this.textureLoader.load(p.ringAlpha) : null;
 
         const ringMat = new THREE.ShaderMaterial({
           uniforms: {
@@ -959,8 +971,8 @@ export class EarthGlobe3D {
             void main() {
               vec4 texColor = texture2D(ringMap, vUv);
               float ringAlpha = texture2D(ringAlphaMap, vUv).r;
-              float edgeFalloff = smoothstep(0.0, 0.08, vUv.y) * smoothstep(1.0, 0.92, vUv.y);
-              float finalAlpha = texColor.a * (0.4 + 0.6 * ringAlpha) * edgeFalloff;
+              float edgeFalloff = smoothstep(0.0, 0.04, vUv.x) * smoothstep(1.0, 0.96, vUv.x);
+              float finalAlpha = texColor.a * (0.2 + 0.8 * ringAlpha) * edgeFalloff;
               gl_FragColor = vec4(texColor.rgb, finalAlpha * 0.95);
             }
           `,
