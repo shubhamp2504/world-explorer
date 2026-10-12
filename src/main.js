@@ -1258,6 +1258,7 @@ async function startBattleRoyale(subMode = 'world') {
   lifelineHintUsed = false;
 
   document.body.classList.add('mode-battle');
+  document.body.classList.toggle('submode-kbc', battleSubMode === 'kbc');
   document.getElementById('battleScore').textContent = '0';
   document.getElementById('battleStreak').textContent = '🔥 0';
   document.getElementById('battleHud').style.display = 'flex';
@@ -1278,7 +1279,7 @@ async function startBattleRoyale(subMode = 'world') {
     document.getElementById('btnFlatView')?.click();
   }
 
-  // Camera orientation - optical centering between top bar and bottom dock
+  // Camera orientation - smooth optical focus per mode
   setTimeout(() => {
     if (battleSubMode === 'india') {
       zoomToCoordinates(78.96, 21.5, 3.6, 25);
@@ -1290,7 +1291,10 @@ async function startBattleRoyale(subMode = 'world') {
   }, 80);
 
   // Show quick loading state in question text
-  document.getElementById('battleQuestionText').textContent = 'Connecting to Quiz Engine...';
+  const mapQ = document.getElementById('battleQuestionText');
+  const kbcQ = document.getElementById('kbcQuestionPrompt');
+  if (mapQ) mapQ.textContent = 'Connecting to Quiz Engine...';
+  if (kbcQ) kbcQ.textContent = 'Connecting to Quiz Engine...';
   document.getElementById('battleHintText').textContent = 'Preparing authentic syllabus challenge...';
 
   // Try fetching fresh randomized, client-safe questions from Vercel Serverless
@@ -1341,31 +1345,27 @@ function nextBattleQuestion() {
   currentBattleQuestion = activeQuestionPool[battleQuestionIndex];
   battleQuestionIndex++;
 
-  document.getElementById('battleLevel').textContent = `Q ${battleQuestionIndex}/${activeQuestionPool.length}`;
+  document.getElementById('battleLevel').textContent = `${battleQuestionIndex}/${activeQuestionPool.length}`;
 
-  const kbcGrid = document.getElementById('kbcOptionsGrid');
+  const mapLayer = document.getElementById('battleMapHudLayer');
+  const kbcStudio = document.getElementById('battleKbcStudioStage');
   const lifelinesWrap = document.getElementById('battleLifelines');
-  const catBadge = document.getElementById('battleCategoryBadge');
   const expBox = document.getElementById('quizExplanationBox');
   const guidancePill = document.getElementById('battleGuidancePill');
 
   if (expBox) expBox.style.display = 'none';
-  if (guidancePill) {
-    guidancePill.style.display = battleSubMode === 'kbc' ? 'none' : 'flex';
-  }
 
   if (battleSubMode === 'kbc') {
-    // KBC 4-Option Mode
-    kbcGrid.style.display = 'grid';
-    lifelinesWrap.style.display = 'flex';
-    if (catBadge) {
-      catBadge.style.display = 'inline-block';
-      catBadge.textContent = currentBattleQuestion.category || 'UPSC/MPSC';
-    }
+    // KBC Studio Layout Active
+    if (mapLayer) mapLayer.style.display = 'none';
+    if (kbcStudio) kbcStudio.style.display = 'flex';
+    if (guidancePill) guidancePill.style.display = 'none';
+    if (lifelinesWrap) lifelinesWrap.style.display = 'flex';
 
-    document.getElementById('battleQuestionText').textContent = currentBattleQuestion.question;
-    document.getElementById('battleHintText').textContent = 'Select one of the 4 options below or use your 50:50 lifeline!';
-    document.getElementById('battleDiffBadge').textContent = currentBattleQuestion.difficulty || 'MEDIUM';
+    document.getElementById('kbcDiffBadge').textContent = currentBattleQuestion.difficulty || 'MEDIUM';
+    document.getElementById('kbcCategoryBadge').textContent = currentBattleQuestion.category || 'UPSC/MPSC GEOGRAPHY';
+    document.getElementById('kbcRoundIndicator').textContent = `QUESTION ${battleQuestionIndex} OF ${activeQuestionPool.length}`;
+    document.getElementById('kbcQuestionPrompt').textContent = currentBattleQuestion.question;
 
     // Populate options
     const optButtons = document.querySelectorAll('.kbc-opt-btn');
@@ -1376,17 +1376,21 @@ function nextBattleQuestion() {
       btn.querySelector('.kbc-opt-text').textContent = currentBattleQuestion.options[idx] || '';
     });
   } else {
-    // Map Click Modes (World or India)
-    kbcGrid.style.display = 'none';
-    lifelinesWrap.style.display = 'none';
+    // Map Click Modes (World or Bharat) Active
+    if (mapLayer) mapLayer.style.display = 'flex';
+    if (kbcStudio) kbcStudio.style.display = 'none';
+    if (guidancePill) guidancePill.style.display = 'flex';
+    if (lifelinesWrap) lifelinesWrap.style.display = 'none';
+
+    const catBadge = document.getElementById('battleCategoryBadge');
     if (catBadge) {
       catBadge.style.display = battleSubMode === 'india' ? 'inline-block' : 'none';
       catBadge.textContent = 'BHARAT STATES';
     }
 
+    document.getElementById('battleDiffBadge').textContent = currentBattleQuestion.difficulty || 'EASY';
     document.getElementById('battleQuestionText').textContent = currentBattleQuestion.text;
     document.getElementById('battleHintText').textContent = 'Locate and click the target region on the map before timer expires!';
-    document.getElementById('battleDiffBadge').textContent = currentBattleQuestion.difficulty || 'EASY';
   }
 
   // Reset countdown timer (15 seconds for thoughtful play)
@@ -1695,7 +1699,7 @@ function showBattleExplanation(isCorrect, fact, hint) {
 function endBattleRoyale() {
   clearInterval(battleTimerInterval);
   clearTimeout(battleAutoAdvanceTimer);
-  document.body.classList.remove('mode-battle');
+  document.body.classList.remove('mode-battle', 'submode-kbc');
   g.selectAll('.state-path').classed('correct-hit', false).classed('wrong-hit', false).classed('target-hint', false);
   g.selectAll('.country-path').classed('selected', false);
   document.getElementById('battleHud').style.display = 'none';
