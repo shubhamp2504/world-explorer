@@ -273,25 +273,39 @@
 
       <!-- GUESS WHERE MYSTERY HUD (PROFESSIONAL GEOGUESSR ARENA) -->
       <div class="mystery-hud" id="mysteryHud" style="display: none;">
+        <!-- Clean Top Telemetry & Control Bar -->
         <div class="mystery-hud-top" id="mysteryHudTop">
           <div class="battle-arena-left">
             <div class="arena-brand-chip mystery-brand">
               <span class="arena-icon">🕵️</span>
               <span class="arena-name">GEOGUESSR</span>
             </div>
-            <div class="mystery-round-badge" id="mysteryRoundBadge">ROUND 1 OF 6</div>
-          </div>
-
-          <!-- Dedicated Prominent Integrated Mystery Clue Banner (Zero Map Overlap) -->
-          <div class="mystery-clue-banner" id="mysteryClueBanner">
-            <span class="mystery-clue-label">CLUE INTEL</span>
-            <p class="mystery-clue-content" id="mysteryClueContent">Loading clue...</p>
+            <div class="mystery-round-badge" id="mysteryRoundBadge">CLUE 1 OF 6</div>
+            <div class="mystery-score-badge" id="mysteryScoreBadge">1,000 PTS</div>
           </div>
 
           <div class="mystery-actions" id="mysteryActionsRow">
-            <button class="btn-guess-next-clue" id="btnNextClue">Next Clue (+penalty)</button>
-            <button class="btn-guess-giveup" id="btnMysteryReveal">Give Up</button>
+            <button class="btn-guess-next-clue" id="btnNextClue">🔍 Next Clue (-150 pts)</button>
+            <button class="btn-guess-giveup" id="btnMysteryReveal">💡 Give Up</button>
             <button class="btn-end-battle" id="btnMysteryExitTop" title="Exit Mystery Arena">✕ Exit</button>
+          </div>
+        </div>
+
+        <!-- Dedicated Floating Clue Dossier Card (Zero Truncation, Multi-line Capable) -->
+        <div class="mystery-dossier-layer" id="mysteryDossierLayer">
+          <div class="mystery-clue-dossier-card" id="mysteryClueCard">
+            <div class="mystery-clue-header-row">
+              <span class="mystery-clue-label" id="mysteryClueLabel">🌡️ CLIMATE INTEL</span>
+              <div class="mystery-clue-stepper" id="mysteryClueStepper">
+                <span class="stepper-dot active"></span>
+                <span class="stepper-dot"></span>
+                <span class="stepper-dot"></span>
+                <span class="stepper-dot"></span>
+                <span class="stepper-dot"></span>
+                <span class="stepper-dot"></span>
+              </div>
+            </div>
+            <p class="mystery-clue-content" id="mysteryClueContent">Loading mystery clues...</p>
           </div>
         </div>
 

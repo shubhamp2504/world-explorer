@@ -1787,9 +1787,26 @@ function startMysteryGame() {
 }
 
 function showMysteryClue() {
-  document.getElementById('mysteryRoundBadge').textContent = `CLUE ${mysteryClueRound} OF 6 (Value: ${mysteryScore} pts)`;
-  const clue = currentMysteryTarget.clues.find(c => c.round === mysteryClueRound);
-  document.getElementById('mysteryClueContent').textContent = clue ? `${clue.label}: ${clue.text}` : '';
+  document.getElementById('mysteryRoundBadge').textContent = `CLUE ${mysteryClueRound} OF 6`;
+  const scoreBadge = document.getElementById('mysteryScoreBadge');
+  if (scoreBadge) scoreBadge.textContent = `${mysteryScore.toLocaleString()} PTS`;
+
+  const clue = currentMysteryTarget?.clues?.find(c => c.round === mysteryClueRound);
+  const labelEl = document.getElementById('mysteryClueLabel');
+  const contentEl = document.getElementById('mysteryClueContent');
+
+  if (labelEl && clue) {
+    labelEl.textContent = clue.label.toUpperCase();
+  }
+  if (contentEl && clue) {
+    contentEl.textContent = clue.text;
+  }
+
+  // Update 6-dot progress stepper
+  const dots = document.querySelectorAll('.mystery-clue-stepper .stepper-dot');
+  dots.forEach((dot, idx) => {
+    dot.classList.toggle('active', idx < mysteryClueRound);
+  });
 }
 
 function handleMysteryMapGuess(lng, lat) {
