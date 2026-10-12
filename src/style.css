@@ -396,6 +396,26 @@ input, select {
   z-index: 2;
 }
 
+.game-fx-canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 45;
+}
+
+/* Visceral Screen Shake on Incorrect Guess */
+.screen-shake {
+  animation: cameraJolt 0.4s cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
+}
+@keyframes cameraJolt {
+  10%, 90% { transform: translate3d(-3px, 0, 0); }
+  20%, 80% { transform: translate3d(5px, 0, 0); }
+  30%, 50%, 70% { transform: translate3d(-6px, 0, 0); }
+  40%, 60% { transform: translate3d(6px, 0, 0); }
+}
+
 /* ☀️ SUN & 🌙 MOON CELESTIAL STATUS PILL */
 /* 🪐 SOLAR SYSTEM PLANETARY SELECTOR DOCK */
 .celestial-status-pill {
@@ -588,62 +608,66 @@ input, select {
   text-transform: uppercase;
 }
 
-/* Ocean Spheres & Borders - Vivid Cyber Cartography Depth (Zero-Lag Hardware Accelerated) */
+/* Ocean Spheres & Borders - Vivid Cyber Cartography Depth */
 .sphere {
-  fill: #081636;
+  fill: #0a1738;
 }
 .sphere-border {
   fill: none;
-  stroke: rgba(56, 189, 248, 0.6);
+  stroke: rgba(56, 189, 248, 0.7);
   stroke-width: 1.5px;
+  filter: drop-shadow(0 0 6px rgba(56, 189, 248, 0.4));
 }
 .graticule {
   fill: none;
-  stroke: rgba(56, 189, 248, 0.08);
+  stroke: rgba(56, 189, 248, 0.12);
   stroke-width: 0.6px;
 }
 
-/* Ultra-HD Cyber-Cartography Landmasses - High Contrast */
+/* Ultra-HD Cyber-Cartography Landmasses - High Contrast and Legibility */
 .country-path {
-  fill: #19315c;
-  stroke: rgba(56, 189, 248, 0.45);
-  stroke-width: 0.8px;
+  fill: #1e3a6a;
+  stroke: rgba(125, 211, 252, 0.55);
+  stroke-width: 0.9px;
   cursor: pointer;
-  transition: fill 0.15s ease, stroke 0.15s ease;
+  transition: fill 0.15s ease, stroke 0.15s ease, filter 0.15s ease;
   vector-effect: non-scaling-stroke;
 }
-.region-Africa    { fill: #1c3664; }
-.region-Americas  { fill: #1a3360; }
-.region-Asia      { fill: #18305c; }
-.region-Europe    { fill: #1d396a; }
-.region-Oceania   { fill: #1a3461; }
-.region-Antarctic { fill: #132448; }
-.region-Other     { fill: #172e59; }
+.region-Africa    { fill: #204074; }
+.region-Americas  { fill: #1d3b6e; }
+.region-Asia      { fill: #1f3e72; }
+.region-Europe    { fill: #23457d; }
+.region-Oceania   { fill: #1d3d70; }
+.region-Antarctic { fill: #182e56; }
+.region-Other     { fill: #1c3866; }
 
 .country-path:hover {
   fill: #0284c7 !important;
-  stroke: #ffffff !important;
-  stroke-width: 1.8px;
+  stroke: #38bdf8 !important;
+  stroke-width: 2px;
+  filter: drop-shadow(0 0 10px rgba(56, 189, 248, 0.75));
 }
 .country-path.selected {
-  fill: #0284c7 !important;
+  fill: #0369a1 !important;
   stroke: #ffffff !important;
   stroke-width: 2.2px;
+  filter: drop-shadow(0 0 14px rgba(255, 255, 255, 0.8));
 }
 
 /* Indian States & UTs Layer - Sharp Gold-Cyan Administrative Boundaries */
 .state-path {
-  fill: #1f3f77;
-  stroke: rgba(245, 158, 11, 0.85);
-  stroke-width: 1px;
+  fill: #224985;
+  stroke: #f59e0b;
+  stroke-width: 1.2px;
   cursor: pointer;
-  transition: fill 0.15s ease, stroke 0.15s ease;
+  transition: fill 0.15s ease, stroke 0.15s ease, filter 0.15s ease;
   vector-effect: non-scaling-stroke;
 }
 .state-path:hover {
   fill: #2563eb !important;
   stroke: #ffffff !important;
-  stroke-width: 2px !important;
+  stroke-width: 2.2px !important;
+  filter: drop-shadow(0 0 8px rgba(245, 158, 11, 0.8));
 }
 .state-path.correct-hit {
   fill: #059669 !important;
@@ -1125,56 +1149,66 @@ body.mode-mystery .toast-stream {
 
 .battle-question-banner {
   pointer-events: auto;
-  margin: 10px auto 0 auto;
-  max-width: min(920px, 94vw);
-  background: linear-gradient(135deg, rgba(10, 22, 54, 0.95), rgba(4, 12, 34, 0.96));
-  border: 1px solid rgba(56, 189, 248, 0.45);
-  border-radius: var(--radius-lg);
-  padding: 12px 28px;
+  margin: 0;
+  flex: 1 1 auto;
+  min-width: 0;
+  max-width: 620px;
+  background: rgba(15, 23, 42, 0.65);
+  border: 1px solid rgba(56, 189, 248, 0.35);
+  border-radius: var(--radius-pill);
+  padding: 5px 14px;
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   align-items: center;
-  gap: 7px;
-  backdrop-filter: blur(24px);
-  box-shadow: 0 10px 36px rgba(0, 0, 0, 0.7), 0 0 24px rgba(56, 189, 248, 0.18);
+  justify-content: center;
+  gap: 10px;
+  backdrop-filter: blur(16px);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.1), 0 4px 20px rgba(0, 0, 0, 0.4);
   animation: fadeIn 0.3s ease-out;
 }
 
 .battle-badge-group {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   flex-shrink: 0;
 }
 .battle-badge {
-  font-size: 0.68rem;
+  font-size: 0.65rem;
   font-weight: 800;
   color: #38bdf8;
   background: rgba(56, 189, 248, 0.15);
   border: 1px solid rgba(56, 189, 248, 0.35);
-  padding: 3px 9px;
+  padding: 2px 8px;
   border-radius: 99px;
   letter-spacing: 0.05em;
+  white-space: nowrap;
 }
 .battle-category-badge {
-  font-size: 0.68rem;
+  font-size: 0.65rem;
   font-weight: 800;
   color: #f59e0b;
   background: rgba(245, 158, 11, 0.15);
   border: 1px solid rgba(245, 158, 11, 0.4);
-  padding: 3px 9px;
+  padding: 2px 8px;
   border-radius: 99px;
   letter-spacing: 0.05em;
+  white-space: nowrap;
 }
 .battle-question {
   margin: 0;
-  font-size: 1.15rem;
-  font-weight: 800;
+  font-size: 0.92rem;
+  font-weight: 700;
   color: #ffffff;
-  line-height: 1.35;
+  line-height: 1.2;
   text-align: center;
   letter-spacing: -0.01em;
-  text-shadow: 0 2px 14px rgba(0, 0, 0, 0.8);
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.7);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex: 1 1 auto;
+  min-width: 0;
 }
 
 .battle-top-right-group {
@@ -1644,18 +1678,20 @@ body.mode-mystery .toast-stream {
 }
 .mystery-clue-banner {
   pointer-events: auto;
-  margin: 10px auto 0 auto;
-  max-width: min(920px, 94vw);
-  background: linear-gradient(135deg, rgba(28, 12, 48, 0.95), rgba(12, 6, 26, 0.96));
-  border: 1px solid rgba(192, 132, 252, 0.45);
-  border-radius: var(--radius-lg);
-  padding: 12px 28px;
+  margin: 0;
+  flex: 1;
+  max-width: 680px;
+  background: rgba(28, 12, 48, 0.65);
+  border: 1px solid rgba(192, 132, 252, 0.35);
+  border-radius: var(--radius-pill);
+  padding: 6px 18px;
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   align-items: center;
-  gap: 7px;
-  backdrop-filter: blur(24px);
-  box-shadow: 0 10px 36px rgba(0, 0, 0, 0.7), 0 0 24px rgba(192, 132, 252, 0.2);
+  justify-content: center;
+  gap: 12px;
+  backdrop-filter: blur(16px);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.1), 0 4px 20px rgba(0, 0, 0, 0.4);
   animation: fadeIn 0.3s ease-out;
 }
 .mystery-clue-label {
@@ -1663,20 +1699,25 @@ body.mode-mystery .toast-stream {
   font-weight: 800;
   letter-spacing: 0.1em;
   color: #d8b4fe;
-  background: rgba(192, 132, 252, 0.15);
-  border: 1px solid rgba(192, 132, 252, 0.35);
+  background: rgba(192, 132, 252, 0.2);
+  border: 1px solid rgba(192, 132, 252, 0.4);
   padding: 2px 8px;
   border-radius: 99px;
   text-transform: uppercase;
+  white-space: nowrap;
 }
 .mystery-clue-content {
   margin: 0;
-  font-size: 1.05rem;
+  font-size: 0.95rem;
   font-weight: 700;
   color: #ffffff;
-  line-height: 1.4;
+  line-height: 1.25;
   text-align: center;
-  text-shadow: 0 2px 12px rgba(0, 0, 0, 0.8);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 480px;
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.7);
 }
 .mystery-actions {
   display: flex;

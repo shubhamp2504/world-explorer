@@ -129,6 +129,7 @@
       <div class="map-render-canvas" id="mapRenderCanvas">
         <div id="globe3dContainer" class="globe-3d-canvas"></div>
         <svg id="earthSvg" style="display: none;"></svg>
+        <canvas id="gameFxCanvas" class="game-fx-canvas"></canvas>
         <div class="earth-tooltip" id="earthTooltip"></div>
 
         <!-- 🌌 ULTRA-HD SOLAR SYSTEM PLANETARY DOCK -->
@@ -174,6 +175,15 @@
             </div>
           </div>
 
+          <!-- Prominent Integrated Question Banner in Header (Zero Map Overlap) -->
+          <div class="battle-question-banner" id="battleQuestionBanner">
+            <div class="battle-badge-group">
+              <span class="battle-badge" id="battleDiffBadge">EASY</span>
+              <span class="battle-category-badge" id="battleCategoryBadge" style="display: none;">BHARAT STATES</span>
+            </div>
+            <h2 class="battle-question" id="battleQuestionText">Click on the country!</h2>
+          </div>
+
           <div class="battle-top-right-group">
             <div class="battle-stat-chip score-chip">
               <span class="hud-label">SCORE</span>
@@ -196,15 +206,6 @@
             </div>
             <button class="btn-end-battle" id="btnEndBattle" title="Exit Battle Arena">✕ Exit</button>
           </div>
-        </div>
-
-        <!-- Prominent Floating Question Banner -->
-        <div class="battle-question-banner" id="battleQuestionBanner">
-          <div class="battle-badge-group">
-            <span class="battle-badge" id="battleDiffBadge">EASY</span>
-            <span class="battle-category-badge" id="battleCategoryBadge" style="display: none;">BHARAT STATES</span>
-          </div>
-          <h2 class="battle-question" id="battleQuestionText">Click on the country!</h2>
         </div>
 
         <!-- Bottom Action Dock (Options or Hints or Explanations) -->
@@ -250,17 +251,18 @@
             </div>
             <div class="mystery-round-badge" id="mysteryRoundBadge">ROUND 1 OF 6</div>
           </div>
+
+          <!-- Dedicated Prominent Integrated Mystery Clue Banner (Zero Map Overlap) -->
+          <div class="mystery-clue-banner" id="mysteryClueBanner">
+            <span class="mystery-clue-label">CLUE INTEL</span>
+            <p class="mystery-clue-content" id="mysteryClueContent">Loading clue...</p>
+          </div>
+
           <div class="mystery-actions" id="mysteryActionsRow">
             <button class="btn-guess-next-clue" id="btnNextClue">Next Clue (+penalty)</button>
             <button class="btn-guess-giveup" id="btnMysteryReveal">Give Up</button>
             <button class="btn-end-battle" id="btnMysteryExitTop" title="Exit Mystery Arena">✕ Exit</button>
           </div>
-        </div>
-
-        <!-- Dedicated Prominent Mystery Clue Banner -->
-        <div class="mystery-clue-banner" id="mysteryClueBanner">
-          <span class="mystery-clue-label">CLUE INTEL</span>
-          <p class="mystery-clue-content" id="mysteryClueContent">Loading clue...</p>
         </div>
 
         <div class="mystery-hud-dock" id="mysteryHudDock">

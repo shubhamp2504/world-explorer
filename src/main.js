@@ -246,15 +246,113 @@ function initD3Map() {
 
   buildFlatProjection();
   renderMapLayers();
+  initGameFxCanvas();
 
   window.addEventListener('resize', () => {
     width = container.clientWidth;
     height = container.clientHeight;
     svg.attr('width', width).attr('height', height);
+    resizeGameFxCanvas();
     if (currentProjection === 'flat') buildFlatProjection();
     else buildGlobeProjection();
     renderMapLayers();
   });
+}
+
+// ============================================================
+// VISCERAL ARCADE & ESPORTS GAME ENGINE (PARTICLES & SCREEN SHAKE)
+// ============================================================
+let fxCanvas = null;
+let fxCtx = null;
+let fxParticles = [];
+let fxAnimationId = null;
+
+function initGameFxCanvas() {
+  fxCanvas = document.getElementById('gameFxCanvas');
+  if (!fxCanvas) return;
+  fxCtx = fxCanvas.getContext('2d');
+  resizeGameFxCanvas();
+}
+
+function resizeGameFxCanvas() {
+  if (!fxCanvas) return;
+  const container = document.getElementById('mapRenderCanvas');
+  fxCanvas.width = container.clientWidth || window.innerWidth;
+  fxCanvas.height = container.clientHeight || window.innerHeight;
+}
+
+function triggerVictoryParticles(originX = null, originY = null, count = 55) {
+  if (!fxCanvas || !fxCtx) return;
+  const w = fxCanvas.width;
+  const h = fxCanvas.height;
+  const cx = originX ?? (w / 2);
+  const cy = originY ?? (h / 2);
+
+  const colors = ['#38bdf8', '#34d399', '#fbbf24', '#f43f5e', '#a855f7', '#ffffff'];
+
+  for (let i = 0; i < count; i++) {
+    const angle = Math.random() * Math.PI * 2;
+    const speed = 3 + Math.random() * 9;
+    fxParticles.push({
+      x: cx,
+      y: cy,
+      vx: Math.cos(angle) * speed,
+      vy: Math.sin(angle) * speed - 1.5,
+      size: 4 + Math.random() * 5,
+      color: colors[Math.floor(Math.random() * colors.length)],
+      alpha: 1,
+      gravity: 0.22,
+      rotation: Math.random() * Math.PI,
+      vRot: (Math.random() - 0.5) * 0.2
+    });
+  }
+
+  if (!fxAnimationId) {
+    animateFxParticles();
+  }
+}
+
+function animateFxParticles() {
+  if (!fxCtx || !fxCanvas) return;
+  fxCtx.clearRect(0, 0, fxCanvas.width, fxCanvas.height);
+
+  for (let i = fxParticles.length - 1; i >= 0; i--) {
+    const p = fxParticles[i];
+    p.x += p.vx;
+    p.y += p.vy;
+    p.vy += p.gravity;
+    p.rotation += p.vRot;
+    p.alpha -= 0.018;
+
+    if (p.alpha <= 0) {
+      fxParticles.splice(i, 1);
+      continue;
+    }
+
+    fxCtx.save();
+    fxCtx.globalAlpha = Math.max(0, p.alpha);
+    fxCtx.translate(p.x, p.y);
+    fxCtx.rotate(p.rotation);
+    fxCtx.fillStyle = p.color;
+    fxCtx.fillRect(-p.size / 2, -p.size / 2, p.size, p.size * 1.5);
+    fxCtx.restore();
+  }
+
+  if (fxParticles.length > 0) {
+    fxAnimationId = requestAnimationFrame(animateFxParticles);
+  } else {
+    fxAnimationId = null;
+    fxCtx.clearRect(0, 0, fxCanvas.width, fxCanvas.height);
+  }
+}
+
+function triggerScreenShake() {
+  const vp = document.getElementById('mapViewport');
+  if (!vp) return;
+  vp.classList.remove('screen-shake');
+  void vp.offsetWidth; // Trigger reflow
+  vp.classList.add('screen-shake');
+  setTimeout(() => vp.classList.remove('screen-shake'), 420);
 }
 
 function buildFlatProjection() {
@@ -1287,7 +1385,7 @@ function nextBattleQuestion() {
     }
 
     document.getElementById('battleQuestionText').textContent = currentBattleQuestion.text;
-    document.getElementById('battleHintText').textContent = currentBattleQuestion.hint;
+    document.getElementById('battleHintText').textContent = 'Locate and click the target region on the map before timer expires!';
     document.getElementById('battleDiffBadge').textContent = currentBattleQuestion.difficulty || 'EASY';
   }
 
@@ -1300,6 +1398,13 @@ function nextBattleQuestion() {
   battleTimerInterval = setInterval(() => {
     battleTimerSeconds--;
     timerCircle.textContent = battleTimerSeconds;
+    // Progressive tactical clue at <= 6 seconds left
+    if (battleTimerSeconds === 6 && battleSubMode !== 'kbc' && currentBattleQuestion.hint) {
+      const hintEl = document.getElementById('battleHintText');
+      if (hintEl) {
+        hintEl.textContent = `💡 Tactical Intel: ${currentBattleQuestion.hint}`;
+      }
+    }
     if (battleTimerSeconds <= 0) {
       clearInterval(battleTimerInterval);
       battleStreak = 0;
@@ -1338,15 +1443,23 @@ async function handleKbcOptionClick(chosenIdx, clickedBtn) {
 
   if (isCorrect) {
     clickedBtn.classList.add('correct');
-    sounds.playWhoosh();
     const points = 500 + (battleTimerSeconds * 50) + (battleStreak * 100);
     battleScore += points;
     battleStreak += 1;
+    if (battleStreak >= 3) {
+      sounds.playStreak(battleStreak);
+    } else {
+      sounds.playCorrect(battleStreak);
+    }
+    const rect = clickedBtn.getBoundingClientRect();
+    triggerVictoryParticles(rect.left + rect.width / 2, rect.top + rect.height / 2, 45);
     document.getElementById('battleScore').textContent = battleScore.toLocaleString();
     document.getElementById('battleStreak').textContent = `🔥 ${battleStreak}`;
     showToast(`✅ SAHI JAWAB! (Correct) +${points} pts!`);
   } else {
     clickedBtn.classList.add('wrong');
+    sounds.playWrong();
+    triggerScreenShake();
     if (correctIndex >= 0 && optButtons[correctIndex]) {
       optButtons[correctIndex].classList.add('correct');
     }
@@ -1433,16 +1546,22 @@ async function handleBattleStateClick(stateCode, stateName, stateFeature, px, py
   g.selectAll('.state-path').classed('correct-hit', false).classed('wrong-hit', false).classed('target-hint', false);
 
   if (isCorrect) {
-    sounds.playCorrect();
+    if (battleStreak >= 3) {
+      sounds.playStreak(battleStreak + 1);
+    } else {
+      sounds.playCorrect(battleStreak + 1);
+    }
     g.selectAll(`.state-path[data-state-code="${stateCode}"]`).classed('correct-hit', true);
     const points = 600 + (battleTimerSeconds * 50) + (battleStreak * 100);
     battleScore += points;
     battleStreak += 1;
+    triggerVictoryParticles(px, py, 60);
     document.getElementById('battleScore').textContent = battleScore.toLocaleString();
     document.getElementById('battleStreak').textContent = `🔥 ${battleStreak}`;
     showToast(`✅ PERFECT STATE! ${stateName} identified (+${points} pts)!`);
   } else {
     sounds.playWrong();
+    triggerScreenShake();
     battleStreak = 0;
     document.getElementById('battleStreak').textContent = '🔥 0';
     g.selectAll(`.state-path[data-state-code="${stateCode}"]`).classed('wrong-hit', true);
@@ -1479,16 +1598,22 @@ async function handleBattleMapClick(clickedCode, countryObj, clickedLng = null, 
     g.selectAll('.state-path').classed('correct-hit', false).classed('wrong-hit', false).classed('target-hint', false);
 
     if (isCorrect) {
-      sounds.playCorrect();
+      if (battleStreak >= 3) {
+        sounds.playStreak(battleStreak + 1);
+      } else {
+        sounds.playCorrect(battleStreak + 1);
+      }
       g.selectAll(`.state-path[data-state-code="${targetCode}"]`).classed('correct-hit', true);
       const points = 600 + (battleTimerSeconds * 50) + (battleStreak * 100);
       battleScore += points;
       battleStreak += 1;
+      triggerVictoryParticles(px, py, 60);
       document.getElementById('battleScore').textContent = battleScore.toLocaleString();
       document.getElementById('battleStreak').textContent = `🔥 ${battleStreak}`;
       showToast(`✅ PERFECT STATE TARGET! ${fact}`);
     } else {
       sounds.playWrong();
+      triggerScreenShake();
       battleStreak = 0;
       document.getElementById('battleStreak').textContent = '🔥 0';
       if (closestState) {
@@ -1507,10 +1632,15 @@ async function handleBattleMapClick(clickedCode, countryObj, clickedLng = null, 
     isCorrect = serverValidation ? serverValidation.isCorrect : (clickedCode === targetCode);
 
     if (isCorrect) {
-      sounds.playCorrect();
+      if (battleStreak >= 3) {
+        sounds.playStreak(battleStreak + 1);
+      } else {
+        sounds.playCorrect(battleStreak + 1);
+      }
       const points = 500 + (battleTimerSeconds * 50) + (battleStreak * 100);
       battleScore += points;
       battleStreak += 1;
+      triggerVictoryParticles(px, py, 65);
       document.getElementById('battleScore').textContent = battleScore.toLocaleString();
       document.getElementById('battleStreak').textContent = `🔥 ${battleStreak}`;
       showToast(`✅ CORRECT! +${points} pts!`);
@@ -1518,6 +1648,7 @@ async function handleBattleMapClick(clickedCode, countryObj, clickedLng = null, 
       zoomToCoordinates(currentBattleQuestion.lng, currentBattleQuestion.lat, 3.8);
     } else {
       sounds.playWrong();
+      triggerScreenShake();
       battleStreak = 0;
       document.getElementById('battleStreak').textContent = '🔥 0';
       showToast(`❌ WRONG! That was ${countryObj?.name || 'an incorrect place'}`);
@@ -1708,6 +1839,15 @@ function handleMysteryMapGuess(lng, lat) {
   const isWarm = dKm < 1200;
   const radarIcon = isHot ? '🔥' : (isWarm ? '🌡️' : '❄️');
   const tempWord = isHot ? '🔥 BURNING HOT!' : (isWarm ? '🌡️ WARM & CLOSE!' : '❄️ CHILLY / FAR!');
+
+  if (isHot) {
+    sounds.playCorrect(3);
+    triggerVictoryParticles(pGuess ? pGuess[0] : null, pGuess ? pGuess[1] : null, 60);
+  } else if (isWarm) {
+    sounds.playTone(660, 'triangle', 0.2, 0.15);
+  } else {
+    sounds.playTone(280, 'sine', 0.25, 0.12);
+  }
 
   // Display Round Result Box
   const resBox = document.getElementById('mysteryResultBox');
@@ -2066,6 +2206,20 @@ function handleModeSwitch(mode) {
   if (battleHud) battleHud.style.display = 'none';
   const mysteryHud = document.getElementById('mysteryHud');
   if (mysteryHud) mysteryHud.style.display = 'none';
+
+  // Clean up any ongoing mode intervals and state
+  if (currentMode !== 'battle') {
+    clearInterval(battleTimerInterval);
+    clearTimeout(battleAutoAdvanceTimer);
+    document.body.classList.remove('mode-battle');
+    g?.selectAll('.state-path')?.classed('correct-hit', false)?.classed('wrong-hit', false)?.classed('target-hint', false);
+    g?.selectAll('.country-path')?.classed('selected', false);
+  }
+  if (currentMode !== 'mystery') {
+    document.body.classList.remove('mode-mystery');
+    g?.selectAll('.guess-line')?.remove();
+    g?.selectAll('.guess-marker')?.remove();
+  }
 
   if (mode === 'explore') {
     if (globe3dInstance) globe3dInstance.clearMarkers();

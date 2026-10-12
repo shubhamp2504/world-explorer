@@ -99,6 +99,62 @@ class SoundEngine {
     } catch (e) {}
   }
 
+  // Melodic celebratory chime on correct answer with dynamic streak pitch
+  playCorrect(streak = 1) {
+    if (!this.ctx || this.isMuted) return;
+    try {
+      const baseFreq = 523.25; // C5
+      const intervalMultiplier = Math.min(2.0, 1 + ((streak - 1) * 0.08));
+      const root = baseFreq * intervalMultiplier;
+
+      const freqs = [root, root * 1.25, root * 1.5, root * 2.0]; // Major chord arpeggio
+      freqs.forEach((f, idx) => {
+        setTimeout(() => {
+          this.playTone(f, 'triangle', 0.22, 0.14);
+        }, idx * 60);
+      });
+    } catch (e) {}
+  }
+
+  // Low dramatic buzz on wrong answer
+  playWrong() {
+    if (!this.ctx || this.isMuted) return;
+    try {
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(140, this.ctx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(60, this.ctx.currentTime + 0.35);
+
+      gain.gain.setValueAtTime(0.2, this.ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + 0.35);
+
+      const filter = this.ctx.createBiquadFilter();
+      filter.type = 'lowpass';
+      filter.frequency.setValueAtTime(450, this.ctx.currentTime);
+
+      osc.connect(filter);
+      filter.connect(gain);
+      gain.connect(this.ctx.destination);
+
+      osc.start();
+      osc.stop(this.ctx.currentTime + 0.35);
+    } catch (e) {}
+  }
+
+  // Ultra-rewarding fanfare for high streak / combo
+  playStreak(streak) {
+    if (!this.ctx || this.isMuted) return;
+    try {
+      const freqs = [440, 554.37, 659.25, 880, 1108.73];
+      freqs.forEach((f, idx) => {
+        setTimeout(() => {
+          this.playTone(f, 'sine', 0.28, 0.16);
+        }, idx * 45);
+      });
+    } catch (e) {}
+  }
+
   // Smooth cinematic planetary flyTo whoosh
   playWhoosh() {
     if (!this.ctx || this.isMuted) return;
