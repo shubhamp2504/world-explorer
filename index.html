@@ -143,9 +143,6 @@
           <div class="planet-selector-scroll" id="planetSelectorScroll">
             <button class="planet-pill orrery-pill active" data-planet="system" id="btnWholeSolarSystem" title="Whole Solar System in One Frame">🌌 Whole Solar System</button>
             <button class="planet-pill orrery-pill" data-planet="cosmos" id="btnLaunchCosmosPill" title="Powers of Ten: Infinite Zoom from Earth to the Observable Universe">🌌 Powers of 10 (Deep Cosmos)</button>
-            <button class="planet-pill orrery-pill" data-planet="cme" id="btnTriggerCmePill" title="Trigger Coronal Mass Ejection Shockwave">💥 CME Solar Flare</button>
-            <button class="planet-pill orrery-pill" data-planet="eclipse" id="btnTriggerEclipsePill" title="Experience Total Solar Eclipse Totality">🌑 Solar Eclipse</button>
-            <button class="planet-pill orrery-pill" data-planet="ringdive" id="btnRingDivePill" title="Dive into Saturn's Ring Plane and Cassini Division">🪐 Saturn Ring Dive</button>
             <button class="planet-pill" data-planet="sun" title="The Sun">☀️ Sun</button>
             <button class="planet-pill" data-planet="mercury" title="Mercury">☿️ Mercury</button>
             <button class="planet-pill" data-planet="venus" title="Venus">♀️ Venus</button>
@@ -153,11 +150,7 @@
             <button class="planet-pill" data-planet="moon" title="The Moon">🌕 Moon</button>
             <button class="planet-pill" data-planet="mars" title="Mars">♂️ Mars</button>
             <button class="planet-pill" data-planet="jupiter" title="Jupiter">♃ Jupiter</button>
-            <button class="planet-pill" data-planet="io" title="Io (Jovian Volcanic Moon & Sulfur Plumes)">🌋 Io</button>
-            <button class="planet-pill" data-planet="europa" title="Europa (Jovian Ice Ocean Moon & Geysers)">🌊 Europa</button>
             <button class="planet-pill" data-planet="saturn" title="Saturn (3D Rings)">♄ Saturn</button>
-            <button class="planet-pill" data-planet="enceladus" title="Enceladus (Saturnian Tiger-Stripe Cryo-Plumes)">❄️ Enceladus</button>
-            <button class="planet-pill" data-planet="titan" title="Titan (Saturnian Methane Seas & Organic Smog)">🪐 Titan</button>
             <button class="planet-pill" data-planet="uranus" title="Uranus">♅ Uranus</button>
             <button class="planet-pill" data-planet="neptune" title="Neptune">♆ Neptune</button>
             <button class="planet-pill" data-planet="pluto" title="Pluto (Dwarf Planet & Tombaugh Regio Heart)">♇ Pluto</button>
@@ -809,50 +802,6 @@
            ======================================================== -->
       <div class="cosmos-hud-container" id="cosmosHudContainer" style="display: none;"></div>
 
-      <!-- ========================================================
-           🌑 SOLAR ECLIPSE TOTALITY GROUND VIEW HUD
-           ======================================================== -->
-      <div class="eclipse-totality-hud" id="eclipseTotalityHud" style="display: none;">
-        <div class="totality-badge-row">
-          <span class="totality-pulse-icon">🌑</span>
-          <span class="totality-title">TOTAL SOLAR ECLIPSE — TOTALITY</span>
-          <span class="totality-glint-tag">✨ DIAMOND RING PHASE</span>
-        </div>
-        <p class="totality-description">Observing the ethereal magnetic corona and streamer filaments from Earth's umbral shadow path.</p>
-        <div class="totality-action-row">
-          <button class="btn-totality-exit" id="btnExitEclipseTotality">🚀 Return to Orbit</button>
-        </div>
-      </div>
-
-      <!-- ========================================================
-           🪐 SATURN RING PLANE DIVE (CASSINI DIVISION) HUD
-           ======================================================== -->
-      <div class="ring-dive-hud" id="ringDiveHud" style="display: none;">
-        <div class="ring-dive-badge-row">
-          <span class="ring-dive-pulse-icon">🪐</span>
-          <span class="ring-dive-title">SATURN RING PLANE DIVE</span>
-          <span class="ring-dive-cassini-tag">✨ CASSINI DIVISION</span>
-        </div>
-        <p class="ring-dive-description">Surfing through 1,400 tumbling 3D water-ice boulders within Saturn's 10-meter thick ring plane.</p>
-        <div class="ring-dive-metrics-row">
-          <div class="rd-metric-chip">
-            <span class="rd-lbl">ALTITUDE</span>
-            <span class="rd-val">~14 m</span>
-          </div>
-          <div class="rd-metric-chip">
-            <span class="rd-lbl">PARTICLE DENSITY</span>
-            <span class="rd-val">99% Water Ice</span>
-          </div>
-          <div class="rd-metric-chip">
-            <span class="rd-lbl">ORBITAL SPEED</span>
-            <span class="rd-val">17.8 km/s</span>
-          </div>
-        </div>
-        <div class="ring-dive-action-row">
-          <button class="btn-ring-dive-exit" id="btnExitRingDive">🚀 Climb to High Orbit</button>
-        </div>
-      </div>
-
       <!-- MAP FOOTER STATUS TICKER -->
       <div class="map-footer-ticker">
         <div class="ticker-left-tag">🔥 EARTH LIVE TICKER</div>
@@ -973,17 +922,8 @@
           <div class="wild-facts-list" id="planetFactsList"></div>
         </div>
 
-        <div class="drawer-footer-actions" style="flex-direction: column; gap: 8px;">
-          <button class="btn-share-trigger solar-flare-btn" id="btnTriggerSolarFlare" style="display: none; width: 100%;">
-            <span>💥 Detonate Solar Flare (CME)</span>
-          </button>
-          <button class="btn-share-trigger eclipse-btn" id="btnAlignEclipse" style="display: none; width: 100%;">
-            <span>🌑 Experience Total Solar Eclipse</span>
-          </button>
-          <button class="btn-share-trigger ring-dive-btn" id="btnSaturnRingDive" style="display: none; width: 100%;">
-            <span>🪐 Dive into Saturn's Ring Plane</span>
-          </button>
-          <button class="btn-share-trigger" id="btnReturnToEarth" style="width: 100%;">
+        <div class="drawer-footer-actions">
+          <button class="btn-share-trigger" id="btnReturnToEarth">
             <span>🌍 Return to Earth</span>
           </button>
         </div>
