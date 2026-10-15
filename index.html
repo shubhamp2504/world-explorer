@@ -143,7 +143,6 @@
           <div class="planet-selector-scroll" id="planetSelectorScroll">
             <button class="planet-pill orrery-pill active" data-planet="system" id="btnWholeSolarSystem" title="Whole Solar System in One Frame">🌌 Whole Solar System</button>
             <button class="planet-pill orrery-pill" data-planet="cosmos" id="btnLaunchCosmosPill" title="Powers of Ten: Infinite Zoom from Earth to the Observable Universe">🌌 Powers of 10 (Deep Cosmos)</button>
-            <button class="planet-pill orrery-pill" data-planet="living_ocean" id="btnLivingOceanPill" title="Experience Earth's Living Ocean with Gerstner Waves, Whitecap Foam & Sun Glint">🌊 Living Ocean</button>
             <button class="planet-pill" data-planet="sun" title="The Sun">☀️ Sun</button>
             <button class="planet-pill" data-planet="mercury" title="Mercury">☿️ Mercury</button>
             <button class="planet-pill" data-planet="venus" title="Venus">♀️ Venus</button>
@@ -801,38 +800,7 @@
       <!-- ========================================================
            🌌 POWERS OF TEN: COSMIC SCALE (10^7 m to 10^26 m) HUD
            ======================================================== -->
-      <!-- ========================================================
-           🌊 EARTH LIVING OCEAN & HYDRODYNAMICS HUD
-           ======================================================== -->
-      <div class="living-ocean-hud" id="livingOceanHud" style="display: none;">
-        <div class="living-ocean-badge-row">
-          <span class="living-ocean-pulse-icon">🌊</span>
-          <span class="living-ocean-title">EARTH LIVING OCEAN & HYDRODYNAMICS</span>
-          <span class="living-ocean-glint-tag">✨ GERSTNER WAVES & SUN GLINT</span>
-        </div>
-        <p class="living-ocean-description">Simulating real-time 4-octave Gerstner swells, bathymetric optical absorption, fluid caustics, and specular solar glint across Earth's hydrosphere.</p>
-        <div class="living-ocean-metrics-row">
-          <div class="lo-metric-chip">
-            <span class="lo-lbl">SWELL HEIGHT</span>
-            <span class="lo-val">~2.4 m</span>
-          </div>
-          <div class="lo-metric-chip">
-            <span class="lo-lbl">WAVE PERIOD</span>
-            <span class="lo-val">8.2 s</span>
-          </div>
-          <div class="lo-metric-chip">
-            <span class="lo-lbl">SURFACE TEMP</span>
-            <span class="lo-val">21.5°C</span>
-          </div>
-          <div class="lo-metric-chip">
-            <span class="lo-lbl">SOLAR GLINT</span>
-            <span class="lo-val">1,361 W/m²</span>
-          </div>
-        </div>
-        <div class="living-ocean-action-row">
-          <button class="btn-living-ocean-exit" id="btnExitLivingOcean">🚀 Return to High Orbit</button>
-        </div>
-      </div>
+      <div class="cosmos-hud-container" id="cosmosHudContainer" style="display: none;"></div>
 
       <!-- MAP FOOTER STATUS TICKER -->
       <div class="map-footer-ticker">

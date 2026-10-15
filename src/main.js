@@ -1745,10 +1745,6 @@ function initNavigation() {
             });
           }
         );
-        globe3dInstance.onLivingOceanChange = (isActive) => {
-          const hud = document.getElementById('livingOceanHud');
-          if (hud) hud.style.display = isActive ? 'flex' : 'none';
-        };
         globe3dInstance.setUtcTime(scrubberTimeMinutes);
         globe3dInstance.clearMarkers(); // Start pristine in Explore mode
       } else {
@@ -2084,17 +2080,8 @@ function initPlanetaryExplorer() {
       btn.classList.add('just-selected');
       setTimeout(() => btn.classList.remove('just-selected'), 500);
 
-      if (!globe3dInstance || currentProjection !== 'globe') {
+      if (currentProjection !== 'globe') {
         document.getElementById('btnGlobeView')?.click();
-      }
-
-      if (planetId === 'living_ocean') {
-        sounds.playWhoosh();
-        if (globe3dInstance) {
-          globe3dInstance.focusLivingOcean();
-        }
-        showToast("🌊 Earth's Living Ocean active: 4-octave Gerstner swells, fluid caustics, and blinding solar glint!");
-        return;
       }
 
       if (globe3dInstance) {
@@ -2111,16 +2098,6 @@ function initPlanetaryExplorer() {
         openPlanetDossier(planetId);
       }
     });
-  });
-
-  document.getElementById('btnExitLivingOcean')?.addEventListener('click', () => {
-    sounds.playWhoosh();
-    if (globe3dInstance) {
-      globe3dInstance.exitLivingOcean();
-    }
-    scroll.querySelectorAll('.planet-pill').forEach(b => b.classList.remove('active'));
-    scroll.querySelector('[data-planet="earth"]')?.classList.add('active');
-    showToast('🚀 Returned to Earth high orbit.');
   });
 
   document.getElementById('btnReturnToEarth')?.addEventListener('click', () => {

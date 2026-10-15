@@ -79,7 +79,6 @@ export class EarthGlobe3D {
     this.velocityY = 0;
     this.autoRotate = true;
     this.rotationSpeed = 0.00045;
-    this.onLivingOceanChange = null;
 
     // Pre-allocated Vector scratchpad (Zero GC thrashing)
     this._tempToSun = new THREE.Vector3();
@@ -703,7 +702,6 @@ export class EarthGlobe3D {
         dayTexture: { value: dayTex },
         nightTexture: { value: nightTex },
         specularTexture: { value: specularTex },
-        cloudsTexture: { value: cloudsTex },
         sunWorldPosition: { value: new THREE.Vector3(0, 0, 0) },
         cameraWorldPosition: { value: this.camera.position },
         uTime: { value: 0.0 }
@@ -724,7 +722,6 @@ export class EarthGlobe3D {
         uniform sampler2D dayTexture;
         uniform sampler2D nightTexture;
         uniform sampler2D specularTexture;
-        uniform sampler2D cloudsTexture;
         uniform vec3 sunWorldPosition;
         uniform vec3 cameraWorldPosition;
         uniform float uTime;
@@ -740,154 +737,37 @@ export class EarthGlobe3D {
 
           // Physical Sunlight Incident Angle
           float sunDot = dot(N, sunDir);
+
+          // Clean, smooth physical day-to-night cosine transition
           float dayFactor = smoothstep(-0.06, 0.12, sunDot);
 
           // Sample Authentic NASA Blue Marble Textures
           vec4 dayColor = texture2D(dayTexture, vUv);
           vec4 nightColor = texture2D(nightTexture, vUv);
-          float waterMask = texture2D(specularTexture, vUv).r;
+          float specularMask = texture2D(specularTexture, vUv).r;
 
-          // =========================================================
-          // 1. DYNAMIC GERSTNER WAVES & MICRO-FACET HYDRODYNAMICS
-          // =========================================================
-          // Construct spherical tangent coordinate frame
-          vec3 upVec = abs(N.y) < 0.999 ? vec3(0.0, 1.0, 0.0) : vec3(0.0, 0.0, 1.0);
-          vec3 T = normalize(cross(upVec, N));
-          vec3 B = cross(N, T);
+          // 1. Crystal-Clear Natural Terrain & Deep Sapphire Oceans
+          vec3 crispDay = pow(dayColor.rgb, vec3(1.02));
+          crispDay = mix(crispDay, crispDay * vec3(0.86, 0.96, 1.10), specularMask * 0.35);
 
-          // Planetary oceanic coordinates (scaled for global wave fronts)
-          vec2 oceanCoord = vUv * vec2(240.0, 120.0);
-
-          // 4-Octave Multi-Directional Gerstner Wave Array
-          // Octave 1: Major oceanic swell (slow, rolling deep-ocean wavefronts)
-          vec2 d1 = vec2(0.707, 0.707);
-          float p1 = dot(oceanCoord, d1) * 0.52 + uTime * 1.6;
-          float c1 = cos(p1);
-          float s1 = sin(p1);
-
-          // Octave 2: Angled counter-swell (cross-seas)
-          vec2 d2 = vec2(-0.58, 0.81);
-          float p2 = dot(oceanCoord, d2) * 0.85 + uTime * 2.2;
-          float c2 = cos(p2);
-          float s2 = sin(p2);
-
-          // Octave 3: Wind chop (surface turbulence)
-          vec2 d3 = vec2(0.86, -0.51);
-          float p3 = dot(oceanCoord, d3) * 1.60 + uTime * 3.4;
-          float c3 = cos(p3);
-          float s3 = sin(p3);
-
-          // Octave 4: Capillary ripples (high-frequency wavelets)
-          vec2 d4 = vec2(-0.38, -0.92);
-          float p4 = dot(oceanCoord, d4) * 3.10 + uTime * 4.8;
-          float c4 = cos(p4);
-          float s4 = sin(p4);
-
-          // Physical wave height elevation [-1.0 to 1.0] across rolling swells
-          float waveHeight = (s1 * 0.48 + s2 * 0.30 + s3 * 0.15 + s4 * 0.07);
-
-          // Analytical Gerstner surface slope derivatives (du, dv) with high physical tilt
-          vec2 waveSlope = (d1 * c1 * 0.082) + 
-                           (d2 * c2 * 0.052) + 
-                           (d3 * c3 * 0.030) + 
-                           (d4 * c4 * 0.015);
-
-          // Wind-blown sparkling wavelets
-          vec2 sparkleCoord = vUv * 720.0 + vec2(uTime * 0.6, -uTime * 0.5);
-          float microWave = sin(sparkleCoord.x * 2.6 + sin(sparkleCoord.y * 3.4 + uTime * 2.2));
-          waveSlope += vec2(microWave * 0.009, -microWave * 0.009);
-
-          // Perturb geometric normal along the tangent plane for water surfaces
-          vec3 perturbedWaveNormal = normalize(N - (T * waveSlope.x + B * waveSlope.y));
-          vec3 oceanNormal = normalize(mix(N, perturbedWaveNormal, smoothstep(0.03, 0.35, waterMask)));
-
-          // =========================================================
-          // 2. BATHYMETRIC ABSORPTION & DYNAMIC SWELL COLORING
-          // =========================================================
-          // Deep abyssal sapphire vs. shallow tropical turquoise (Bahamas, Great Barrier Reef)
-          vec3 deepAbyssal = vec3(0.010, 0.036, 0.12);
-          vec3 shallowTurquoise = vec3(0.045, 0.44, 0.54);
-          float coastalFactor = smoothstep(0.12, 0.46, length(dayColor.rgb));
-
-          // Dynamic wave swell color: wave crests are brighter aquamarine, troughs are deep navy
-          vec3 waveTrough = deepAbyssal;
-          vec3 waveCrest = mix(vec3(0.035, 0.22, 0.38), shallowTurquoise, 0.65);
-          vec3 undulatingOcean = mix(waveTrough, waveCrest, clamp(waveHeight * 0.5 + 0.5, 0.0, 1.0));
-          vec3 livingOceanBody = mix(undulatingOcean, shallowTurquoise, coastalFactor * 0.65);
-
-          // Dynamic fluid water caustics flowing across open sea
-          vec2 causticUv1 = oceanCoord * 0.6 + vec2(uTime * 0.09, uTime * 0.06);
-          vec2 causticUv2 = oceanCoord * 0.9 + vec2(-uTime * 0.07, uTime * 0.08);
-          float caustics = pow(max(0.0, sin(causticUv1.x + sin(causticUv1.y)) * sin(causticUv2.x + sin(causticUv2.y))), 2.0);
-          livingOceanBody += vec3(0.06, 0.28, 0.36) * caustics * 0.38;
-
-          // Whitecap wave foam flecks along steep crests
-          float foamMask = smoothstep(0.68, 0.94, (s1 * 0.55 + s2 * 0.45) + microWave * 0.22);
-          vec3 oceanFoam = vec3(0.92, 0.98, 1.0) * foamMask * 0.45;
-
-          // Blend natural terrain (continents) with living ocean body
-          vec3 landColor = pow(dayColor.rgb, vec3(1.02));
-          vec3 naturalDaySurface = mix(landColor, livingOceanBody + oceanFoam, waterMask * 0.92);
-
-          // =========================================================
-          // 3. CLOUD SHADOW CASTING ON WATER & TERRAIN
-          // =========================================================
-          // Floating clouds cast realistic directional shadows on ocean
-          vec2 cloudShadowOffset = vec2(dot(sunDir, T), dot(sunDir, B)) * 0.0055;
-          float cloudCover = texture2D(cloudsTexture, vUv - cloudShadowOffset).r;
-          float cloudShadowFactor = mix(1.0, 0.38, cloudCover * smoothstep(0.08, 0.65, dayFactor));
-
-          // =========================================================
-          // 4. BROAD MAJESTIC SPECULAR SUN GLINT GLITTER TRAIL
-          // =========================================================
+          // 2. Realistic Ocean Specular Sheen
           vec3 halfVector = normalize(sunDir + viewDir);
-          float NdotH = max(dot(oceanNormal, halfVector), 0.0);
-          float VdotN = max(dot(oceanNormal, viewDir), 0.0);
+          float NdotH = max(dot(N, halfVector), 0.0);
+          float subtleGlint = pow(NdotH, 160.0) * specularMask * 0.35 * dayFactor;
+          vec3 litDay = crispDay + vec3(0.92, 0.96, 1.0) * subtleGlint;
 
-          // Physical Schlick Fresnel for water (F0 = 0.025 for water)
-          float F0 = 0.025;
-          float fresnelWater = F0 + (1.0 - F0) * pow(1.0 - VdotN, 5.0);
-
-          // 1. Broad glittering river of light spanning across ocean horizon
-          float broadGlintSwath = pow(NdotH, 12.0) * 0.95 * fresnelWater;
-
-          // 2. Shimmering wave-crest glitter path (micro-facets across ocean swells)
-          float microSparkle = fract(sin(dot(vUv * 940.0 + vec2(uTime * 0.95), vec2(12.9898, 78.233))) * 43758.5453);
-          float shimmerTrail = pow(NdotH, 30.0) * (0.25 + 0.75 * smoothstep(0.40, 0.96, microSparkle)) * 2.4 * fresnelWater;
-
-          // 3. Blinding Mirror Solar Disk Glint (HDR peak > 4.5 creates radiant camera bloom)
-          float glintCore = pow(NdotH, 200.0) * 5.6 * fresnelWater;
-
-          // Sun Glint Color (pure radiant solar white with delicate warm gold halo)
-          vec3 sunGlintColor = mix(vec3(1.0, 0.92, 0.78), vec3(1.0, 1.0, 1.0), glintCore * 0.4);
-          vec3 totalGlint = sunGlintColor * (broadGlintSwath + shimmerTrail + glintCore) * waterMask * dayFactor * cloudShadowFactor;
-
-          // Wave Subsurface Scattering (sunlight scattering through crest tips)
-          float waveSSS = max(dot(sunDir, -oceanNormal + viewDir * 0.45), 0.0);
-          vec3 sssGlow = vec3(0.05, 0.55, 0.65) * pow(waveSSS, 3.5) * waterMask * 0.42 * dayFactor * cloudShadowFactor;
-
-          // Horizon water reflection (mirroring sky/atmosphere at glancing angles)
-          vec3 skyHorizonReflection = vec3(0.25, 0.60, 0.95) * fresnelWater * waterMask * 0.45 * dayFactor;
-
-          // Assemble Final Sunlit Day Surface
-          vec3 litDay = (naturalDaySurface * cloudShadowFactor) + sssGlow + totalGlint + skyHorizonReflection;
-
-          // =========================================================
-          // 5. NOCTURNAL CITY LIGHTS & TWILIGHT
-          // =========================================================
+          // 3. Crisp Golden Night City Lights & Radiant Cosmic Spacefill (Earth is NEVER pitch-black)
           float nightLum = max(max(nightColor.r, nightColor.g), nightColor.b);
           vec3 cityLights = vec3(1.0, 0.88, 0.55) * pow(nightLum, 1.2) * 4.2;
           vec3 nightTerrain = dayColor.rgb * vec3(0.38, 0.46, 0.58);
           vec3 darkNight = nightTerrain + cityLights;
 
-          // Natural Physical Blend from Daylight to Night
+          // 4. Natural Physical Blend from Daylight to Night
           vec3 finalSurface = mix(darkNight, litDay, dayFactor);
 
-          // =========================================================
-          // 6. ATMOSPHERIC RAYLEIGH HORIZON GLOW (BLUE MARBLE LIMB)
-          // =========================================================
-          float fresnelAtm = 1.0 - max(dot(N, viewDir), 0.0);
-          float atmosphericGlow = pow(fresnelAtm, 2.8) * 0.95;
+          // 5. Authentic Atmospheric Rayleigh Blue Rim (Thin, delicate horizon line)
+          float fresnel = 1.0 - max(dot(N, viewDir), 0.0);
+          float atmosphericGlow = pow(fresnel, 2.8) * 0.95;
           vec3 atmosphereLimb = vec3(0.24, 0.68, 1.0) * atmosphericGlow;
 
           gl_FragColor = vec4(finalSurface + atmosphereLimb, 1.0);
@@ -1336,15 +1216,6 @@ export class EarthGlobe3D {
       return;
     }
 
-    if (planetId === 'living_ocean') {
-      this.focusLivingOcean();
-      return;
-    }
-
-    if (planetId !== 'earth') {
-      this.onLivingOceanChange?.(false);
-    }
-
     this.activeFocusedBody = planetId;
     this.updateVisibility(false);
 
@@ -1520,27 +1391,6 @@ export class EarthGlobe3D {
     this.targetOrbitTheta = -theta;
     this.zoomDistance = zoom;
     this.targetOrbitRadius = zoom;
-  }
-
-  focusLivingOcean() {
-    this.focusPlanet('earth');
-    this.autoRotate = false;
-    this.velocityX = 0;
-    this.velocityY = 0;
-
-    // Position camera on the sunlit Pacific/Atlantic ocean at the prime specular sun glint angle
-    this.targetOrbitPhi = Math.PI * 0.46;
-    this.targetOrbitTheta = -Math.PI * 0.38;
-    this.zoomDistance = 2.05;
-    this.targetOrbitRadius = 2.05;
-    this.onLivingOceanChange?.(true);
-  }
-
-  exitLivingOcean() {
-    this.zoomDistance = 3.6;
-    this.targetOrbitRadius = 3.6;
-    this.autoRotate = true;
-    this.onLivingOceanChange?.(false);
   }
 
   setupInteractions() {
