@@ -188,6 +188,38 @@ class SoundEngine {
     } catch (e) {}
   }
 
+  // Triumphant brass-like fanfare when a territory is annexed
+  playConquestHorn() {
+    if (!this.ctx || this.isMuted) return;
+    try {
+      const notes = [261.63, 329.63, 392.00, 523.25]; // C4, E4, G4, C5
+      notes.forEach((freq, idx) => {
+        setTimeout(() => {
+          this.playTone(freq, 'sawtooth', 0.28, 0.11);
+          this.playTone(freq * 0.5, 'triangle', 0.32, 0.09);
+        }, idx * 70);
+      });
+    } catch (e) {}
+  }
+
+  // Crisp shield shatter sound on breaking a siege shield
+  playShieldBreak() {
+    if (!this.ctx || this.isMuted) return;
+    try {
+      this.playTone(880, 'triangle', 0.14, 0.15);
+      setTimeout(() => this.playTone(1318.5, 'sine', 0.18, 0.14), 55);
+    } catch (e) {}
+  }
+
+  // Urgent two-tone alert when a DEFCON rebellion breaks out
+  playRebellionSiren() {
+    if (!this.ctx || this.isMuted) return;
+    try {
+      this.playTone(440, 'sawtooth', 0.18, 0.12);
+      setTimeout(() => this.playTone(330, 'sawtooth', 0.22, 0.12), 180);
+    } catch (e) {}
+  }
+
   playTone(freq, type = 'sine', duration = 0.2, volume = 0.1) {
     if (!this.ctx || this.isMuted) return;
     try {
@@ -208,3 +240,4 @@ class SoundEngine {
 }
 
 export const sounds = new SoundEngine();
+

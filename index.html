@@ -43,10 +43,10 @@
         <span class="tab-icon">🌐</span>
         <span class="tab-label">Explore</span>
       </button>
-      <button class="nav-tab" data-mode="favorites" id="tabFavorites">
-        <span class="tab-icon">❤️</span>
-        <span class="tab-label">Favorite Places</span>
-        <span class="tab-badge">Vote</span>
+      <button class="nav-tab" data-mode="conquest" id="tabConquest">
+        <span class="tab-icon">👑</span>
+        <span class="tab-label">Empire Conquest</span>
+        <span class="tab-badge">Strategy</span>
       </button>
       <button class="nav-tab" data-mode="battle" id="tabBattle">
         <span class="tab-icon">🧠</span>
@@ -56,6 +56,11 @@
       <button class="nav-tab" data-mode="mystery" id="tabMystery">
         <span class="tab-icon">🕵️</span>
         <span class="tab-label">Guess Where</span>
+      </button>
+      <button class="nav-tab" data-mode="cosmos" id="tabCosmos">
+        <span class="tab-icon">🌌</span>
+        <span class="tab-label">Cosmic Scale</span>
+        <span class="tab-badge-accent">Powers of 10</span>
       </button>
     </nav>
 
@@ -137,6 +142,7 @@
           <span class="celestial-dock-tag">🪐 SOLAR SYSTEM</span>
           <div class="planet-selector-scroll" id="planetSelectorScroll">
             <button class="planet-pill orrery-pill active" data-planet="system" id="btnWholeSolarSystem" title="Whole Solar System in One Frame">🌌 Whole Solar System</button>
+            <button class="planet-pill orrery-pill" data-planet="cosmos" id="btnLaunchCosmosPill" title="Powers of Ten: Infinite Zoom from Earth to the Observable Universe">🌌 Powers of 10 (Deep Cosmos)</button>
             <button class="planet-pill" data-planet="sun" title="The Sun">☀️ Sun</button>
             <button class="planet-pill" data-planet="mercury" title="Mercury">☿️ Mercury</button>
             <button class="planet-pill" data-planet="venus" title="Venus">♀️ Venus</button>
@@ -152,11 +158,472 @@
         </div>
       </div>
 
-      <!-- FAVORITE PLACES CATEGORIES FILTER BAR -->
-      <div class="favorites-filter-dock" id="favoritesFilterDock" style="display: none;">
-        <div class="fav-filter-scroll" id="favFilterScroll">
-          <!-- Populated dynamically via JS with categories -->
+      <!-- 👑 EMPIRE CONQUEST GRAND-STRATEGY HUD OVERLAY -->
+      <div class="empire-hud-container" id="empireHudContainer" style="display: none;">
+
+        <!-- FULLSCREEN EMERGENCY DANGER PULSE OVERLAY (< 9 SECONDS) -->
+        <div class="empire-emergency-vignette" id="empEmergencyVignette"></div>
+
+        <!-- 1. TOP TELEMETRY BAR (#empireTopHud) -->
+        <div class="empire-top-hud" id="empireTopHud">
+          <div class="emp-hud-left">
+            <div class="emp-dynasty-chip" id="empDynastyChip" title="Click to edit Dynasty or view Rank">
+              <span class="emp-rank-icon" id="empRankIcon">🧭</span>
+              <span class="emp-rank-title" id="empRankTitle">UNFOUNDED DYNASTY</span>
+              <button class="emp-code-badge" id="empTopCodeBadge" title="Click to view 6-Character Commander Key & QR Code">#CODE</button>
+            </div>
+
+            <div class="emp-stat-pill">
+              <span class="emp-stat-lbl">TERRITORIES</span>
+              <span class="emp-stat-val" id="empTerritoryVal">0 / 195 (0.0%)</span>
+            </div>
+
+            <div class="emp-stat-pill gdp">
+              <span class="emp-stat-lbl">NOMINAL GDP (2024)</span>
+              <span class="emp-stat-val" id="empGdpVal">$0B</span>
+            </div>
+
+            <div class="emp-stat-pill">
+              <span class="emp-stat-lbl">POPULATION</span>
+              <span class="emp-stat-val" id="empPopVal">0</span>
+            </div>
+          </div>
+
+          <div class="emp-hud-right">
+            <!-- 3 Geopolitical Buff Indicators -->
+            <div class="emp-top-buffs-row" id="empTopBuffsRow"></div>
+
+            <!-- Quick Action Buttons -->
+            <button class="emp-top-btn directive" id="btnEmpOpenDirective" title="View Current Mission Directive & Rules">🎯 Directive</button>
+            <button class="emp-top-btn cards-toggle" id="btnEmpToggleCards" title="Toggle Tactical War Cards Tray">⚡ Cards <span id="empTopCardCount" class="badge-count">(3)</span></button>
+            <button class="emp-top-btn ledger-toggle" id="btnEmpToggleDrawer" title="Open Empire Ledger & Continental Stats">🏛️ Ledger</button>
+            <button class="emp-top-btn sync-btn" id="btnEmpOpenSyncModal" title="6-Character Commander Key & Cross-Device QR Code">📲 Cloud Sync</button>
+
+            <!-- 4 Empire Color Theme Swatches -->
+            <div class="emp-theme-swatches" title="Choose Imperial Map Color">
+              <button class="emp-theme-swatch gold active" data-theme="gold" title="Imperial Gold"></button>
+              <button class="emp-theme-swatch cyan" data-theme="cyan" title="Cyber Sovereign"></button>
+              <button class="emp-theme-swatch crimson" data-theme="crimson" title="Sovereign Crimson"></button>
+              <button class="emp-theme-swatch emerald" data-theme="emerald" title="Emerald Hegemony"></button>
+            </div>
+
+            <!-- Campaign Settings & Persistence Popover -->
+            <div class="emp-campaign-menu-wrap">
+              <button class="emp-btn-campaign" id="btnEmpCampaignMenu" title="Campaign Options">⚙️</button>
+              <div class="emp-campaign-dropdown" id="empCampaignDropdown" style="display: none;">
+                <label class="emp-camp-toggle">
+                  <input type="checkbox" id="chkEmpUntimed" />
+                  <span>⏱️ Untimed Mode (No Timer)</span>
+                </label>
+                <button class="emp-camp-item" id="btnEmpSyncMenuTrigger">📲 Commander Key & QR Sync</button>
+                <button class="emp-camp-item" id="btnEmpShareStory">📲 Share Empire Card</button>
+                <button class="emp-camp-item" id="btnEmpExportSave">💾 Export Save JSON</button>
+                <button class="emp-camp-item" id="btnEmpImportSave">📂 Import Save JSON</button>
+                <input type="file" id="inpEmpImportFile" accept=".json,application/json" style="display: none;" />
+                <div class="emp-camp-sep"></div>
+                <button class="emp-camp-item danger" id="btnEmpResetCampaign">🗑️ Reset Campaign</button>
+              </div>
+            </div>
+          </div>
         </div>
+
+        <!-- 2. STEP-BY-STEP ONBOARDING WIZARD MODAL (#empireOnboardingWizard) -->
+        <div class="empire-wizard-overlay" id="empireOnboardingWizard" style="display: none;">
+          <div class="emp-wizard-card">
+            <!-- Stepper Progress Header -->
+            <div class="emp-wizard-stepper">
+              <div class="emp-step-item active" id="wizStepTab1"><span class="step-num">1</span> <span class="step-lbl">Homeland</span></div>
+              <div class="emp-step-divider"></div>
+              <div class="emp-step-item" id="wizStepTab2"><span class="step-num">2</span> <span class="step-lbl">Dynasty Identity</span></div>
+              <div class="emp-step-divider"></div>
+              <div class="emp-step-item" id="wizStepTab3"><span class="step-num">3</span> <span class="step-lbl">Command Directive</span></div>
+            </div>
+
+            <!-- STEP 1: CHOOSE HOMELAND -->
+            <div class="emp-wizard-pane active" id="wizPane1">
+              <div class="wiz-pane-header">
+                <span class="wiz-subtag">PHASE 1 • THE ANCHOR</span>
+                <h2 class="wiz-title">Claim Your Sovereign Capital</h2>
+                <p class="wiz-desc">Select a historic starting superpower or choose any nation on Earth to establish your Imperial Throne:</p>
+              </div>
+
+              <div class="wiz-starters-grid">
+                <button class="wiz-starter-card" data-code="IN">
+                  <span class="wiz-sc-flag">🇮🇳</span>
+                  <div class="wiz-sc-info">
+                    <strong>India</strong>
+                    <span>$3.94T GDP • 1.44B Pop</span>
+                  </div>
+                </button>
+                <button class="wiz-starter-card" data-code="US">
+                  <span class="wiz-sc-flag">🇺🇸</span>
+                  <div class="wiz-sc-info">
+                    <strong>United States</strong>
+                    <span>$28.78T GDP • 335M Pop</span>
+                  </div>
+                </button>
+                <button class="wiz-starter-card" data-code="JP">
+                  <span class="wiz-sc-flag">🇯🇵</span>
+                  <div class="wiz-sc-info">
+                    <strong>Japan</strong>
+                    <span>$4.11T GDP • 124M Pop</span>
+                  </div>
+                </button>
+                <button class="wiz-starter-card" data-code="DE">
+                  <span class="wiz-sc-flag">🇩🇪</span>
+                  <div class="wiz-sc-info">
+                    <strong>Germany</strong>
+                    <span>$4.59T GDP • 84M Pop</span>
+                  </div>
+                </button>
+                <button class="wiz-starter-card" data-code="GB">
+                  <span class="wiz-sc-flag">🇬🇧</span>
+                  <div class="wiz-sc-info">
+                    <strong>United Kingdom</strong>
+                    <span>$3.50T GDP • 68M Pop</span>
+                  </div>
+                </button>
+                <button class="wiz-starter-card" data-code="BR">
+                  <span class="wiz-sc-flag">🇧🇷</span>
+                  <div class="wiz-sc-info">
+                    <strong>Brazil</strong>
+                    <span>$2.33T GDP • 216M Pop</span>
+                  </div>
+                </button>
+                <button class="wiz-starter-card" data-code="EG">
+                  <span class="wiz-sc-flag">🇪🇬</span>
+                  <div class="wiz-sc-info">
+                    <strong>Egypt</strong>
+                    <span>$380B GDP • 110M Pop</span>
+                  </div>
+                </button>
+                <button class="wiz-starter-card" data-code="AU">
+                  <span class="wiz-sc-flag">🇦🇺</span>
+                  <div class="wiz-sc-info">
+                    <strong>Australia</strong>
+                    <span>$1.79T GDP • 26M Pop</span>
+                  </div>
+                </button>
+              </div>
+
+              <div class="wiz-search-strip">
+                <span class="wiz-or-text">OR SEARCH ANY OF EARTH'S 195 SOVEREIGN NATIONS:</span>
+                <input type="text" id="wizCapitalSearchInput" class="wiz-input" placeholder="Search capital, country name..." autocomplete="off" />
+                <div class="wiz-search-results" id="wizCapitalSearchResults" style="display: none;"></div>
+              </div>
+
+              <div class="wiz-action-row end" style="display: flex; gap: 12px; align-items: center; justify-content: flex-end;">
+                <button class="wiz-btn quickstart" id="btnWizQuickStart" style="display: none; background: rgba(16, 185, 129, 0.25); border: 1px solid #10b981; color: #6ee7b7; font-weight: 700; padding: 10px 18px; border-radius: 8px; cursor: pointer;">⚡ Quick-Start (Instant Play)</button>
+                <button class="wiz-btn next" id="btnWizStep1Next" disabled>Select a Homeland to Continue →</button>
+              </div>
+            </div>
+
+            <!-- STEP 2: DYNASTY IDENTITY -->
+            <div class="emp-wizard-pane" id="wizPane2" style="display: none;">
+              <div class="wiz-pane-header">
+                <span class="wiz-subtag">PHASE 2 • EMPIRE CREST</span>
+                <h2 class="wiz-title">Name Your Dynasty & Imperial Banner</h2>
+                <p class="wiz-desc">Homeland selected: <span id="wizSelectedCapBadge" class="wiz-cap-badge">🇮🇳 India</span></p>
+              </div>
+
+              <div class="wiz-form-group">
+                <label for="wizDynastyNameInput">Imperial Dynasty Title</label>
+                <input type="text" id="wizDynastyNameInput" class="wiz-input large" maxlength="32" value="The Sovereign Realm" placeholder="e.g. Maurya Dominion, Neo-Rome..." />
+              </div>
+
+              <div class="wiz-form-group">
+                <label>Imperial Map Color Banner</label>
+                <div class="wiz-themes-palette">
+                  <label class="wiz-theme-choice gold active">
+                    <input type="radio" name="wizThemeChoice" value="gold" checked />
+                    <span class="wiz-tc-icon">👑</span>
+                    <span class="wiz-tc-name">Imperial Gold</span>
+                  </label>
+                  <label class="wiz-theme-choice cyan">
+                    <input type="radio" name="wizThemeChoice" value="cyan" />
+                    <span class="wiz-tc-icon">⚡</span>
+                    <span class="wiz-tc-name">Cyber Sovereign</span>
+                  </label>
+                  <label class="wiz-theme-choice crimson">
+                    <input type="radio" name="wizThemeChoice" value="crimson" />
+                    <span class="wiz-tc-icon">🔥</span>
+                    <span class="wiz-tc-name">Crimson Dynasty</span>
+                  </label>
+                  <label class="wiz-theme-choice emerald">
+                    <input type="radio" name="wizThemeChoice" value="emerald" />
+                    <span class="wiz-tc-icon">🐉</span>
+                    <span class="wiz-tc-name">Emerald Hegemony</span>
+                  </label>
+                </div>
+              </div>
+
+              <div class="wiz-action-row">
+                <button class="wiz-btn back" id="btnWizStep2Back">← Back</button>
+                <button class="wiz-btn next" id="btnWizStep2Next">Confirm Identity →</button>
+              </div>
+            </div>
+
+            <!-- STEP 3: STRATEGIC DIRECTIVE & COMMANDER KEY -->
+            <div class="emp-wizard-pane" id="wizPane3" style="display: none;">
+              <div class="wiz-pane-header">
+                <span class="wiz-subtag">PHASE 3 • BATTLE READY</span>
+                <h2 class="wiz-title">War Room Directive & Commander Key</h2>
+              </div>
+
+              <div class="wiz-key-box">
+                <div class="wiz-kb-left">
+                  <span class="wiz-kb-lbl">YOUR SYNC COMMANDER KEY:</span>
+                  <strong class="wiz-kb-code" id="wizCommanderCodeTag">KRONOS-7</strong>
+                </div>
+                <p class="wiz-kb-note">No passwords needed. Enter this 6-character key on any mobile phone or computer to resume your empire instantly.</p>
+              </div>
+
+              <div class="wiz-directives-list">
+                <div class="wiz-dir-item">
+                  <span class="wiz-dir-icon">🌫️</span>
+                  <div>
+                    <strong>1. Fog of War & Borders</strong>
+                    <p>Only directly adjacent frontier nations are reachable. Click glowing amber borders directly on the map to inspect.</p>
+                  </div>
+                </div>
+                <div class="wiz-dir-item">
+                  <span class="wiz-dir-icon">⚡</span>
+                  <div>
+                    <strong>2. 35-Second KBC-Grade Sieges</strong>
+                    <p>Breach dynamic Defense Shields (1 for small states, up to 5 for superpower citadels) with high-IQ cultural, scientific, and geopolitical trivia before time runs out.</p>
+                  </div>
+                </div>
+                <div class="wiz-dir-item">
+                  <span class="wiz-dir-icon">💰</span>
+                  <div>
+                    <strong>3. Vault Progression & Loot Cards</strong>
+                    <p>Every conquered nation adds its real Nominal GDP to your treasury. Unlock Tactical War Cards every 3 victories.</p>
+                  </div>
+                </div>
+              </div>
+
+              <div class="wiz-action-row">
+                <button class="wiz-btn back" id="btnWizStep3Back">← Back</button>
+                <button class="wiz-btn launch" id="btnWizLaunchCampaign">🚀 ENTER WAR ROOM</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 3. FLOATING MAP-FIRST RECON DOSSIER (#empireTargetDossier) -->
+        <div class="empire-target-dossier" id="empireTargetDossier" style="display: none;">
+          <button class="emp-dossier-close" id="btnCloseTargetDossier" title="Close Dossier (Esc)">✕</button>
+          <div class="emp-dossier-top">
+            <span class="emp-dossier-flag" id="targetDossierFlag">🇨🇳</span>
+            <div class="emp-dossier-titles">
+              <h3 class="emp-dossier-name" id="targetDossierName">China</h3>
+              <p class="emp-dossier-sub" id="targetDossierSub">Eastern Asia • Capital: Beijing</p>
+            </div>
+            <div class="emp-dossier-shields" id="targetDossierShields">🛡️ 5 Shields</div>
+          </div>
+
+          <div class="emp-dossier-metrics">
+            <div class="emp-dm-card">
+              <span class="emp-dm-lbl">ANNUAL NOMINAL GDP</span>
+              <strong class="emp-dm-val" id="targetDossierGdp">+$18.53T</strong>
+            </div>
+            <div class="emp-dm-card">
+              <span class="emp-dm-lbl">POPULATION</span>
+              <strong class="emp-dm-val" id="targetDossierPop">1.41 Billion</strong>
+            </div>
+            <div class="emp-dm-card">
+              <span class="emp-dm-lbl">STATUS</span>
+              <strong class="emp-dm-val status" id="targetDossierStatus">Frontier Target</strong>
+            </div>
+          </div>
+
+          <p class="emp-dossier-intel" id="targetDossierIntel">Controls critical semiconductor trade routes, high-speed rail networks, and major shipping lanes.</p>
+
+          <div class="emp-dossier-actions">
+            <button class="emp-btn-dossier-annex" id="btnDossierAnnex" style="display: none;">🤝 Diplomatic Annex</button>
+            <button class="emp-btn-dossier-siege" id="btnDossierSiege">⚔️ INITIATE BORDER SIEGE (5 SHIELDS)</button>
+          </div>
+        </div>
+
+        <!-- 4. ACTIVE DEFCON REBELLION ALERT BANNER (#empireRebellionBanner) -->
+        <div class="empire-rebellion-banner" id="empireRebellionBanner" style="display: none;">
+          <div class="emp-rebel-left">
+            <span class="emp-rebel-pulse">🚨</span>
+            <span class="emp-rebel-text" id="empRebellionText">🚨 DEFCON UPRISING! Crush the rebellion or lose the territory!</span>
+          </div>
+          <div class="emp-rebel-actions">
+            <button class="emp-btn-rebel-defend" id="btnEmpDefendRebellion">⚔️ Defend Territory</button>
+            <button class="emp-btn-rebel-dome" id="btnEmpIronDomeRebellion">🛡️ Iron Dome (1)</button>
+          </div>
+        </div>
+
+        <!-- 5. 20-SECOND BLITZ SIEGE ARENA STAGE (#empireSiegeModal) -->
+        <div class="empire-siege-modal" id="empireSiegeModal" style="display: none;" role="dialog" aria-modal="true" aria-labelledby="empSiegeCountryName">
+          <div class="emp-siege-card">
+            <!-- Siege Header with 20s Digital Timer & Pause Control -->
+            <div class="emp-siege-header">
+              <div class="emp-siege-target-info">
+                <span class="emp-siege-flag" id="empSiegeFlag">🇮🇳</span>
+                <div>
+                  <h2 class="emp-siege-title" id="empSiegeCountryName">SIEGE OF INDIA</h2>
+                  <p class="emp-siege-sub" id="empSiegeCountrySub">Southern Asia • +$3.94T Nominal GDP</p>
+                </div>
+              </div>
+              <div class="emp-siege-header-right">
+                <span class="emp-siege-tier-badge" id="empSiegeTierBadge">🛡️ SIEGE ENGAGED</span>
+                <div class="emp-siege-timer" id="empSiegeTimer" aria-live="polite">35s</div>
+                <button class="emp-btn-pause" id="btnEmpPauseSiege" title="Pause Battle (Space)">⏸️ Pause</button>
+                <button class="emp-btn-retreat" id="btnEmpRetreatSiege" title="Retreat from Siege (Esc)">🏳️ Retreat</button>
+              </div>
+            </div>
+
+            <!-- 5-Shield Health Bar Nodes -->
+            <div class="emp-shield-bar" id="empShieldBar"></div>
+
+            <!-- Question Frame (Unclipped Natural Multi-Line Wrapping) -->
+            <div class="emp-siege-question-box">
+              <div class="emp-siege-cat" id="empSiegeCategory">🌊 STRATEGIC CHOKEPOINTS — SHIELD 1 OF 5</div>
+              <h3 class="emp-siege-prompt" id="empSiegePrompt">Loading authentic geopolitical intelligence...</h3>
+            </div>
+
+            <!-- 4 Accessible Answer Buttons -->
+            <div class="emp-siege-options-grid" id="empSiegeOptionsGrid">
+              <button class="emp-opt-btn" data-opt="0"><span class="emp-opt-letter">A</span><span class="emp-opt-text">Option A</span></button>
+              <button class="emp-opt-btn" data-opt="1"><span class="emp-opt-letter">B</span><span class="emp-opt-text">Option B</span></button>
+              <button class="emp-opt-btn" data-opt="2"><span class="emp-opt-letter">C</span><span class="emp-opt-text">Option C</span></button>
+              <button class="emp-opt-btn" data-opt="3"><span class="emp-opt-letter">D</span><span class="emp-opt-text">Option D</span></button>
+            </div>
+
+            <!-- Tactical Cards Bar inside Siege -->
+            <div class="emp-siege-tactical-row">
+              <button class="emp-btn-siege-card" id="btnSiegeSpyCard">🛰️ Spy Satellite 50:50 (1)</button>
+              <button class="emp-btn-siege-card" id="btnSiegeAnnexCard">🤝 Diplomatic Annex (0)</button>
+              <span class="emp-siege-kbd-hint">Keys: 1–4 / A–D to Answer • Space to Pause • Enter to Advance</span>
+            </div>
+
+            <!-- Post-Answer Strategic Intelligence Debrief & Next Step Box -->
+            <div class="emp-siege-explain-box" id="empSiegeExplainBox" style="display: none;">
+              <div class="emp-exp-left">
+                <div class="emp-exp-title" id="empSiegeExplainTitle">💥 SHIELD BREACHED!</div>
+                <p class="emp-exp-text" id="empSiegeExplainText"></p>
+              </div>
+              <button class="emp-btn-siege-next victory" id="btnSiegeNextStep">⚔️ Attack Next Shield ➡️</button>
+            </div>
+
+            <!-- Pause Backdrop Overlay -->
+            <div class="emp-siege-pause-overlay" id="empSiegePauseOverlay" style="display: none;">
+              <div class="emp-pause-card">
+                <h3>⏸️ BATTLE PAUSED</h3>
+                <p>Timer frozen. Strategize or take a moment.</p>
+                <div class="emp-pause-actions">
+                  <button class="emp-btn-resume" id="btnResumeSiege">▶️ Resume Battle</button>
+                  <button class="emp-btn-retreat-pause" id="btnRetreatPause">🏳️ Tactical Retreat</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 6. COLLAPSIBLE BOTTOM TACTICAL WAR CARDS DOCK (#empireCardsDock) -->
+        <div class="empire-cards-dock collapsed" id="empireCardsDock">
+          <div class="emp-cards-header-strip" id="empCardsHeaderStrip">
+            <div class="emp-cards-hdr-left">
+              <span class="emp-cards-dock-lbl">🃏 TACTICAL WAR CARDS</span>
+              <span class="emp-next-card-prog" id="empNextCardProgress">🎁 Next Loot: 0/3 Conquests</span>
+            </div>
+            <button class="emp-btn-close-cards" id="btnCloseCardsDock" title="Collapse Tray">✕</button>
+          </div>
+          <div class="emp-cards-grid" id="empCardsGrid"></div>
+        </div>
+
+        <!-- 7. CLOUD SYNC & 6-CHARACTER COMMANDER KEY MODAL (#empireSyncModal) -->
+        <div class="empire-sync-modal" id="empireSyncModal" style="display: none;">
+          <div class="emp-sync-card">
+            <button class="emp-sync-close" id="btnCloseSyncModal">✕</button>
+            <div class="emp-sync-header">
+              <span class="emp-sync-tag">⚡ ZERO-LOGIN CROSS-DEVICE VAULT</span>
+              <h2 class="emp-sync-title">Campaign Commander Key & QR Sync</h2>
+              <p class="emp-sync-desc">Take your empire from PC to Mobile in 2 seconds without entering any passwords or creating accounts.</p>
+            </div>
+
+            <div class="emp-sync-body">
+              <div class="emp-sync-qr-pane">
+                <div class="emp-qr-frame">
+                  <img id="empQrCodeImage" alt="Scan QR Code to resume campaign" src="" />
+                </div>
+                <span class="emp-qr-sub">Scan with any phone camera to resume instantly</span>
+              </div>
+
+              <div class="emp-sync-code-pane">
+                <label>YOUR 6-CHARACTER COMMANDER KEY</label>
+                <div class="emp-code-copy-row">
+                  <input type="text" id="empSyncCodeInput" readonly value="KRONOS-7" />
+                  <button class="emp-btn-copy" id="btnCopyCommanderCode">📋 Copy Key</button>
+                </div>
+
+                <div class="emp-sync-restore-box">
+                  <label>RESTORE CAMPAIGN FROM ANOTHER DEVICE</label>
+                  <div class="emp-restore-row">
+                    <input type="text" id="empRestoreCodeInput" placeholder="Enter 6-char Key or Paste Save..." />
+                    <button class="emp-btn-restore" id="btnRestoreCommanderCode">⚡ Load Empire</button>
+                  </div>
+                </div>
+
+                <div class="emp-save-slots-row">
+                  <label>MULTI-CAMPAIGN LOCAL SLOTS</label>
+                  <div class="emp-slots-pills">
+                    <button class="emp-slot-pill active" data-slot="1">Slot 1 (Active)</button>
+                    <button class="emp-slot-pill" data-slot="2">Slot 2</button>
+                    <button class="emp-slot-pill" data-slot="3">Slot 3</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 8. MISSION DIRECTIVE & RULES MODAL (#empireDirectiveModal) -->
+        <div class="empire-directive-modal" id="empireDirectiveModal" style="display: none;">
+          <div class="emp-directive-card">
+            <button class="emp-directive-close" id="btnCloseDirectiveModal">✕</button>
+            <div class="emp-dir-head">
+              <span class="emp-dir-tag">🎖️ GRAND STRATEGY MANUAL</span>
+              <h2 class="emp-dir-title">How World Domination Works</h2>
+            </div>
+            <div class="emp-dir-steps">
+              <div class="emp-ds-row">
+                <span class="emp-ds-badge">RULE 1</span>
+                <div>
+                  <strong>Direct Map Conquest (No Spreadsheets)</strong>
+                  <p>Click any glowing amber border country directly on the 3D globe or 2D map to inspect its real-world GDP and military shield tier.</p>
+                </div>
+              </div>
+              <div class="emp-ds-row">
+                <span class="emp-ds-badge">RULE 2</span>
+                <div>
+                  <strong>35-Second KBC-Grade Border Sieges</strong>
+                  <p>To annex a country, breach its Defense Shields (1 for small states, up to 5 for superpower citadels). Each shield presents authentic KBC-grade intelligence on space missions, UNESCO wonders, Nobel breakthroughs, or geography. Emergency alerts pulse when time drops below 9 seconds.</p>
+                </div>
+              </div>
+              <div class="emp-ds-row">
+                <span class="emp-ds-badge">RULE 3</span>
+                <div>
+                  <strong>Treasury & Tactical War Cards</strong>
+                  <p>Every victory annexes real GDP into your Vault. Every 3 conquests drops a rare Tactical War Card (Spy Satellite 50:50, Diplomatic Annex, Iron Dome, Amphibious D-Day Strike).</p>
+                </div>
+              </div>
+              <div class="emp-ds-row">
+                <span class="emp-ds-badge">RULE 4</span>
+                <div>
+                  <strong>Crush Rebellions</strong>
+                  <p>Occasional DEFCON uprisings will trigger in conquered lands. Defend within 1 shield or lose the territory, or deploy an Iron Dome to permanently immunize it!</p>
+                </div>
+              </div>
+            </div>
+            <button class="emp-btn-close-dir" id="btnDismissDirective">Got It, Return to War Room</button>
+          </div>
+        </div>
+
       </div>
 
       <!-- BATTLE ROYALE IN-GAME OVERLAY HUD (PROFESSIONAL GAMING ARENA) -->
@@ -330,6 +797,11 @@
         </div>
       </div>
 
+      <!-- ========================================================
+           🌌 POWERS OF TEN: COSMIC SCALE (10^7 m to 10^26 m) HUD
+           ======================================================== -->
+      <div class="cosmos-hud-container" id="cosmosHudContainer" style="display: none;"></div>
+
       <!-- MAP FOOTER STATUS TICKER -->
       <div class="map-footer-ticker">
         <div class="ticker-left-tag">🔥 EARTH LIVE TICKER</div>
@@ -457,30 +929,55 @@
         </div>
       </div>
 
-      <!-- FAVORITE PLACES LIST & LEADERBOARD (REVAMPED HIERARCHY) -->
-      <div class="drawer-view" id="viewFavoritesList" style="display: none;">
-        <div class="fav-drawer-header">
-          <div>
-            <h2>❤️ Community Top Voted</h2>
-            <p id="favLeaderboardSubtitle">Authentic global wonders & cultural landmarks.</p>
+      <!-- 👑 EMPIRE CONQUEST RIGHT COMMAND DRAWER (#viewEmpireCommand) -->
+      <div class="drawer-view" id="viewEmpireCommand" style="display: none;">
+        <!-- Dynasty Progression Header Card -->
+        <div class="emp-drawer-hero">
+          <div class="emp-drawer-dynasty-row">
+            <span class="emp-drawer-dyn-icon" id="empDrawerDynastyIcon">🧭</span>
+            <div class="emp-drawer-dyn-info">
+              <h2 class="emp-drawer-dyn-title" id="empDrawerDynastyTitle">Unfounded Dynasty</h2>
+              <p class="emp-drawer-dyn-sub" id="empDrawerDynastySub">Select a country to establish your Capital</p>
+            </div>
           </div>
-          <button class="btn-suggest-place-trigger" id="btnOpenSuggestModal">➕ Suggest Place</button>
+          <div class="emp-drawer-prog-track">
+            <div class="emp-drawer-prog-fill" id="empDrawerDynastyBar" style="width: 4%;"></div>
+          </div>
         </div>
 
-        <!-- Quick Search & Region Filter Bar -->
-        <div class="fav-search-wrap">
-          <input type="text" id="favSearchInput" placeholder="Filter by city, state, or wonder..." autocomplete="off" />
+        <!-- 3 Command Sub-Tabs -->
+        <div class="emp-drawer-tabs">
+          <button class="emp-drawer-tab active" data-emptab="targets">🎯 Targets</button>
+          <button class="emp-drawer-tab" data-emptab="empire">🏛️ My Empire</button>
+          <button class="emp-drawer-tab" data-emptab="buffs">⚡ Buffs & Ranks</button>
         </div>
 
-        <div class="fav-region-bar" id="favRegionBar">
-          <button class="fav-region-pill active" data-region="all">All Regions</button>
-          <button class="fav-region-pill" data-region="Asia">Asia</button>
-          <button class="fav-region-pill" data-region="Europe">Europe</button>
-          <button class="fav-region-pill" data-region="Americas">Americas</button>
-          <button class="fav-region-pill" data-region="Africa">Africa</button>
+        <!-- SUB-TAB 1: TARGETS & FRONTLINE RADAR -->
+        <div class="emp-tab-panel" id="empTabPanelTargets" style="display: flex;">
+          <!-- Recommended Target Advisor Card -->
+          <div id="empRecommendedTargetBox"></div>
+
+          <!-- Search & Filter Bar -->
+          <div class="emp-search-wrap">
+            <input type="text" id="empTargetSearchInput" placeholder="Search 195 nations, capitals, or regions..." autocomplete="off" />
+          </div>
+
+          <div class="emp-filter-pills">
+            <button class="emp-filter-pill active" data-filter="frontline">⚔️ Frontline</button>
+            <button class="emp-filter-pill" data-filter="all">🌍 All 195</button>
+            <button class="emp-filter-pill" data-filter="bosses">👑 Bosses</button>
+            <button class="emp-filter-pill" data-filter="microstates">🏝️ Islands/Micro</button>
+          </div>
+
+          <!-- Scrollable Country Target List -->
+          <div class="emp-target-list" id="empTargetList"></div>
         </div>
 
-        <div class="fav-leaderboard" id="favLeaderboard"></div>
+        <!-- SUB-TAB 2: MY EMPIRE LEDGER & CONTINENTAL CONTROL -->
+        <div class="emp-tab-panel" id="empTabPanelEmpire" style="display: none;"></div>
+
+        <!-- SUB-TAB 3: STRATEGIC BUFFS & DYNASTY RANKS -->
+        <div class="emp-tab-panel" id="empTabPanelBuffs" style="display: none;"></div>
       </div>
 
     </aside>
@@ -508,50 +1005,6 @@
           <span>📲 Share Discovery</span>
         </button>
         <button class="btn-surp-close" id="btnSurpClose">✕</button>
-      </div>
-    </div>
-  </dialog>
-
-  <!-- PLACE DETAIL MODAL (FAVORITE PLACE WITH VOTING) -->
-  <dialog class="place-modal" id="placeModal">
-    <div class="place-modal-inner">
-      <div class="place-image-wrap">
-        <img id="placeModalImg" src="" alt="Place photo" />
-        <span class="place-cat-badge" id="placeModalCat">🌅 Best Sunset</span>
-        <button class="place-close-btn" id="btnClosePlaceModal">✕</button>
-      </div>
-      <div class="place-modal-body">
-        <div class="place-title-row">
-          <div>
-            <h2 class="place-modal-title" id="placeModalTitle">Oia, Santorini</h2>
-            <p class="place-modal-country" id="placeModalCountry">Greece 🇬🇷</p>
-          </div>
-          <div class="place-vote-badge">
-            <span class="vote-num" id="placeModalVoteCount">48,920</span>
-            <span class="vote-sub">Community Votes</span>
-          </div>
-        </div>
-        <p class="place-modal-desc" id="placeModalDesc"></p>
-        <div class="place-why-box">
-          <h4>❤️ Why People Are Obsessed:</h4>
-          <p id="placeModalWhy"></p>
-        </div>
-        <div class="place-nearby-box">
-          <h4>📍 Nearby Hidden Gems:</h4>
-          <ul id="placeModalNearby"></ul>
-        </div>
-        <div class="place-modal-footer">
-          <button class="btn-vote-act" id="btnVotePlace">
-            <span class="vote-heart">❤️</span>
-            <span id="btnVoteLabel">VOTE FOR THIS PLACE</span>
-          </button>
-          <button class="btn-share-act" id="btnSharePlace">
-            <span>📲 Share Card</span>
-          </button>
-          <button class="btn-fly-act" id="btnFlyPlace">
-            <span>🔭 Zoom Here</span>
-          </button>
-        </div>
       </div>
     </div>
   </dialog>
@@ -592,60 +1045,6 @@
     </div>
   </dialog>
 
-  <!-- SUGGEST / SUBMIT A PLACE MODAL -->
-  <dialog class="suggest-modal" id="suggestPlaceModal">
-    <div class="suggest-modal-card">
-      <div class="suggest-modal-header">
-        <h3>📍 Suggest a World Destination</h3>
-        <button class="btn-close-view" id="btnCloseSuggestModal">✕</button>
-      </div>
-      <p class="suggest-modal-sub">Add your favorite location to our authentic global community voting pool.</p>
-      <form class="suggest-form" id="suggestPlaceForm">
-        <div class="form-group">
-          <label>Place / Landmark Name *</label>
-          <input type="text" id="sugPlaceName" placeholder="e.g., Lonar Meteorite Lake" required maxlength="50" />
-        </div>
-        <div class="form-row">
-          <div class="form-group">
-            <label>Country / State *</label>
-            <input type="text" id="sugPlaceCountry" placeholder="e.g., India, Maharashtra" required maxlength="40" />
-          </div>
-          <div class="form-group">
-            <label>Category *</label>
-            <select id="sugPlaceCategory" required>
-              <option value="natural">🌊 Natural Beauty</option>
-              <option value="mountain">🏔️ Best Mountain</option>
-              <option value="sunset">🌅 Best Sunset</option>
-              <option value="peaceful">🧘 Most Peaceful</option>
-              <option value="underrated">🤯 Most Underrated</option>
-              <option value="food">🍜 Best Food</option>
-              <option value="festival">🎉 Cultural Heritage</option>
-              <option value="stargazing">🌌 Best Stargazing</option>
-            </select>
-          </div>
-        </div>
-        <div class="form-row">
-          <div class="form-group">
-            <label>Latitude (°N)</label>
-            <input type="number" step="0.0001" id="sugPlaceLat" placeholder="19.9757" required />
-          </div>
-          <div class="form-group">
-            <label>Longitude (°E)</label>
-            <input type="number" step="0.0001" id="sugPlaceLng" placeholder="76.5074" required />
-          </div>
-        </div>
-        <div class="form-group">
-          <label>Why is this place special? (Authentic Description) *</label>
-          <textarea id="sugPlaceDesc" rows="3" placeholder="Explain the historical, geological or cultural significance..." required maxlength="250"></textarea>
-        </div>
-        <div class="suggest-modal-footer">
-          <button type="button" class="btn-cancel-suggest" id="btnCancelSuggest">Cancel</button>
-          <button type="submit" class="btn-submit-suggest">✅ Submit to Community</button>
-        </div>
-      </form>
-    </div>
-  </dialog>
-
   <!-- COMPREHENSIVE END-USER FEATURES GUIDE MODAL -->
   <dialog class="guide-modal" id="guideModal">
     <div class="guide-modal-card">
@@ -682,13 +1081,13 @@
           </div>
         </div>
 
-        <!-- Card 3: Favorite Places & Community Voting -->
+        <!-- Card 3: World Domination: Empire Conquest -->
         <div class="guide-feature-card">
-          <div class="gfc-icon">❤️</div>
+          <div class="gfc-icon">👑</div>
           <div class="gfc-body">
-            <h3>Curated Wonders & Global Voting</h3>
-            <p>Browse authentic cultural monuments and natural wonders with high-definition photography. Upvote your favorite destinations — tallies sync globally in real-time!</p>
-            <div class="gfc-tag">🏛️ Filter by UNESCO Heritage, Best Mountain, Sunsets, Food, or submit your own destination!</div>
+            <h3>World Domination: Empire Conquest</h3>
+            <p>Found your Imperial Capital, breach 1-to-3 Shield Border Sieges across land and maritime chokepoints, and unite all 195 nations under your banner!</p>
+            <div class="gfc-tag">🃏 Earn Tactical War Cards, unlock Energy/Cyber/Naval buffs, and crush DEFCON rebellions!</div>
           </div>
         </div>
 
@@ -712,6 +1111,16 @@
             <p><strong>Guess Where:</strong> Progressive GeoGuessr mystery! Read up to 6 clues (climate, language, cuisine, landmarks) and click your guess with a proximity distance radar.<br>
             <strong>Surprise Me:</strong> Spin the globe to discover Earth's rarest secrets (Point Nemo, Socotra, Darvaza Crater)!</p>
             <div class="gfc-tag">📲 Generate viral 9:16 story cards to share with friends!</div>
+          </div>
+        </div>
+
+        <!-- Card 6: Powers of Ten: Cosmic Scale -->
+        <div class="guide-feature-card">
+          <div class="gfc-icon">🌌</div>
+          <div class="gfc-body">
+            <h3>Powers of 10: Cosmic Scale</h3>
+            <p>Experience seamless infinite zoom from Earth & Low Orbit (10⁷ m) through the Solar System, Oort Cloud, 120,000-star Milky Way spiral galaxy (10²¹ m), Local Group, and the Cosmic Web (10²⁶ m).</p>
+            <div class="gfc-tag">🚀 Autopilot warp flight, real-time light travel calculations, and interactive astrophysical Q&A!</div>
           </div>
         </div>
       </div>

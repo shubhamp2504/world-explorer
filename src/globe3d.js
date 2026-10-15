@@ -109,6 +109,9 @@ export class EarthGlobe3D {
     this.textureLoader = new THREE.TextureLoader();
     this.clock = new THREE.Clock();
 
+    this.isExternalCamera = false;
+    this.externalUpdateHook = null;
+
     this.init();
   }
 
@@ -1099,7 +1102,8 @@ export class EarthGlobe3D {
     const labelMat = new THREE.SpriteMaterial({
       map: labelTex,
       transparent: true,
-      depthTest: false
+      depthTest: true,
+      depthWrite: false
     });
     const sprite = new THREE.Sprite(labelMat);
     sprite.scale.set(scale * 4.2, scale * 1.05, 1);
@@ -1552,6 +1556,25 @@ export class EarthGlobe3D {
 
     const delta = Math.min(this.clock.getDelta(), 0.05);
     const elapsedTime = this.clock.getElapsedTime();
+
+    if (this.isExternalCamera) {
+      if (this.cameraLight) {
+        this.cameraLight.visible = false;
+      }
+      if (this.externalUpdateHook) {
+        this.externalUpdateHook(delta, elapsedTime);
+      }
+      if (this.composer) {
+        this.composer.render();
+      } else {
+        this.renderer.render(this.scene, this.camera);
+      }
+      return;
+    } else {
+      if (this.cameraLight && !this.cameraLight.visible) {
+        this.cameraLight.visible = true;
+      }
+    }
 
     // 1. Pass uTime and cameraWorldPosition to Earth and Sun shaders safely
     if (this.earthMesh && this.earthMesh.material?.uniforms) {

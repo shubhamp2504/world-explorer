@@ -3,13 +3,14 @@ import * as d3 from 'd3';
 import * as topojson from 'topojson-client';
 import { COUNTRIES } from './countries.js';
 import { CRAZY_FACTS, WILD_COUNTRY_FACTS } from './facts.js';
-import { FAVORITE_CATEGORIES, INITIAL_FAVORITES } from './data/favorites.js';
 import { BATTLE_QUESTIONS, MYSTERY_LOCATIONS } from './data/games.js';
 import { INDIA_STATES_DATA, INDIA_BATTLE_QUESTIONS, KBC_QUIZ_BANK } from './data/indiaData.js';
 import { SURPRISE_LOCATIONS } from './data/surprises.js';
 import { PLANETS_DATA } from './data/planets.js';
 import { EarthGlobe3D } from './globe3d.js';
 import { sounds } from './audio.js';
+import { ConquestController } from './conquest/conquestUi.js';
+import { CosmosController } from './cosmos/cosmosUi.js';
 
 // ============================================================
 // GLOBAL STATE & SYSTEM REGISTRIES
@@ -23,32 +24,13 @@ const countryMap = new Map();
 const countryByNameLower = new Map();
 
 let globe3dInstance = null;
-let currentMode = 'explore';          // explore | favorites | battle | mystery
+let conquestController = null;
+let cosmosController = null;
+let currentMode = 'explore';          // explore | conquest | battle | mystery | cosmos
 let currentProjection = 'globe';      // flat | globe (synced with initial active 3D container)
 let showDayNightTerminator = true;
 let selectedCountry = null;
 let lastSurpriseIndex = -1;
-
-// Internet's Favorite Places State (Authentic & Persistent)
-const USER_VOTED_KEY = 'we_user_voted_places';
-const CUSTOM_PLACES_KEY = 'we_custom_suggested_places';
-const PERSISTED_VOTES_KEY = 'we_persisted_place_votes';
-let userVotedPlaceIds = new Set(JSON.parse(localStorage.getItem(USER_VOTED_KEY) || '[]'));
-let customSuggestedPlaces = JSON.parse(localStorage.getItem(CUSTOM_PLACES_KEY) || '[]');
-let favoritesList = [...INITIAL_FAVORITES, ...customSuggestedPlaces];
-let selectedFavCategory = 'all';
-let selectedFavRegion = 'all';
-let favSearchQuery = '';
-
-// Hydrate saved votes immediately on boot so votes never reset across reloads
-try {
-  const savedVotes = JSON.parse(localStorage.getItem(PERSISTED_VOTES_KEY) || '{}');
-  favoritesList.forEach(fav => {
-    if (savedVotes[fav.id] !== undefined && savedVotes[fav.id] > fav.votes) {
-      fav.votes = savedVotes[fav.id];
-    }
-  });
-} catch (e) {}
 
 // UTC Time Reference for Astronomical Day/Night Terminator
 const now = new Date();
@@ -82,13 +64,14 @@ let isGlobeRotating = false;
 
 const WORLD_TOPO_URL = 'https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json';
 
-// Aliases mapping for TopoJSON
+// Aliases mapping for TopoJSON (world-atlas@2/countries-110m.json)
 const NAME_ALIASES = {
   'united states of america': 'united states',
   'dem. rep. congo': 'dr congo',
   'congo': 'congo',
   'dominican rep.': 'dominican republic',
-  "côte d'ivoire": 'ivory coast',
+  "côte d'ivoire": "côte d'ivoire",
+  'ivory coast': "côte d'ivoire",
   'central african rep.': 'central african republic',
   'eq. guinea': 'equatorial guinea',
   'north korea': 'north korea',
@@ -97,8 +80,19 @@ const NAME_ALIASES = {
   'bosnia and herz.': 'bosnia and herzegovina',
   'macedonia': 'north macedonia',
   's. sudan': 'south sudan',
-  'russia': 'russia',
+  'eswatini': 'eswatini',
+  'swaziland': 'eswatini',
+  'czechia': 'czechia',
+  'czech rep.': 'czechia',
+  'timor-leste': 'timor-leste',
+  'east timor': 'timor-leste',
+  'myanmar': 'myanmar',
+  'burma': 'myanmar',
+  'palestine': 'palestine',
+  'gambia': 'gambia',
+  'the bahamas': 'bahamas',
   'bahamas': 'bahamas',
+  'russia': 'russia',
   'tanzania': 'tanzania',
   'syria': 'syria',
   'laos': 'laos',
@@ -151,9 +145,9 @@ async function boot() {
       const resolvedName = NAME_ALIASES[rawLower] || rawLower;
 
       let match = countryByNameLower.get(resolvedName);
-      if (!match) {
+      if (!match && resolvedName.length >= 6) {
         for (const [key, c] of countryByNameLower.entries()) {
-          if (key.includes(rawLower) || rawLower.includes(key)) {
+          if (key.length >= 6 && (key.includes(resolvedName) || resolvedName.includes(key))) {
             match = c;
             break;
           }
@@ -171,12 +165,12 @@ async function boot() {
   await new Promise(r => setTimeout(r, 120));
 
   initD3Map();
+  initConquestSystem();
+  initCosmosSystem();
   initNavigation();
   initSearch();
   initQuickJumpBar();
   initPlanetaryExplorer();
-  initFavoritesSystem();
-  initSuggestPlaceSystem();
   initBattleRoyale();
   initMysteryGame();
   initRandomSurpriseButton();
@@ -419,14 +413,14 @@ function renderMapLayers() {
       .on('click', handleStateClick);
   }
 
-  // 4. Solar Terminator Shadow (Day/Night) - Auto-suppressed during game modes
-  if (showDayNightTerminator && currentMode !== 'battle' && currentMode !== 'mystery') {
+  // 4. Solar Terminator Shadow (Day/Night) - Auto-suppressed during game & strategy modes
+  if (showDayNightTerminator && currentMode !== 'battle' && currentMode !== 'mystery' && currentMode !== 'conquest') {
     renderSolarTerminator();
   }
 
   // 5. Active Feature Overlays depending on mode
-  if (currentMode === 'favorites') {
-    renderFavoriteMarkers();
+  if (currentMode === 'conquest' && conquestController) {
+    conquestController.renderMapOverlay();
   }
 
   // 6. Ocean Border
@@ -497,7 +491,7 @@ function startGlobeRotation() {
     projection.rotate([lambda, -15, 0]);
     g.selectAll('path').attr('d', pathGen);
     // Reposition markers
-    g.selectAll('.favorite-marker').attr('transform', d => {
+    g.selectAll('.emp-microstate-node').attr('transform', d => {
       const p = projection([d.lng, d.lat]);
       return p ? `translate(${p[0]},${p[1]})` : 'translate(-999,-999)';
     });
@@ -584,6 +578,12 @@ function handleStateClick(event, d) {
   const clickedLng = coords ? coords[0] : null;
   const clickedLat = coords ? coords[1] : null;
 
+  // 0. In Empire Conquest Mode (Clicking any Indian state targets Sovereign India 'IN')
+  if (currentMode === 'conquest' && conquestController) {
+    conquestController.handleCountryInteraction('IN', px, py);
+    return;
+  }
+
   // 1. In Battle Royale Mode
   if (currentMode === 'battle') {
     if (battleSubMode === 'india') {
@@ -626,11 +626,20 @@ function positionTooltip(event, tt) {
   tt.style.top  = `${Math.max(10, Math.min(y, window.innerHeight - rect.height - 15))}px`;
 }
 
-// Map Click Router (Supports Explore, Battle Royale, Guess Where)
+// Map Click Router (Supports Explore, Empire Conquest, Battle Royale, Guess Where)
 function handleCountryClick(event, d) {
   event.stopPropagation();
   const c = d.properties?.countryObj;
   const code = d.properties?.countryCode;
+
+  // 0. In Empire Conquest Mode
+  if (currentMode === 'conquest' && conquestController) {
+    const [px, py] = d3.pointer(event, g.node());
+    if (code) {
+      conquestController.handleCountryInteraction(code, px, py);
+    }
+    return;
+  }
 
   // 1. In Battle Royale Mode
   if (currentMode === 'battle') {
@@ -682,437 +691,50 @@ function highlightCountryPath(code) {
 }
 
 // ============================================================
-// 1. INTERNET'S FAVORITE PLACES SYSTEM (VOTING & FILTERING)
+// 1. WORLD DOMINATION: EMPIRE CONQUEST SYSTEM
 // ============================================================
-function loadPersistedVotes() {
-  try {
-    return JSON.parse(localStorage.getItem(PERSISTED_VOTES_KEY) || '{}');
-  } catch (e) {
-    return {};
-  }
-}
-
-function savePersistedVote(placeId, count) {
-  try {
-    const map = loadPersistedVotes();
-    map[placeId] = count;
-    localStorage.setItem(PERSISTED_VOTES_KEY, JSON.stringify(map));
-  } catch (e) {}
-}
-
-async function syncGlobalVotes() {
-  const localVotes = loadPersistedVotes();
-  let localUpdated = false;
-  favoritesList.forEach(fav => {
-    if (localVotes[fav.id] !== undefined && localVotes[fav.id] > fav.votes) {
-      fav.votes = localVotes[fav.id];
-      localUpdated = true;
-    }
+function initConquestSystem() {
+  conquestController = new ConquestController({
+    getSvgG: () => g,
+    getProjection: () => projection,
+    getCurrentMode: () => currentMode,
+    getCurrentProjection: () => currentProjection,
+    getGlobe3d: () => globe3dInstance,
+    flyCameraToCoordinates,
+    triggerVictoryParticles,
+    triggerScreenShake,
+    sounds,
+    showToast,
+    openShareCardModal,
+    requestAiMentorInsight
   });
-  if (localUpdated) {
-    renderFavoritesLeaderboard();
-  }
+  conquestController.init();
+  window.conquestController = conquestController;
+}
 
-  // 1. Fetch live community vote tallies from Upstash Redis
-  try {
-    const res = await fetch('/api/vote');
-    if (res.ok) {
-      const data = await res.json();
-      if (data.success && data.votes && typeof data.votes === 'object') {
-        let redisUpdated = false;
-        const combined = { ...localVotes };
-        favoritesList.forEach(fav => {
-          const remoteCount = data.votes[fav.id];
-          if (remoteCount !== undefined && remoteCount > fav.votes) {
-            fav.votes = remoteCount;
-            combined[fav.id] = remoteCount;
-            redisUpdated = true;
-          }
-        });
-        if (redisUpdated) {
-          localStorage.setItem(PERSISTED_VOTES_KEY, JSON.stringify(combined));
-          renderFavoritesLeaderboard();
-        }
+
+
+// ============================================================
+// POWERS OF TEN: COSMIC SCALE SUBSYSTEM (10^7 m to 10^26 m)
+// ============================================================
+function initCosmosSystem() {
+  cosmosController = new CosmosController({
+    getGlobe3d: () => {
+      if (!globe3dInstance) {
+        document.getElementById('btnGlobeView')?.click();
       }
+      return globe3dInstance;
+    },
+    onExit: () => {
+      document.getElementById('tabExplore')?.click();
     }
-  } catch (err) {
-    // Offline or local development fallback
-  }
-
-  // 2. Fetch verified heritage wonders from Neon Postgres DB
-  try {
-    const pRes = await fetch('/api/places');
-    if (pRes.ok) {
-      const pData = await pRes.json();
-      if (pData.success && Array.isArray(pData.places)) {
-        let placesAdded = false;
-        pData.places.forEach(p => {
-          if (!favoritesList.some(existing => existing.id === p.id)) {
-            const countryStr = p.state_or_country ? (p.state_or_country.includes(',') ? p.state_or_country.split(',').pop().trim() : p.state_or_country) : 'India';
-            favoritesList.push({
-              id: p.id,
-              name: p.name,
-              city: p.city || '',
-              country: countryStr,
-              continent: 'Asia',
-              category: 'heritage',
-              lat: parseFloat(p.lat),
-              lng: parseFloat(p.lng),
-              votes: localVotes[p.id] || 1200,
-              image: p.image_url || 'https://images.unsplash.com/photo-1590050752117-238cb0fb12b1?w=800&auto=format&fit=crop&q=80',
-              description: p.history_hook || 'Ancient UNESCO architectural wonder.',
-              whyLoved: p.architectural_significance || 'Cultural and geological landmark of global significance.',
-              nearby: ['Archaeological Heritage Zone', 'Historical Monument']
-            });
-            placesAdded = true;
-          }
-        });
-        if (placesAdded) {
-          renderFavoritesLeaderboard();
-          if (currentMode === 'favorites') {
-            renderFavoriteMarkers();
-          }
-        }
-      }
-    }
-  } catch (err) {
-    // Offline or local development fallback
-  }
-}
-
-function initFavoritesSystem() {
-  syncGlobalVotes();
-  const filterScroll = document.getElementById('favFilterScroll');
-  if (filterScroll) {
-    filterScroll.innerHTML = FAVORITE_CATEGORIES.map(cat => `
-      <button class="fav-cat-btn ${cat.id === 'all' ? 'active' : ''}" data-cat="${cat.id}">
-        <span>${cat.icon}</span>
-        <span>${cat.label}</span>
-      </button>
-    `).join('');
-
-    filterScroll.querySelectorAll('.fav-cat-btn').forEach(btn => {
-      btn.addEventListener('click', () => {
-        filterScroll.querySelectorAll('.fav-cat-btn').forEach(b => b.classList.remove('active'));
-        btn.classList.add('active');
-        selectedFavCategory = btn.dataset.cat;
-        renderFavoriteMarkers();
-        renderFavoritesLeaderboard();
-      });
-    });
-  }
-
-  // Quick Search Filter within Favorites Drawer
-  const searchInput = document.getElementById('favSearchInput');
-  searchInput?.addEventListener('input', (e) => {
-    favSearchQuery = e.target.value.trim().toLowerCase();
-    renderFavoritesLeaderboard();
   });
+  cosmosController.mount();
+  window.cosmosController = cosmosController;
 
-  // Continent / Region Pills
-  const regionBar = document.getElementById('favRegionBar');
-  regionBar?.querySelectorAll('.fav-region-pill').forEach(pill => {
-    pill.addEventListener('click', () => {
-      regionBar.querySelectorAll('.fav-region-pill').forEach(p => p.classList.remove('active'));
-      pill.classList.add('active');
-      selectedFavRegion = pill.dataset.region;
-      renderFavoritesLeaderboard();
-      renderFavoriteMarkers();
-    });
-  });
-
-  renderFavoritesLeaderboard();
-}
-
-function getFilteredFavorites() {
-  return favoritesList.filter(f => {
-    // 1. Category filter
-    if (selectedFavCategory !== 'all' && f.category !== selectedFavCategory) {
-      return false;
-    }
-    // 2. Region / Continent filter
-    if (selectedFavRegion !== 'all' && f.continent !== selectedFavRegion) {
-      return false;
-    }
-    // 3. Search query (matches name, city, country, or category)
-    if (favSearchQuery) {
-      const matchName = f.name.toLowerCase().includes(favSearchQuery);
-      const matchCity = (f.city || '').toLowerCase().includes(favSearchQuery);
-      const matchCountry = f.country.toLowerCase().includes(favSearchQuery);
-      const matchCat = f.category.toLowerCase().includes(favSearchQuery);
-      if (!matchName && !matchCity && !matchCountry && !matchCat) return false;
-    }
-    return true;
-  });
-}
-
-function renderFavoriteMarkers() {
-  g.selectAll('.favorite-marker-group').remove();
-
-  const filtered = getFilteredFavorites();
-  const markerGroup = g.append('g').attr('class', 'favorite-marker-group');
-
-  filtered.forEach(fav => {
-    const p = projection([fav.lng, fav.lat]);
-    if (!p) return;
-
-    const isHeritage = (fav.category === 'heritage');
-    const badgeColor = isHeritage ? '#f59e0b' : '#38bdf8';
-    const badgeGlow = isHeritage ? 'rgba(245, 158, 11, 0.6)' : 'rgba(56, 189, 248, 0.6)';
-
-    const gMarker = markerGroup.append('g')
-      .datum(fav)
-      .attr('class', 'favorite-marker')
-      .attr('transform', `translate(${p[0]},${p[1]})`)
-      .style('cursor', 'pointer')
-      .on('click', (e) => {
-        e.stopPropagation();
-        openPlaceModal(fav);
-        flyCameraToCoordinates(fav.lat, fav.lng, 4.5);
-      });
-
-    // Elegant Pulsing Glowing Outer Halo
-    gMarker.append('circle')
-      .attr('class', 'marker-glow-circle')
-      .attr('r', 12)
-      .attr('fill', 'none')
-      .attr('stroke', badgeColor)
-      .attr('stroke-width', 1.8)
-      .attr('opacity', 0.85);
-
-    // Inner Glowing Badge Center
-    gMarker.append('circle')
-      .attr('r', 9)
-      .attr('fill', '#0b152d')
-      .attr('stroke', badgeColor)
-      .attr('stroke-width', 1.5)
-      .style('filter', `drop-shadow(0 0 8px ${badgeGlow})`);
-
-    // Cultural / Wonder Symbol
-    gMarker.append('text')
-      .attr('text-anchor', 'middle')
-      .attr('dy', 3.5)
-      .attr('font-size', '10px')
-      .attr('fill', '#fff')
-      .text(isHeritage ? '🏛️' : '✨');
-  });
-}
-
-function renderFavoritesLeaderboard() {
-  const container = document.getElementById('favLeaderboard');
-  const subEl = document.getElementById('favLeaderboardSubtitle');
-  if (!container) return;
-
-  const filtered = getFilteredFavorites().sort((a, b) => b.votes - a.votes);
-
-  if (subEl) {
-    subEl.textContent = `Showing ${filtered.length} authentic destinations worldwide.`;
-  }
-
-  if (filtered.length === 0) {
-    container.innerHTML = `
-      <div style="text-align: center; padding: 32px 16px; color: var(--txt-muted);">
-        <div style="font-size: 2rem; margin-bottom: 8px;">🔍</div>
-        <p style="font-size: 0.88rem; font-weight: 600; color: #fff;">No places found</p>
-        <p style="font-size: 0.78rem;">Try clearing your search query or choosing another region.</p>
-      </div>
-    `;
-    return;
-  }
-
-  const medals = ['🥇', '🥈', '🥉'];
-
-  container.innerHTML = filtered.map((fav, i) => {
-    const displayLocation = fav.city ? `${fav.city}, ${fav.country}` : fav.country;
-    return `
-      <div class="fav-leader-item" data-id="${fav.id}">
-        <span class="fav-lead-rank">${medals[i] || `#${i + 1}`}</span>
-        <img class="fav-lead-thumb" src="${fav.image}" alt="${fav.name}" loading="lazy" />
-        <div class="fav-lead-info">
-          <div class="fav-lead-name" title="${fav.name}">${fav.name}</div>
-          <div class="fav-lead-sub" title="${displayLocation}">
-            <span>📍 ${displayLocation}</span>
-          </div>
-          <div style="margin-top: 4px;">
-            <span class="fav-lead-tag">${fav.category.toUpperCase()}</span>
-          </div>
-        </div>
-        <div class="fav-lead-votes">❤️ ${fav.votes.toLocaleString()}</div>
-      </div>
-    `;
-  }).join('');
-
-  container.querySelectorAll('.fav-leader-item').forEach(el => {
-    el.addEventListener('click', () => {
-      const fav = favoritesList.find(f => f.id === el.dataset.id);
-      if (fav) {
-        openPlaceModal(fav);
-        flyCameraToCoordinates(fav.lat, fav.lng, 4.5);
-      }
-    });
-  });
-}
-
-function openPlaceModal(fav) {
-  const modal = document.getElementById('placeModal');
-  if (!modal) return;
-
-  document.getElementById('placeModalImg').src = fav.image;
-  document.getElementById('placeModalTitle').textContent = fav.name;
-  const locationText = fav.city ? `${fav.city}, ${fav.country}` : fav.country;
-  document.getElementById('placeModalCountry').textContent = `📍 ${locationText}`;
-  document.getElementById('placeModalCat').textContent = fav.category.toUpperCase();
-  document.getElementById('placeModalVoteCount').textContent = fav.votes.toLocaleString();
-  document.getElementById('placeModalDesc').textContent = fav.description;
-  document.getElementById('placeModalWhy').textContent = fav.whyLoved;
-
-  const nearbyList = document.getElementById('placeModalNearby');
-  nearbyList.innerHTML = (fav.nearby || []).map(n => `<li>${n}</li>`).join('');
-
-  const voteBtn = document.getElementById('btnVotePlace');
-  const alreadyVoted = userVotedPlaceIds.has(fav.id);
-  if (alreadyVoted) {
-    voteBtn.textContent = '❤️ Voted by You';
-    voteBtn.style.opacity = '0.65';
-    voteBtn.style.pointerEvents = 'none';
-  } else {
-    voteBtn.textContent = '❤️ Upvote Place';
-    voteBtn.style.opacity = '1';
-    voteBtn.style.pointerEvents = 'auto';
-  }
-
-  voteBtn.onclick = () => {
-    if (userVotedPlaceIds.has(fav.id)) {
-      showToast('⚠️ You have already voted for this destination!');
-      return;
-    }
-    fav.votes += 1;
-    userVotedPlaceIds.add(fav.id);
-    localStorage.setItem(USER_VOTED_KEY, JSON.stringify([...userVotedPlaceIds]));
-    savePersistedVote(fav.id, fav.votes);
-    
-    // If it's a custom place, update stored custom places as well
-    const custIdx = customSuggestedPlaces.findIndex(p => p.id === fav.id);
-    if (custIdx !== -1) {
-      customSuggestedPlaces[custIdx].votes = fav.votes;
-      localStorage.setItem(CUSTOM_PLACES_KEY, JSON.stringify(customSuggestedPlaces));
-    }
-
-    document.getElementById('placeModalVoteCount').textContent = fav.votes.toLocaleString();
-    voteBtn.textContent = '❤️ Voted by You';
-    voteBtn.style.opacity = '0.65';
-    voteBtn.style.pointerEvents = 'none';
-    renderFavoritesLeaderboard();
-    showToast(`❤️ Genuine vote registered for ${fav.name}! Total: ${fav.votes.toLocaleString()}`);
-
-    // Asynchronously sync to Vercel Serverless Redis API if online
-    fetch('/api/vote', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ placeId: fav.id })
-    }).catch(() => {
-      // Offline or local development fallback without serverless runtime
-    });
-  };
-
-  document.getElementById('btnSharePlace').onclick = () => {
-    openShareCardModal({
-      headline: `The Internet voted this one of Earth's greatest places!`,
-      subject: fav.name,
-      subtext: `${fav.country} • ${fav.votes.toLocaleString()} Community Votes`,
-      highlight: `Category Champion: ${fav.category.toUpperCase()} 🌟`,
-      icon: '❤️'
-    });
-  };
-
-  document.getElementById('btnFlyPlace').onclick = () => {
-    modal.close();
-    flyCameraToCoordinates(fav.lat, fav.lng, 5);
-  };
-
-  modal.showModal();
-}
-
-function initSuggestPlaceSystem() {
-  const openBtn = document.getElementById('btnOpenSuggestModal');
-  const closeBtn = document.getElementById('btnCloseSuggestModal');
-  const cancelBtn = document.getElementById('btnCancelSuggest');
-  const modal = document.getElementById('suggestPlaceModal');
-  const form = document.getElementById('suggestPlaceForm');
-
-  openBtn?.addEventListener('click', () => {
-    sounds.playClick();
-    modal?.showModal();
-  });
-
-  closeBtn?.addEventListener('click', () => modal?.close());
-  cancelBtn?.addEventListener('click', () => modal?.close());
-
-  form?.addEventListener('submit', (e) => {
-    e.preventDefault();
-    const name = document.getElementById('sugPlaceName')?.value.trim();
-    const country = document.getElementById('sugPlaceCountry')?.value.trim();
-    const category = document.getElementById('sugPlaceCategory')?.value;
-    const lat = parseFloat(document.getElementById('sugPlaceLat')?.value);
-    const lng = parseFloat(document.getElementById('sugPlaceLng')?.value);
-    const desc = document.getElementById('sugPlaceDesc')?.value.trim();
-
-    if (!name || !country || isNaN(lat) || isNaN(lng) || !desc) {
-      showToast('⚠️ Please fill out all required fields with authentic data.');
-      return;
-    }
-
-    const newPlace = {
-      id: `custom-${Date.now()}`,
-      name,
-      country,
-      category,
-      lat,
-      lng,
-      votes: 1, // Start with submitter's initial vote
-      image: 'https://images.unsplash.com/photo-1506744038136-46273834b3fb?w=800&auto=format&fit=crop&q=80',
-      description: desc,
-      whyLoved: `Authentically suggested by community explorer: "${desc}"`,
-      nearby: ['Scenic lookouts', 'Local cultural landmarks']
-    };
-
-    userVotedPlaceIds.add(newPlace.id);
-    localStorage.setItem(USER_VOTED_KEY, JSON.stringify([...userVotedPlaceIds]));
-
-    customSuggestedPlaces.push(newPlace);
-    localStorage.setItem(CUSTOM_PLACES_KEY, JSON.stringify(customSuggestedPlaces));
-
-    favoritesList.push(newPlace);
-    renderFavoritesLeaderboard();
-    renderFavoriteMarkers();
-
-    // Asynchronously broadcast to Vercel Serverless Redis API if online
-    fetch('/api/suggest', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        name,
-        country,
-        category,
-        lat,
-        lng,
-        description: desc
-      })
-    }).catch(() => {
-      // Offline or local development fallback
-    });
-
-    form.reset();
-    modal?.close();
-    sounds.playWhoosh();
-    showToast(`🎉 "${name}" added to authentic global community leaderboard!`);
-
-    // Jump camera to newly added place
-    if (currentProjection === 'globe' && globe3dInstance) {
-      globe3dInstance.flyTo(lat, lng, 3.2);
-    } else {
-      zoomToCoordinates(lng, lat, 4.5);
-    }
+  // Planetary dock launcher shortcut
+  document.getElementById('btnLaunchCosmosPill')?.addEventListener('click', () => {
+    document.getElementById('tabCosmos')?.click();
   });
 }
 
@@ -2089,7 +1711,9 @@ function initNavigation() {
           globeContainer,
           (item) => {
             // Clicked a 3D marker
-            openPlaceModal(item);
+            if (currentMode === 'conquest' && conquestController && item?.id) {
+              conquestController.handleCountryInteraction(item.id);
+            }
           },
           (lat, lng) => {
             // Clicked surface point -> route based on active mode
@@ -2100,6 +1724,11 @@ function initNavigation() {
             if (currentMode === 'battle') {
               const c = findCountryAt(lat, lng);
               handleBattleMapClick(c ? c.code : null, c, lng, lat);
+              return;
+            }
+            if (currentMode === 'conquest' && conquestController) {
+              const c = findCountryAt(lat, lng);
+              if (c) conquestController.handleCountryInteraction(c.code);
               return;
             }
             const c = findCountryAt(lat, lng);
@@ -2121,6 +1750,10 @@ function initNavigation() {
       } else {
         globe3dInstance.resize();
         globe3dInstance.setUtcTime(scrubberTimeMinutes);
+      }
+      if (currentMode === 'conquest' && conquestController) {
+        globe3dInstance.focusPlanet('earth');
+        conquestController.renderMapOverlay();
       }
     }
   });
@@ -2213,22 +1846,24 @@ function initNavigation() {
     showToast(isMuted ? '🔇 Audio muted' : '🔊 Cosmic soundscape activated');
   });
 
-  // Close modals
-  document.getElementById('btnClosePlaceModal')?.addEventListener('click', () => { sounds.playClick(); document.getElementById('placeModal')?.close(); });
   document.getElementById('themeToggle')?.addEventListener('click', () => { sounds.playClick(); document.body.classList.toggle('ambience-mystic'); });
 }
 
 function handleModeSwitch(mode) {
   sounds.playClick();
   // Hide all dynamic docks
-  const favDock = document.getElementById('favoritesFilterDock');
-  if (favDock) favDock.style.display = 'none';
   const battleHud = document.getElementById('battleHud');
   if (battleHud) battleHud.style.display = 'none';
   const mysteryHud = document.getElementById('mysteryHud');
   if (mysteryHud) mysteryHud.style.display = 'none';
 
   // Clean up any ongoing mode intervals and state
+  if (mode !== 'cosmos' && cosmosController) {
+    cosmosController.exitMode();
+  }
+  if (mode !== 'conquest' && conquestController) {
+    conquestController.exitMode();
+  }
   if (currentMode !== 'battle') {
     clearInterval(battleTimerInterval);
     clearTimeout(battleAutoAdvanceTimer);
@@ -2246,15 +1881,13 @@ function handleModeSwitch(mode) {
     if (globe3dInstance) globe3dInstance.clearMarkers();
     showDrawerSection('viewCountryDossier');
     renderMapLayers();
-  } else if (mode === 'favorites') {
-    // Directly show 2D flat map for responsive destination viewing and voting
+  } else if (mode === 'conquest') {
+    // Switch to 2D flat map by default so all 195 borders, amber frontlines, and microstate nodes are immediately visible
     if (currentProjection !== 'flat') {
       document.getElementById('btnFlatView')?.click();
     }
-    if (globe3dInstance) globe3dInstance.setMarkers(favoritesList, 'favorite');
-    document.getElementById('favoritesFilterDock').style.display = 'block';
-    showDrawerSection('viewFavoritesList');
-    renderFavoriteMarkers();
+    showDrawerSection('viewEmpireCommand');
+    conquestController?.enterMode();
   } else if (mode === 'battle') {
     // Switch to 2D flat map for instant full-world click precision
     if (currentProjection !== 'flat') {
@@ -2269,6 +1902,17 @@ function handleModeSwitch(mode) {
     }
     if (globe3dInstance) globe3dInstance.clearMarkers();
     startMysteryGame();
+  } else if (mode === 'cosmos') {
+    // Switch to 3D Globe viewport if on 2D map
+    if (currentProjection !== 'globe' || !globe3dInstance) {
+      document.getElementById('btnGlobeView')?.click();
+    }
+    // Hide standard right drawer panels during cosmic scale journey
+    document.querySelectorAll('.drawer-view').forEach(v => v.style.display = 'none');
+    if (globe3dInstance) {
+      globe3dInstance.clearMarkers();
+    }
+    cosmosController?.enterMode();
   }
 }
 
@@ -2506,6 +2150,8 @@ function openPlanetDossier(planetId) {
       <div class="wild-fact-text">${fact}</div>
     </div>
   `).join('');
+
+
 }
 
 // ============================================================
