@@ -191,13 +191,15 @@ async function boot() {
   // Launch directly into Photorealistic 3D Solar System Orrery (only in explore mode)
   setTimeout(() => {
     if (currentMode !== 'explore') return;
-    document.getElementById('btnGlobeView')?.click();
+    if (!globe3dInstance) {
+      document.getElementById('btnGlobeView')?.click();
+    }
     setTimeout(() => {
       if (currentMode !== 'explore') return;
-      if (globe3dInstance) {
+      if (globe3dInstance && (!globe3dInstance.activeFocusedBody || globe3dInstance.activeFocusedBody === 'system')) {
         globe3dInstance.viewWholeSolarSystem();
+        openPlanetDossier('system');
       }
-      openPlanetDossier('system');
     }, 250);
   }, 2750);
 }
@@ -1745,6 +1747,18 @@ function initNavigation() {
             });
           }
         );
+        globe3dInstance.onCmeImpact = () => {
+          sounds.playSolarFlare();
+          showToast('🌌 CME IMPACT: Solar plasma struck Earth! Intense polar auroral storm active.');
+        };
+        globe3dInstance.onEclipseTotalityChange = (isTotality) => {
+          const hud = document.getElementById('eclipseTotalityHud');
+          if (hud) hud.style.display = isTotality ? 'block' : 'none';
+        };
+        globe3dInstance.onRingDiveChange = (isDive) => {
+          const hud = document.getElementById('ringDiveHud');
+          if (hud) hud.style.display = isDive ? 'block' : 'none';
+        };
         globe3dInstance.setUtcTime(scrubberTimeMinutes);
         globe3dInstance.clearMarkers(); // Start pristine in Explore mode
       } else {
@@ -2071,7 +2085,6 @@ function initPlanetaryExplorer() {
 
   scroll.querySelectorAll('.planet-pill').forEach(btn => {
     btn.addEventListener('click', () => {
-      sounds.playWhoosh();
       const planetId = btn.dataset.planet;
 
       scroll.querySelectorAll('.planet-pill').forEach(b => b.classList.remove('active'));
@@ -2080,9 +2093,44 @@ function initPlanetaryExplorer() {
       btn.classList.add('just-selected');
       setTimeout(() => btn.classList.remove('just-selected'), 500);
 
-      if (currentProjection !== 'globe') {
+      if (!globe3dInstance || currentProjection !== 'globe') {
         document.getElementById('btnGlobeView')?.click();
       }
+
+      // 💥 Coronal Mass Ejection Trigger
+      if (planetId === 'cme') {
+        sounds.playSolarFlare();
+        if (globe3dInstance) {
+          globe3dInstance.focusPlanet('sun');
+          setTimeout(() => globe3dInstance.triggerCoronalMassEjection(), 400);
+        }
+        showToast('💥 Solar Prominence eruption! Massive CME plasma wave expanding towards Earth.');
+        openPlanetDossier('sun');
+        return;
+      }
+
+      // 🌑 Total Solar Eclipse Trigger
+      if (planetId === 'eclipse') {
+        sounds.playEclipseChime();
+        if (globe3dInstance) {
+          globe3dInstance.enterEclipseTotality();
+        }
+        showToast('🌑 Syzygy alignment achieved! Total Solar Eclipse Totality & Diamond Ring activated.');
+        return;
+      }
+
+      // 🪐 Saturn Ring Dive Trigger
+      if (planetId === 'ringdive') {
+        sounds.playRingDive();
+        if (globe3dInstance) {
+          globe3dInstance.enterSaturnRingDive();
+        }
+        showToast("🪐 Diving into Saturn's Ring Plane! Surfing through Cassini Division ice boulders...");
+        openPlanetDossier('saturn');
+        return;
+      }
+
+      sounds.playWhoosh();
 
       if (globe3dInstance) {
         globe3dInstance.focusPlanet(planetId);
@@ -2098,6 +2146,51 @@ function initPlanetaryExplorer() {
         openPlanetDossier(planetId);
       }
     });
+  });
+
+  // Action buttons inside Drawer
+  document.getElementById('btnTriggerSolarFlare')?.addEventListener('click', () => {
+    sounds.playSolarFlare();
+    if (globe3dInstance) {
+      globe3dInstance.triggerCoronalMassEjection();
+    }
+    showToast('💥 Solar Prominences erupted! Massive CME shockwave expanding at supersonic speeds.');
+  });
+
+  document.getElementById('btnAlignEclipse')?.addEventListener('click', () => {
+    sounds.playEclipseChime();
+    if (globe3dInstance) {
+      globe3dInstance.enterEclipseTotality();
+    }
+    showToast('🌑 Total Solar Eclipse initiated! Umbral shadow aligned on Earth.');
+  });
+
+  document.getElementById('btnSaturnRingDive')?.addEventListener('click', () => {
+    sounds.playRingDive();
+    if (globe3dInstance) {
+      globe3dInstance.enterSaturnRingDive();
+    }
+    showToast("🪐 Diving into Saturn's Ring Plane! Surfing through Cassini Division ice boulders...");
+  });
+
+  document.getElementById('btnExitRingDive')?.addEventListener('click', () => {
+    sounds.playWhoosh();
+    if (globe3dInstance) {
+      globe3dInstance.exitSaturnRingDive();
+    }
+    scroll.querySelectorAll('.planet-pill').forEach(b => b.classList.remove('active'));
+    scroll.querySelector('[data-planet="saturn"]')?.classList.add('active');
+    showToast('🚀 Ascended from ring plane. Returned to Saturn orbit.');
+  });
+
+  document.getElementById('btnExitEclipseTotality')?.addEventListener('click', () => {
+    sounds.playWhoosh();
+    if (globe3dInstance) {
+      globe3dInstance.exitEclipseTotality();
+    }
+    scroll.querySelectorAll('.planet-pill').forEach(b => b.classList.remove('active'));
+    scroll.querySelector('[data-planet="earth"]')?.classList.add('active');
+    showToast('🚀 Exited Totality view. Returned to orbital trajectory.');
   });
 
   document.getElementById('btnReturnToEarth')?.addEventListener('click', () => {
@@ -2151,7 +2244,13 @@ function openPlanetDossier(planetId) {
     </div>
   `).join('');
 
-
+  // Toggle Contextual Innovation Buttons
+  const flareBtn = document.getElementById('btnTriggerSolarFlare');
+  const eclipseBtn = document.getElementById('btnAlignEclipse');
+  const ringDiveBtn = document.getElementById('btnSaturnRingDive');
+  if (flareBtn) flareBtn.style.display = (planetId === 'sun') ? 'block' : 'none';
+  if (eclipseBtn) eclipseBtn.style.display = (planetId === 'earth' || planetId === 'moon') ? 'block' : 'none';
+  if (ringDiveBtn) ringDiveBtn.style.display = (planetId === 'saturn') ? 'block' : 'none';
 }
 
 // ============================================================

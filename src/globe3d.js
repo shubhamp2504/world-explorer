@@ -63,6 +63,32 @@ export class EarthGlobe3D {
     this.billboardLabels = [];
     this.lastOrreryState = null;
 
+    // Living Sun & CME Eruption State
+    this.sunProminences = null;
+    this.cmeActive = false;
+    this.cmeRadius = 1.5;
+    this.cmeMaxRadius = 24.0;
+    this.cmeSpeed = 11.5;
+    this.cmeGroup = null;
+    this.cmeTorus = null;
+    this.cmeParticles = null;
+    this._cmeHitEarth = false;
+    this.auroraIntensity = 0.0;
+    this.screenShakeIntensity = 0.0;
+    this.onCmeImpact = null;
+
+    // Solar Eclipse & Totality State
+    this.isEclipseActive = false;
+    this.isEclipseTotality = false;
+    this.totalityCorona = null;
+    this.diamondRingGlint = null;
+    this.onEclipseTotalityChange = null;
+
+    // Saturn Ring Dive State
+    this.saturnBoulders = null;
+    this.isRingDiveActive = false;
+    this.onRingDiveChange = null;
+
     // Active Camera Mode ('system', 'sun', 'earth', 'moon', 'mercury', etc.)
     this.activeFocusedBody = 'system';
 
@@ -487,6 +513,15 @@ export class EarthGlobe3D {
     this.sunGroup.add(sunLabel);
     this.billboardLabels.push(sunLabel);
     this.interactiveObjects.push(sunLabel);
+
+    // 7. 3D Magnetic Prominence Plasma Loops
+    this.buildSunProminences();
+
+    // 8. Coronal Mass Ejection Shockwave System
+    this.buildCmeSystem();
+
+    // 9. Total Solar Eclipse Totality Corona & Diamond Ring
+    this.buildTotalityCoronaSystem();
   }
 
   createSolarCoronaTexture() {
@@ -579,6 +614,368 @@ export class EarthGlobe3D {
     const tex = new THREE.CanvasTexture(canvas);
     tex.colorSpace = THREE.SRGBColorSpace;
     return tex;
+  }
+
+  // -------------------------------------------------------------
+  // ☀️ LIVING SUN: 3D MAGNETIC PROMINENCE ARCHES & CME BLAST WAVE
+  // -------------------------------------------------------------
+  buildSunProminences() {
+    this.sunProminences = new THREE.Group();
+    this.sunProminences.name = 'SolarProminences';
+
+    const loopCount = 6;
+    const plasmaMat = new THREE.ShaderMaterial({
+      uniforms: {
+        uTime: { value: 0 },
+        baseColor: { value: new THREE.Color(1.0, 0.42, 0.08) },
+        flareColor: { value: new THREE.Color(1.0, 0.88, 0.35) }
+      },
+      vertexShader: `
+        uniform float uTime;
+        varying vec3 vNormal;
+        varying vec2 vUv;
+        void main() {
+          vUv = uv;
+          vNormal = normalize(normalMatrix * normal);
+          vec3 pos = position + normal * 0.02 * sin(uTime * 4.0 + position.y * 6.0);
+          gl_Position = projectionMatrix * modelViewMatrix * vec4(pos, 1.0);
+        }
+      `,
+      fragmentShader: `
+        uniform float uTime;
+        uniform vec3 baseColor;
+        uniform vec3 flareColor;
+        varying vec3 vNormal;
+        varying vec2 vUv;
+        void main() {
+          float pulse = 0.75 + 0.25 * sin(uTime * 3.5 + vUv.x * 12.0);
+          float glow = pow(1.0 - abs(vUv.y - 0.5) * 2.0, 1.8);
+          vec3 col = mix(baseColor, flareColor, pulse * 0.6);
+          gl_FragColor = vec4(col * 1.8, glow * 0.85);
+        }
+      `,
+      blending: THREE.AdditiveBlending,
+      transparent: true,
+      depthWrite: false,
+      side: THREE.DoubleSide
+    });
+
+    for (let i = 0; i < loopCount; i++) {
+      const phi = (i / loopCount) * Math.PI * 2 + Math.PI * 0.15;
+      const theta = 0.35 + (i % 3) * 0.38;
+      const rSun = 1.42;
+
+      const p1 = new THREE.Vector3(
+        rSun * Math.sin(theta) * Math.cos(phi),
+        rSun * Math.cos(theta),
+        rSun * Math.sin(theta) * Math.sin(phi)
+      );
+
+      const dPhi = 0.26 + (i % 2) * 0.14;
+      const p3 = new THREE.Vector3(
+        rSun * Math.sin(theta + 0.12) * Math.cos(phi + dPhi),
+        rSun * Math.cos(theta + 0.12),
+        rSun * Math.sin(theta + 0.12) * Math.sin(phi + dPhi)
+      );
+
+      const rPeak = rSun + 0.42 + (i % 3) * 0.24;
+      const midPhi = phi + dPhi * 0.5;
+      const midTheta = theta + 0.06;
+      const p2 = new THREE.Vector3(
+        rPeak * Math.sin(midTheta) * Math.cos(midPhi),
+        rPeak * Math.cos(midTheta),
+        rPeak * Math.sin(midTheta) * Math.sin(midPhi)
+      );
+
+      const curve = new THREE.QuadraticBezierCurve3(p1, p2, p3);
+      const tubeGeom = new THREE.TubeGeometry(curve, 32, 0.038, 8, false);
+      const tubeMesh = new THREE.Mesh(tubeGeom, plasmaMat);
+      this.sunProminences.add(tubeMesh);
+    }
+
+    this.sunGroup.add(this.sunProminences);
+  }
+
+  buildCmeSystem() {
+    this.cmeGroup = new THREE.Group();
+    this.cmeGroup.visible = false;
+    this.solarSystemGroup.add(this.cmeGroup);
+
+    // 1. Fiery expanding plasma shockwave torus
+    const torusGeom = new THREE.TorusGeometry(1.0, 0.28, 16, 64);
+    const torusMat = new THREE.ShaderMaterial({
+      uniforms: {
+        uTime: { value: 0 },
+        uProgress: { value: 0 }
+      },
+      vertexShader: `
+        varying vec3 vNormal;
+        varying vec3 vPosition;
+        void main() {
+          vNormal = normalize(normalMatrix * normal);
+          vPosition = position;
+          gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+        }
+      `,
+      fragmentShader: `
+        uniform float uTime;
+        uniform float uProgress;
+        varying vec3 vNormal;
+        varying vec3 vPosition;
+        void main() {
+          float fade = 1.0 - smoothstep(0.0, 1.0, uProgress);
+          vec3 plasma = mix(vec3(1.0, 0.2, 0.02), vec3(1.0, 0.85, 0.2), sin(uTime * 5.0 + vPosition.x * 4.0) * 0.5 + 0.5);
+          float rim = pow(1.0 - abs(vNormal.z), 1.5);
+          gl_FragColor = vec4(plasma * 2.2, rim * fade * 0.85);
+        }
+      `,
+      blending: THREE.AdditiveBlending,
+      transparent: true,
+      depthWrite: false,
+      side: THREE.DoubleSide
+    });
+    this.cmeTorus = new THREE.Mesh(torusGeom, torusMat);
+    this.cmeTorus.rotation.x = Math.PI / 2;
+    this.cmeGroup.add(this.cmeTorus);
+
+    // 2. High-energy solar wind particle spray
+    const pCount = 600;
+    const pPos = new Float32Array(pCount * 3);
+    const pVel = new Float32Array(pCount * 3);
+    for (let i = 0; i < pCount; i++) {
+      const theta = Math.random() * Math.PI * 2;
+      const phi = (Math.random() - 0.5) * 0.6;
+      const speed = 0.8 + Math.random() * 0.5;
+      pPos[i * 3] = 0;
+      pPos[i * 3 + 1] = 0;
+      pPos[i * 3 + 2] = 0;
+      pVel[i * 3] = Math.cos(phi) * Math.cos(theta) * speed;
+      pVel[i * 3 + 1] = Math.sin(phi) * speed * 0.35;
+      pVel[i * 3 + 2] = Math.cos(phi) * Math.sin(theta) * speed;
+    }
+    const pGeom = new THREE.BufferGeometry();
+    pGeom.setAttribute('position', new THREE.BufferAttribute(pPos, 3));
+    pGeom.userData = { vel: pVel };
+
+    const pMat = new THREE.PointsMaterial({
+      color: 0xffaa33,
+      size: 0.16,
+      blending: THREE.AdditiveBlending,
+      transparent: true,
+      opacity: 0.85
+    });
+    this.cmeParticles = new THREE.Points(pGeom, pMat);
+    this.cmeGroup.add(this.cmeParticles);
+  }
+
+  triggerCoronalMassEjection() {
+    this.cmeActive = true;
+    this.cmeRadius = 1.5;
+    this.cmeGroup.visible = true;
+    this._cmeHitEarth = false;
+
+    // Reset particle positions
+    const pos = this.cmeParticles.geometry.attributes.position.array;
+    for (let i = 0; i < pos.length; i++) pos[i] = 0;
+    this.cmeParticles.geometry.attributes.position.needsUpdate = true;
+    this.cmeParticles.material.opacity = 0.95;
+
+    // Flash solar corona briefly
+    if (this.sunCorona) {
+      this.sunCorona.scale.set(9.5, 9.5, 1);
+    }
+    this.triggerScreenShake(2.0);
+  }
+
+  triggerScreenShake(intensity = 3.0) {
+    this.screenShakeIntensity = intensity;
+  }
+
+  triggerAuroralStorm() {
+    this.auroraIntensity = 1.0;
+  }
+
+  // -------------------------------------------------------------
+  // 🌑 TOTAL SOLAR ECLIPSE & TOTALITY GROUND EXPERIENCE
+  // -------------------------------------------------------------
+  buildTotalityCoronaSystem() {
+    // Ethereal Totality Corona with streaming magnetic filaments
+    const totTex = this.createTotalityCoronaTexture();
+    const totMat = new THREE.SpriteMaterial({
+      map: totTex,
+      blending: THREE.AdditiveBlending,
+      transparent: true,
+      opacity: 0.0,
+      depthWrite: false
+    });
+    this.totalityCorona = new THREE.Sprite(totMat);
+    this.totalityCorona.scale.set(7.5, 7.5, 1);
+    this.totalityCorona.visible = false;
+    this.sunGroup.add(this.totalityCorona);
+
+    // Diamond Ring glint flare
+    const dTex = this.createDiamondRingTexture();
+    const dMat = new THREE.SpriteMaterial({
+      map: dTex,
+      blending: THREE.AdditiveBlending,
+      transparent: true,
+      opacity: 0.0,
+      depthWrite: false
+    });
+    this.diamondRingGlint = new THREE.Sprite(dMat);
+    this.diamondRingGlint.scale.set(2.4, 2.4, 1);
+    this.diamondRingGlint.visible = false;
+    this.sunGroup.add(this.diamondRingGlint);
+  }
+
+  createTotalityCoronaTexture() {
+    const canvas = document.createElement('canvas');
+    canvas.width = 1024; canvas.height = 1024;
+    const ctx = canvas.getContext('2d');
+    const cx = 512, cy = 512;
+
+    ctx.clearRect(0, 0, 1024, 1024);
+    for (let i = 0; i < 96; i++) {
+      const angle = (i / 96) * Math.PI * 2;
+      const len = 300 + Math.sin(angle * 5.0) * 110 + Math.cos(angle * 8.0) * 55;
+      const grad = ctx.createLinearGradient(
+        cx + Math.cos(angle) * 140, cy + Math.sin(angle) * 140,
+        cx + Math.cos(angle) * len, cy + Math.sin(angle) * len
+      );
+      grad.addColorStop(0, 'rgba(255, 255, 255, 0.95)');
+      grad.addColorStop(0.35, 'rgba(220, 240, 255, 0.50)');
+      grad.addColorStop(0.70, 'rgba(180, 210, 255, 0.18)');
+      grad.addColorStop(1.0, 'rgba(140, 180, 255, 0.0)');
+
+      ctx.strokeStyle = grad;
+      ctx.lineWidth = 4 + (i % 3) * 3;
+      ctx.beginPath();
+      ctx.moveTo(cx + Math.cos(angle) * 140, cy + Math.sin(angle) * 140);
+      ctx.lineTo(cx + Math.cos(angle) * len, cy + Math.sin(angle) * len);
+      ctx.stroke();
+    }
+
+    const radial = ctx.createRadialGradient(cx, cy, 140, cx, cy, 480);
+    radial.addColorStop(0, 'rgba(255, 255, 255, 0.95)');
+    radial.addColorStop(0.25, 'rgba(210, 235, 255, 0.55)');
+    radial.addColorStop(0.60, 'rgba(160, 205, 255, 0.18)');
+    radial.addColorStop(1.0, 'rgba(0, 0, 0, 0)');
+    ctx.fillStyle = radial;
+    ctx.beginPath();
+    ctx.arc(cx, cy, 480, 0, Math.PI * 2);
+    ctx.fill();
+
+    const tex = new THREE.CanvasTexture(canvas);
+    tex.colorSpace = THREE.SRGBColorSpace;
+    return tex;
+  }
+
+  createDiamondRingTexture() {
+    const canvas = document.createElement('canvas');
+    canvas.width = 256; canvas.height = 256;
+    const ctx = canvas.getContext('2d');
+    const cx = 128, cy = 128;
+
+    const grad = ctx.createRadialGradient(cx, cy, 2, cx, cy, 120);
+    grad.addColorStop(0, 'rgba(255, 255, 255, 1.0)');
+    grad.addColorStop(0.15, 'rgba(200, 240, 255, 0.85)');
+    grad.addColorStop(0.40, 'rgba(100, 190, 255, 0.35)');
+    grad.addColorStop(1.0, 'rgba(0, 0, 0, 0)');
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, 256, 256);
+
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.9)';
+    ctx.lineWidth = 2.5;
+    ctx.beginPath();
+    ctx.moveTo(cx, 10); ctx.lineTo(cx, 246);
+    ctx.moveTo(10, cy); ctx.lineTo(246, cy);
+    ctx.stroke();
+
+    const tex = new THREE.CanvasTexture(canvas);
+    tex.colorSpace = THREE.SRGBColorSpace;
+    return tex;
+  }
+
+  alignSolarEclipse() {
+    this.isEclipseActive = true;
+    const e = this.planets['earth'];
+    const m = this.planets['moon'];
+    if (!e || !m) return;
+
+    // Align Moon directly on the Sun-Earth syzygy line with matching apparent angular diameter
+    const toSunLocal = new THREE.Vector3(-Math.cos(e.angle), 0, -Math.sin(e.angle)).normalize();
+    this.moonGroup.position.copy(toSunLocal).multiplyScalar(3.52);
+
+    if (this.earthMesh && this.earthMesh.material?.uniforms?.uEclipseFactor) {
+      this.earthMesh.material.uniforms.uEclipseFactor.value = 1.0;
+    }
+  }
+
+  resumeOrbits() {
+    this.isEclipseActive = false;
+    if (this.earthMesh && this.earthMesh.material?.uniforms?.uEclipseFactor) {
+      this.earthMesh.material.uniforms.uEclipseFactor.value = 0.0;
+    }
+  }
+
+  enterEclipseTotality() {
+    this.isEclipseTotality = true;
+    this.alignSolarEclipse();
+
+    if (this.totalityCorona) {
+      this.totalityCorona.visible = true;
+      this.totalityCorona.material.opacity = 0.98;
+    }
+    if (this.diamondRingGlint) {
+      this.diamondRingGlint.visible = true;
+      this.diamondRingGlint.material.opacity = 1.0;
+      this.diamondRingGlint.position.set(1.42, 0.48, 0);
+    }
+    if (this.sunMesh) this.sunMesh.visible = false;
+    if (this.sunChromosphere) this.sunChromosphere.visible = false;
+
+    this.activeFocusedBody = 'totality';
+    this.autoRotate = false;
+
+    // Look from Earth's daylit surface towards Sun
+    const ePos = this.earthGroup.position.clone();
+    const toSun = new THREE.Vector3(0, 0, 0).sub(ePos).normalize();
+
+    this.targetCameraLookAt.set(0, 0, 0);
+    this.targetCameraPos.copy(ePos).addScaledVector(toSun, 1.22);
+    this.camera.position.copy(this.targetCameraPos);
+    this.currentCameraLookAt.copy(this.targetCameraLookAt);
+    this.camera.lookAt(this.currentCameraLookAt);
+
+    if (this.billboardLabels) {
+      this.billboardLabels.forEach(l => { l.visible = false; });
+    }
+    if (this.orbitsGroup) {
+      this.orbitsGroup.visible = false;
+    }
+
+    this.onEclipseTotalityChange?.(true);
+  }
+
+  exitEclipseTotality() {
+    this.isEclipseTotality = false;
+    if (this.totalityCorona) {
+      this.totalityCorona.visible = false;
+      this.totalityCorona.material.opacity = 0.0;
+    }
+    if (this.diamondRingGlint) {
+      this.diamondRingGlint.visible = false;
+      this.diamondRingGlint.material.opacity = 0.0;
+    }
+    if (this.sunMesh) this.sunMesh.visible = true;
+    if (this.sunChromosphere) this.sunChromosphere.visible = true;
+    if (this.orbitsGroup) {
+      this.orbitsGroup.visible = true;
+    }
+
+    this.resumeOrbits();
+    this.focusOnPlanet('earth');
+    this.onEclipseTotalityChange?.(false);
   }
 
   // 🪐 CONCENTRIC ORBITAL RINGS & ASTEROID BELT
@@ -703,6 +1100,9 @@ export class EarthGlobe3D {
         nightTexture: { value: nightTex },
         specularTexture: { value: specularTex },
         sunWorldPosition: { value: new THREE.Vector3(0, 0, 0) },
+        moonWorldPosition: { value: new THREE.Vector3(0, 0, 0) },
+        uEclipseFactor: { value: 0.0 },
+        uAuroraIntensity: { value: 0.0 },
         cameraWorldPosition: { value: this.camera.position },
         uTime: { value: 0.0 }
       },
@@ -723,7 +1123,10 @@ export class EarthGlobe3D {
         uniform sampler2D nightTexture;
         uniform sampler2D specularTexture;
         uniform vec3 sunWorldPosition;
+        uniform vec3 moonWorldPosition;
         uniform vec3 cameraWorldPosition;
+        uniform float uEclipseFactor;
+        uniform float uAuroraIntensity;
         uniform float uTime;
 
         varying vec2 vUv;
@@ -765,6 +1168,30 @@ export class EarthGlobe3D {
           // 4. Natural Physical Blend from Daylight to Night
           vec3 finalSurface = mix(darkNight, litDay, dayFactor);
 
+          // 🌘 Real-time Lunar Eclipse Shadow Projection (Umbra & Penumbra)
+          if (uEclipseFactor > 0.001) {
+            vec3 rayDir = normalize(vWorldPosition - sunWorldPosition);
+            vec3 toMoon = moonWorldPosition - sunWorldPosition;
+            float t = dot(toMoon, rayDir);
+            if (t > 0.0 && t < length(vWorldPosition - sunWorldPosition)) {
+              float distToMoonRay = length((sunWorldPosition + rayDir * t) - moonWorldPosition);
+              float penumbra = smoothstep(0.48, 0.16, distToMoonRay);
+              float umbra = smoothstep(0.20, 0.05, distToMoonRay);
+              float shadowStrength = max(penumbra * 0.75, umbra * 0.96) * uEclipseFactor;
+              finalSurface = mix(finalSurface, darkNight * 0.35, shadowStrength);
+            }
+          }
+
+          // 🌌 Auroral Storm Light Show (CME Impact)
+          if (uAuroraIntensity > 0.01) {
+            float polarLat = smoothstep(0.26, 0.46, abs(vUv.y - 0.5));
+            if (polarLat > 0.0) {
+              float ribbon = sin(vUv.x * 32.0 + uTime * 3.5) * cos(vUv.y * 36.0 + uTime * 2.2);
+              vec3 auroraTint = mix(vec3(0.08, 0.98, 0.48), vec3(0.68, 0.22, 0.98), sin(vUv.x * 14.0 + uTime * 1.5) * 0.5 + 0.5);
+              finalSurface += auroraTint * (polarLat * (0.6 + 0.4 * ribbon) * uAuroraIntensity * 2.8);
+            }
+          }
+
           // 5. Authentic Atmospheric Rayleigh Blue Rim (Thin, delicate horizon line)
           float fresnel = 1.0 - max(dot(N, viewDir), 0.0);
           float atmosphericGlow = pow(fresnel, 2.8) * 0.95;
@@ -801,6 +1228,10 @@ export class EarthGlobe3D {
     // Thin, delicate atmospheric shell hugging Earth
     const atmoGeom = new THREE.SphereGeometry(1.205, 36, 36);
     const atmoMat = new THREE.ShaderMaterial({
+      uniforms: {
+        uAuroraIntensity: { value: 0.0 },
+        uTime: { value: 0.0 }
+      },
       vertexShader: `
         varying vec3 vNormal;
         void main() {
@@ -809,10 +1240,17 @@ export class EarthGlobe3D {
         }
       `,
       fragmentShader: `
+        uniform float uAuroraIntensity;
+        uniform float uTime;
         varying vec3 vNormal;
         void main() {
           float intensity = pow(0.72 - dot(vNormal, vec3(0.0, 0.0, 1.0)), 2.8);
-          gl_FragColor = vec4(0.28, 0.72, 1.0, 1.0) * intensity * 0.85;
+          vec3 baseAtmo = vec3(0.28, 0.72, 1.0) * intensity * 0.85;
+          if (uAuroraIntensity > 0.01) {
+            vec3 auroraGlow = mix(vec3(0.1, 0.95, 0.4), vec3(0.7, 0.2, 0.95), sin(uTime * 3.0) * 0.5 + 0.5);
+            baseAtmo += auroraGlow * (intensity * uAuroraIntensity * 2.5);
+          }
+          gl_FragColor = vec4(baseAtmo, 1.0);
         }
       `,
       blending: THREE.AdditiveBlending,
@@ -1042,6 +1480,10 @@ export class EarthGlobe3D {
         ringMesh = new THREE.Mesh(ringGeom, ringMat);
         ringMesh.rotation.z = 0.465; // Authentic 26.7° axial tilt
         group.add(ringMesh);
+
+        if (p.id === 'saturn') {
+          this.buildSaturnRingBoulders(group, p.radius);
+        }
       }
 
       // Billboard HUD Label
@@ -1066,7 +1508,515 @@ export class EarthGlobe3D {
       };
     });
 
+    // ❄️ 4 EXOTIC MOONS: Europa, Titan, Io, Enceladus
+    this.buildExoticMoons();
+
     this.planetsList = Object.values(this.planets);
+  }
+
+  // -------------------------------------------------------------
+  // 🪐 SATURN RING DIVE: 1,400 INSTANCED TUMBLING ICE BOULDERS
+  // -------------------------------------------------------------
+  buildSaturnRingBoulders(saturnGroup, saturnRadius) {
+    const boulderCount = 1400;
+    const geom = new THREE.DodecahedronGeometry(0.045, 1);
+
+    const posAttr = geom.attributes.position;
+    for (let i = 0; i < posAttr.count; i++) {
+      const vx = posAttr.getX(i);
+      const vy = posAttr.getY(i);
+      const vz = posAttr.getZ(i);
+      const factor = 0.82 + Math.random() * 0.36;
+      posAttr.setXYZ(i, vx * factor, vy * factor, vz * factor);
+    }
+    posAttr.needsUpdate = true;
+    geom.computeVertexNormals();
+
+    const mat = new THREE.MeshStandardMaterial({
+      color: 0xf8fafc,
+      roughness: 0.28,
+      metalness: 0.12,
+      flatShading: true
+    });
+
+    this.saturnBoulders = new THREE.InstancedMesh(geom, mat, boulderCount);
+    this.saturnBoulders.name = 'SaturnRingBoulders';
+    this.saturnBoulders.rotation.z = 0.465; // Same 26.7° tilt as rings
+
+    const innerR = saturnRadius * 1.25;
+    const outerR = saturnRadius * 2.65;
+    const cassiniInner = saturnRadius * 1.94;
+    const cassiniOuter = saturnRadius * 2.14;
+
+    const dummy = new THREE.Object3D();
+    const boulderData = [];
+
+    for (let i = 0; i < boulderCount; i++) {
+      let r;
+      do {
+        r = innerR + Math.random() * (outerR - innerR);
+      } while (r > cassiniInner && r < cassiniOuter && Math.random() > 0.08);
+
+      const theta = Math.random() * Math.PI * 2;
+      const y = (Math.random() - 0.5) * 0.048;
+      const x = Math.cos(theta) * r;
+      const z = Math.sin(theta) * r;
+
+      const scale = 0.4 + Math.random() * 1.6;
+      dummy.position.set(x, y, z);
+      dummy.scale.set(scale, scale, scale);
+      dummy.rotation.set(Math.random() * Math.PI, Math.random() * Math.PI, Math.random() * Math.PI);
+      dummy.updateMatrix();
+
+      this.saturnBoulders.setMatrixAt(i, dummy.matrix);
+
+      boulderData.push({
+        r,
+        theta,
+        y,
+        scale,
+        orbitSpeed: 0.04 / Math.sqrt(r),
+        rotX: (Math.random() - 0.5) * 0.8,
+        rotY: (Math.random() - 0.5) * 0.8,
+        rotZ: (Math.random() - 0.5) * 0.8
+      });
+    }
+
+    this.saturnBoulders.instanceMatrix.needsUpdate = true;
+    this.saturnBoulders.userData = { boulderData, dummy };
+    saturnGroup.add(this.saturnBoulders);
+  }
+
+  enterSaturnRingDive() {
+    this.isRingDiveActive = true;
+    this.activeFocusedBody = 'saturn_ring_dive';
+    this.autoRotate = false;
+    this.updateVisibility(false);
+
+    if (this.billboardLabels) {
+      this.billboardLabels.forEach(l => { l.visible = false; });
+    }
+    this.onRingDiveChange?.(true);
+  }
+
+  exitSaturnRingDive() {
+    this.isRingDiveActive = false;
+    this.focusPlanet('saturn');
+    this.onRingDiveChange?.(false);
+  }
+
+  // -------------------------------------------------------------
+  // ❄️ EXOTIC MOONS: EUROPA, TITAN, IO, ENCELADUS
+  // -------------------------------------------------------------
+  buildExoticMoons() {
+    // 1. IO & EUROPA (Moons of Jupiter)
+    const jupiterGroup = this.planets['jupiter']?.group;
+    if (jupiterGroup) {
+      // IO (Volcanic Cauldron)
+      const ioTex = this.createIoTexture();
+      const ioGeom = new THREE.SphereGeometry(0.32, 32, 32);
+      const ioMat = new THREE.MeshStandardMaterial({
+        map: ioTex,
+        roughness: 0.85,
+        metalness: 0.05
+      });
+      const ioGroup = new THREE.Group();
+      ioGroup.userData = { celestialId: 'io' };
+      const ioMesh = new THREE.Mesh(ioGeom, ioMat);
+      ioMesh.userData = { celestialId: 'io' };
+      ioGroup.add(ioMesh);
+      this.interactiveObjects.push(ioMesh);
+
+      const ioPlume = this.createVolcanicPlumeSystem(0.32);
+      ioGroup.add(ioPlume);
+
+      const ioLabel = this.createBillboardLabel('🌋 Io', '#fbbf24', 0.65);
+      ioLabel.position.set(0, 0.65, 0);
+      ioLabel.userData = { celestialId: 'io' };
+      ioGroup.add(ioLabel);
+      this.billboardLabels.push(ioLabel);
+      this.interactiveObjects.push(ioLabel);
+
+      jupiterGroup.add(ioGroup);
+      this.planets['io'] = {
+        id: 'io',
+        parent: 'jupiter',
+        group: ioGroup,
+        mesh: ioMesh,
+        radius: 0.32,
+        orbitR: 2.55,
+        orbitSpeed: 0.042,
+        angle: 0.5,
+        rotSpeed: 0.001,
+        plume: ioPlume
+      };
+
+      // EUROPA (Subsurface Ocean & Cryo-Geysers)
+      const europaTex = this.createEuropaTexture();
+      const europaGeom = new THREE.SphereGeometry(0.30, 32, 32);
+      const europaMat = new THREE.MeshStandardMaterial({
+        map: europaTex,
+        roughness: 0.30,
+        metalness: 0.08
+      });
+      const europaGroup = new THREE.Group();
+      europaGroup.userData = { celestialId: 'europa' };
+      const europaMesh = new THREE.Mesh(europaGeom, europaMat);
+      europaMesh.userData = { celestialId: 'europa' };
+      europaGroup.add(europaMesh);
+      this.interactiveObjects.push(europaMesh);
+
+      const europaGeysers = this.createCryoGeyserSystem(0.30, 0x38bdf8);
+      europaGroup.add(europaGeysers);
+
+      const europaLabel = this.createBillboardLabel('🌊 Europa', '#38bdf8', 0.65);
+      europaLabel.position.set(0, 0.65, 0);
+      europaLabel.userData = { celestialId: 'europa' };
+      europaGroup.add(europaLabel);
+      this.billboardLabels.push(europaLabel);
+      this.interactiveObjects.push(europaLabel);
+
+      jupiterGroup.add(europaGroup);
+      this.planets['europa'] = {
+        id: 'europa',
+        parent: 'jupiter',
+        group: europaGroup,
+        mesh: europaMesh,
+        radius: 0.30,
+        orbitR: 3.45,
+        orbitSpeed: 0.030,
+        angle: 2.2,
+        rotSpeed: 0.0008,
+        geysers: europaGeysers
+      };
+    }
+
+    // 2. ENCELADUS & TITAN (Moons of Saturn)
+    const saturnGroup = this.planets['saturn']?.group;
+    if (saturnGroup) {
+      // ENCELADUS (Tiger-Stripe Cryo-Plumes)
+      const encTex = this.createEnceladusTexture();
+      const encGeom = new THREE.SphereGeometry(0.24, 32, 32);
+      const encMat = new THREE.MeshStandardMaterial({
+        map: encTex,
+        roughness: 0.20,
+        metalness: 0.15
+      });
+      const encGroup = new THREE.Group();
+      encGroup.userData = { celestialId: 'enceladus' };
+      const encMesh = new THREE.Mesh(encGeom, encMat);
+      encMesh.userData = { celestialId: 'enceladus' };
+      encGroup.add(encMesh);
+      this.interactiveObjects.push(encMesh);
+
+      const encPlumes = this.createCryoGeyserSystem(0.24, 0xbae6fd);
+      encPlumes.position.set(0, -0.22, 0);
+      encGroup.add(encPlumes);
+
+      const encLabel = this.createBillboardLabel('❄️ Enceladus', '#bae6fd', 0.60);
+      encLabel.position.set(0, 0.55, 0);
+      encLabel.userData = { celestialId: 'enceladus' };
+      encGroup.add(encLabel);
+      this.billboardLabels.push(encLabel);
+      this.interactiveObjects.push(encLabel);
+
+      saturnGroup.add(encGroup);
+      this.planets['enceladus'] = {
+        id: 'enceladus',
+        parent: 'saturn',
+        group: encGroup,
+        mesh: encMesh,
+        radius: 0.24,
+        orbitR: 3.95,
+        orbitSpeed: 0.026,
+        angle: 1.1,
+        rotSpeed: 0.001,
+        plumes: encPlumes
+      };
+
+      // TITAN (Golden Smog & Hydrocarbon Seas)
+      const titanTex = this.createTitanTexture();
+      const titanGeom = new THREE.SphereGeometry(0.42, 32, 32);
+      const titanMat = new THREE.MeshStandardMaterial({
+        map: titanTex,
+        roughness: 0.65,
+        metalness: 0.05
+      });
+      const titanGroup = new THREE.Group();
+      titanGroup.userData = { celestialId: 'titan' };
+      const titanMesh = new THREE.Mesh(titanGeom, titanMat);
+      titanMesh.userData = { celestialId: 'titan' };
+      titanGroup.add(titanMesh);
+      this.interactiveObjects.push(titanMesh);
+
+      const titanAtmoGeom = new THREE.SphereGeometry(0.442, 32, 32);
+      const titanAtmoMat = new THREE.ShaderMaterial({
+        vertexShader: `
+          varying vec3 vNormal;
+          void main() {
+            vNormal = normalize(normalMatrix * normal);
+            gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+          }
+        `,
+        fragmentShader: `
+          varying vec3 vNormal;
+          void main() {
+            float intensity = pow(0.70 - dot(vNormal, vec3(0.0, 0.0, 1.0)), 2.2);
+            vec3 haze = vec3(0.95, 0.68, 0.18) * intensity * 1.25;
+            gl_FragColor = vec4(haze, intensity * 0.90);
+          }
+        `,
+        blending: THREE.AdditiveBlending,
+        side: THREE.BackSide,
+        transparent: true
+      });
+      const titanAtmoMesh = new THREE.Mesh(titanAtmoGeom, titanAtmoMat);
+      titanGroup.add(titanAtmoMesh);
+
+      const titanLabel = this.createBillboardLabel('🪐 Titan', '#f59e0b', 0.70);
+      titanLabel.position.set(0, 0.75, 0);
+      titanLabel.userData = { celestialId: 'titan' };
+      titanGroup.add(titanLabel);
+      this.billboardLabels.push(titanLabel);
+      this.interactiveObjects.push(titanLabel);
+
+      saturnGroup.add(titanGroup);
+      this.planets['titan'] = {
+        id: 'titan',
+        parent: 'saturn',
+        group: titanGroup,
+        mesh: titanMesh,
+        atmoMesh: titanAtmoMesh,
+        radius: 0.42,
+        orbitR: 5.35,
+        orbitSpeed: 0.018,
+        angle: 3.4,
+        rotSpeed: 0.0006
+      };
+    }
+  }
+
+  // 🌋 Volcanic Plume Jet Particle System
+  createVolcanicPlumeSystem(radius) {
+    const pCount = 280;
+    const geom = new THREE.BufferGeometry();
+    const pos = new Float32Array(pCount * 3);
+    const vel = new Float32Array(pCount * 3);
+    const life = new Float32Array(pCount);
+
+    for (let i = 0; i < pCount; i++) {
+      pos[i * 3] = 0;
+      pos[i * 3 + 1] = radius;
+      pos[i * 3 + 2] = 0;
+
+      const angle = Math.random() * Math.PI * 2;
+      const spread = 0.06 + Math.random() * 0.08;
+      const speed = 0.22 + Math.random() * 0.30;
+      vel[i * 3] = Math.cos(angle) * spread;
+      vel[i * 3 + 1] = speed;
+      vel[i * 3 + 2] = Math.sin(angle) * spread;
+      life[i] = Math.random();
+    }
+
+    geom.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+    geom.userData = { vel, life, radius };
+
+    const mat = new THREE.PointsMaterial({
+      color: 0xff6611,
+      size: 0.045,
+      blending: THREE.AdditiveBlending,
+      transparent: true,
+      opacity: 0.88
+    });
+
+    return new THREE.Points(geom, mat);
+  }
+
+  // ❄️ Cryo-Geyser Jet Particle System
+  createCryoGeyserSystem(radius, color = 0x38bdf8) {
+    const pCount = 300;
+    const geom = new THREE.BufferGeometry();
+    const pos = new Float32Array(pCount * 3);
+    const vel = new Float32Array(pCount * 3);
+    const life = new Float32Array(pCount);
+
+    for (let i = 0; i < pCount; i++) {
+      pos[i * 3] = 0;
+      pos[i * 3 + 1] = radius;
+      pos[i * 3 + 2] = 0;
+
+      const angle = Math.random() * Math.PI * 2;
+      const spread = 0.04 + Math.random() * 0.06;
+      const speed = 0.26 + Math.random() * 0.38;
+      vel[i * 3] = Math.cos(angle) * spread;
+      vel[i * 3 + 1] = speed;
+      vel[i * 3 + 2] = Math.sin(angle) * spread;
+      life[i] = Math.random();
+    }
+
+    geom.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+    geom.userData = { vel, life, radius };
+
+    const mat = new THREE.PointsMaterial({
+      color,
+      size: 0.042,
+      blending: THREE.AdditiveBlending,
+      transparent: true,
+      opacity: 0.90
+    });
+
+    return new THREE.Points(geom, mat);
+  }
+
+  // 🌊 Europa Procedural Ice Shell Texture
+  createEuropaTexture() {
+    const canvas = document.createElement('canvas');
+    canvas.width = 512; canvas.height = 256;
+    const ctx = canvas.getContext('2d');
+
+    ctx.fillStyle = '#e2f1fc';
+    ctx.fillRect(0, 0, 512, 256);
+
+    // Chaos terrain mottling
+    for (let i = 0; i < 40; i++) {
+      const cx = Math.random() * 512;
+      const cy = Math.random() * 256;
+      const rad = 15 + Math.random() * 35;
+      const grad = ctx.createRadialGradient(cx, cy, 2, cx, cy, rad);
+      grad.addColorStop(0, 'rgba(180, 100, 60, 0.45)');
+      grad.addColorStop(1, 'rgba(226, 241, 252, 0)');
+      ctx.fillStyle = grad;
+      ctx.beginPath();
+      ctx.arc(cx, cy, rad, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    // Criss-crossing Reddish-Brown Lineae Fractures
+    ctx.strokeStyle = 'rgba(150, 65, 35, 0.70)';
+    ctx.lineWidth = 1.8;
+    for (let i = 0; i < 35; i++) {
+      ctx.beginPath();
+      let x = Math.random() * 512;
+      let y = Math.random() * 256;
+      ctx.moveTo(x, y);
+      for (let j = 0; j < 4; j++) {
+        x += (Math.random() - 0.5) * 120;
+        y += (Math.random() - 0.5) * 80;
+        ctx.lineTo(x, y);
+      }
+      ctx.stroke();
+    }
+
+    const tex = new THREE.CanvasTexture(canvas);
+    tex.colorSpace = THREE.SRGBColorSpace;
+    return tex;
+  }
+
+  // 🌋 Io Procedural Sulfurous Volcanic Texture
+  createIoTexture() {
+    const canvas = document.createElement('canvas');
+    canvas.width = 512; canvas.height = 256;
+    const ctx = canvas.getContext('2d');
+
+    ctx.fillStyle = '#fde047';
+    ctx.fillRect(0, 0, 512, 256);
+
+    // Orange-ochre volcanic lava deposits
+    for (let i = 0; i < 60; i++) {
+      const cx = Math.random() * 512;
+      const cy = Math.random() * 256;
+      const rad = 20 + Math.random() * 45;
+      const grad = ctx.createRadialGradient(cx, cy, 2, cx, cy, rad);
+      grad.addColorStop(0, 'rgba(234, 88, 12, 0.65)');
+      grad.addColorStop(0.6, 'rgba(245, 158, 11, 0.35)');
+      grad.addColorStop(1, 'rgba(253, 224, 71, 0)');
+      ctx.fillStyle = grad;
+      ctx.beginPath();
+      ctx.arc(cx, cy, rad, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    // Dark Calderas (Pele, Loki Patera, etc.)
+    for (let i = 0; i < 22; i++) {
+      const cx = Math.random() * 512;
+      const cy = Math.random() * 256;
+      const rad = 4 + Math.random() * 10;
+      ctx.fillStyle = 'rgba(24, 16, 12, 0.95)';
+      ctx.beginPath();
+      ctx.arc(cx, cy, rad, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.strokeStyle = 'rgba(255, 68, 18, 0.85)';
+      ctx.lineWidth = 1.6;
+      ctx.stroke();
+    }
+
+    const tex = new THREE.CanvasTexture(canvas);
+    tex.colorSpace = THREE.SRGBColorSpace;
+    return tex;
+  }
+
+  // ❄️ Enceladus Procedural Ice & Tiger Stripes Texture
+  createEnceladusTexture() {
+    const canvas = document.createElement('canvas');
+    canvas.width = 512; canvas.height = 256;
+    const ctx = canvas.getContext('2d');
+
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, 512, 256);
+
+    // South polar blue tint
+    const southGrad = ctx.createLinearGradient(0, 160, 0, 256);
+    southGrad.addColorStop(0, 'rgba(255, 255, 255, 0)');
+    southGrad.addColorStop(1, 'rgba(186, 230, 253, 0.45)');
+    ctx.fillStyle = southGrad;
+    ctx.fillRect(0, 160, 512, 96);
+
+    // 4 Distinct Parallel Tiger Stripe Fractures (Damascus, Baghdad, Alexandria, Cairo)
+    ctx.strokeStyle = '#0284c7';
+    ctx.lineWidth = 2.4;
+    for (let i = 0; i < 4; i++) {
+      ctx.beginPath();
+      const startX = 180 + i * 40;
+      ctx.moveTo(startX, 185);
+      ctx.bezierCurveTo(startX + 15, 210, startX - 10, 235, startX + 5, 254);
+      ctx.stroke();
+    }
+
+    const tex = new THREE.CanvasTexture(canvas);
+    tex.colorSpace = THREE.SRGBColorSpace;
+    return tex;
+  }
+
+  // 🪐 Titan Procedural Golden Tholin Haze & Methane Seas Texture
+  createTitanTexture() {
+    const canvas = document.createElement('canvas');
+    canvas.width = 512; canvas.height = 256;
+    const ctx = canvas.getContext('2d');
+
+    // Velvety golden orange surface
+    const bgGrad = ctx.createLinearGradient(0, 0, 0, 256);
+    bgGrad.addColorStop(0, '#d97706');
+    bgGrad.addColorStop(0.5, '#f59e0b');
+    bgGrad.addColorStop(1, '#b45309');
+    ctx.fillStyle = bgGrad;
+    ctx.fillRect(0, 0, 512, 256);
+
+    // Dark liquid methane seas in north polar region (Kraken Mare, Ligeia Mare)
+    ctx.fillStyle = 'rgba(15, 23, 42, 0.88)';
+    for (let i = 0; i < 5; i++) {
+      const cx = 160 + i * 55 + (Math.random() - 0.5) * 20;
+      const cy = 25 + (Math.random() - 0.5) * 15;
+      const rx = 18 + Math.random() * 22;
+      const ry = 10 + Math.random() * 12;
+      ctx.beginPath();
+      ctx.ellipse(cx, cy, rx, ry, Math.random() * 0.4, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    const tex = new THREE.CanvasTexture(canvas);
+    tex.colorSpace = THREE.SRGBColorSpace;
+    return tex;
   }
 
   // Sleek Glassmorphic Floating HUD Label
@@ -1210,7 +2160,36 @@ export class EarthGlobe3D {
     this.updateVisibility(true);
   }
 
+  focusOnPlanet(planetId = 'system') {
+    this.focusPlanet(planetId);
+  }
+
   focusPlanet(planetId = 'system') {
+    if (this.isEclipseTotality && planetId !== 'totality') {
+      this.isEclipseTotality = false;
+      if (this.totalityCorona) {
+        this.totalityCorona.visible = false;
+        this.totalityCorona.material.opacity = 0.0;
+      }
+      if (this.diamondRingGlint) {
+        this.diamondRingGlint.visible = false;
+        this.diamondRingGlint.material.opacity = 0.0;
+      }
+      if (this.sunMesh) this.sunMesh.visible = true;
+      if (this.sunChromosphere) this.sunChromosphere.visible = true;
+      this.onEclipseTotalityChange?.(false);
+    }
+
+    if (this.isRingDiveActive && planetId !== 'saturn_ring_dive') {
+      this.isRingDiveActive = false;
+      this.onRingDiveChange?.(false);
+    }
+
+    if (planetId === 'saturn_ring_dive') {
+      this.enterSaturnRingDive();
+      return;
+    }
+
     if (planetId === 'system') {
       this.viewWholeSolarSystem();
       return;
@@ -1237,6 +2216,12 @@ export class EarthGlobe3D {
       this.targetCameraLookAt.copy(mPos);
       this.targetOrbitRadius = 0.88;
       this.targetOrbitPhi = Math.PI * 0.45;
+    } else if (['io', 'europa', 'titan', 'enceladus'].includes(planetId) && this.planets[planetId]) {
+      this.autoRotate = false;
+      const m = this.planets[planetId];
+      m.group.getWorldPosition(this.targetCameraLookAt);
+      this.targetOrbitRadius = Math.max(1.15, m.radius * 4.2);
+      this.targetOrbitPhi = Math.PI * 0.44;
     } else if (this.planets[planetId]) {
       this.autoRotate = false;
       const p = this.planets[planetId];
@@ -1629,8 +2614,14 @@ export class EarthGlobe3D {
           if (this.moonGroup) {
             const m = this.planets['moon'];
             if (m) {
-              m.angle += m.orbitSpeed * delta * 3.5;
-              this.moonGroup.position.set(Math.cos(m.angle) * m.orbitR, 0.25 * Math.sin(m.angle), Math.sin(m.angle) * m.orbitR);
+              if (this.isEclipseActive) {
+                // Keep Moon pinned on the Sun-Earth syzygy line
+                const toSunLocal = new THREE.Vector3(-Math.cos(p.angle), 0, -Math.sin(p.angle)).normalize();
+                this.moonGroup.position.copy(toSunLocal).multiplyScalar(3.52);
+              } else {
+                m.angle += m.orbitSpeed * delta * 3.5;
+                this.moonGroup.position.set(Math.cos(m.angle) * m.orbitR, 0.25 * Math.sin(m.angle), Math.sin(m.angle) * m.orbitR);
+              }
             }
           }
         } else if (p.id !== 'moon') {
@@ -1648,6 +2639,47 @@ export class EarthGlobe3D {
             if (p.ringMesh) p.ringMesh.scale.lerp(vec, 0.1);
           }
         }
+
+        // Active Volcanic Plumes (Io)
+        if (p.plume && p.plume.geometry.userData) {
+          const pos = p.plume.geometry.attributes.position.array;
+          const { vel, life, radius } = p.plume.geometry.userData;
+          for (let k = 0; k < pos.length / 3; k++) {
+            life[k] += delta * 1.5;
+            if (life[k] > 1.0) {
+              life[k] = 0;
+              pos[k * 3] = 0;
+              pos[k * 3 + 1] = radius;
+              pos[k * 3 + 2] = 0;
+            } else {
+              pos[k * 3] += vel[k * 3] * delta;
+              pos[k * 3 + 1] += vel[k * 3 + 1] * delta;
+              pos[k * 3 + 2] += vel[k * 3 + 2] * delta;
+            }
+          }
+          p.plume.geometry.attributes.position.needsUpdate = true;
+        }
+
+        // Active Cryo-Geysers (Europa & Enceladus)
+        const geyserSys = p.geysers || p.plumes;
+        if (geyserSys && geyserSys.geometry.userData) {
+          const pos = geyserSys.geometry.attributes.position.array;
+          const { vel, life, radius } = geyserSys.geometry.userData;
+          for (let k = 0; k < pos.length / 3; k++) {
+            life[k] += delta * 1.4;
+            if (life[k] > 1.0) {
+              life[k] = 0;
+              pos[k * 3] = 0;
+              pos[k * 3 + 1] = radius;
+              pos[k * 3 + 2] = 0;
+            } else {
+              pos[k * 3] += vel[k * 3] * delta;
+              pos[k * 3 + 1] += vel[k * 3 + 1] * delta;
+              pos[k * 3 + 2] += vel[k * 3 + 2] * delta;
+            }
+          }
+          geyserSys.geometry.attributes.position.needsUpdate = true;
+        }
         
         if (this.orbitLines && this.lastOrreryState) {
           const orbitLine = this.orbitLines[p.id];
@@ -1656,6 +2688,27 @@ export class EarthGlobe3D {
              orbitLine.material.opacity = isHovered ? 0.8 : 0.35;
           }
         }
+      }
+    }
+
+    // 🪐 Saturn 3D Ice Boulder Tumble & Keplerian Orbit
+    if (this.saturnBoulders && this.saturnBoulders.userData) {
+      const { boulderData, dummy } = this.saturnBoulders.userData;
+      if (boulderData) {
+        for (let i = 0; i < boulderData.length; i++) {
+          const b = boulderData[i];
+          b.theta += b.orbitSpeed * delta * 1.2;
+          const x = Math.cos(b.theta) * b.r;
+          const z = Math.sin(b.theta) * b.r;
+          dummy.position.set(x, b.y, z);
+          dummy.scale.set(b.scale, b.scale, b.scale);
+          dummy.rotation.x += b.rotX * delta;
+          dummy.rotation.y += b.rotY * delta;
+          dummy.rotation.z += b.rotZ * delta;
+          dummy.updateMatrix();
+          this.saturnBoulders.setMatrixAt(i, dummy.matrix);
+        }
+        this.saturnBoulders.instanceMatrix.needsUpdate = true;
       }
     }
 
@@ -1676,6 +2729,72 @@ export class EarthGlobe3D {
     }
     if (this.sunHalo) {
       this.sunHalo.material.rotation += 0.00015;
+    }
+
+    // ☀️ Living Sun: Magnetic Prominences & CME Shockwave
+    if (this.sunProminences) {
+      this.sunProminences.rotation.y += 0.0012;
+      this.sunProminences.children.forEach(child => {
+        if (child.material?.uniforms?.uTime) {
+          child.material.uniforms.uTime.value = elapsedTime;
+        }
+      });
+    }
+
+    if (this.cmeActive && this.cmeGroup) {
+      this.cmeRadius += delta * 7.2;
+      if (this.cmeTorus) {
+        this.cmeTorus.scale.set(this.cmeRadius, this.cmeRadius, this.cmeRadius * 0.4);
+        if (this.cmeTorus.material?.uniforms?.uProgress) {
+          this.cmeTorus.material.uniforms.uProgress.value = this.cmeRadius / 45.0;
+          this.cmeTorus.material.uniforms.uTime.value = elapsedTime;
+        }
+      }
+      if (this.cmeParticles) {
+        const pArr = this.cmeParticles.geometry.attributes.position.array;
+        const vArr = this.cmeParticles.geometry.userData?.vel;
+        if (vArr) {
+          for (let i = 0; i < pArr.length / 3; i++) {
+            pArr[i * 3] += vArr[i * 3] * delta * 18.0;
+            pArr[i * 3 + 1] += vArr[i * 3 + 1] * delta * 18.0;
+            pArr[i * 3 + 2] += vArr[i * 3 + 2] * delta * 18.0;
+          }
+          this.cmeParticles.geometry.attributes.position.needsUpdate = true;
+        }
+        this.cmeParticles.material.opacity = Math.max(0, 1.0 - (this.cmeRadius / 45.0));
+      }
+
+      // Check CME shockwave collision with Earth orbit (R ~ 9.8)
+      if (this.cmeRadius >= 9.6 && !this._cmeHitEarth) {
+        this._cmeHitEarth = true;
+        this.triggerAuroralStorm();
+        this.triggerScreenShake(3.5);
+        if (this.onCmeImpact) this.onCmeImpact();
+      }
+
+      if (this.cmeRadius > 45.0) {
+        this.cmeActive = false;
+        this.cmeGroup.visible = false;
+      }
+    }
+
+    // Dynamic Aurora Storm Intensity Decay
+    if (this.auroraIntensity > 0.005) {
+      this.auroraIntensity = Math.max(0, this.auroraIntensity - delta * 0.12);
+      if (this.earthMesh?.material?.uniforms?.uAuroraIntensity) {
+        this.earthMesh.material.uniforms.uAuroraIntensity.value = this.auroraIntensity;
+      }
+      if (this.atmosphereMesh?.material?.uniforms?.uAuroraIntensity) {
+        this.atmosphereMesh.material.uniforms.uAuroraIntensity.value = this.auroraIntensity;
+        this.atmosphereMesh.material.uniforms.uTime.value = elapsedTime;
+      }
+    }
+
+    // Real-time Lunar Eclipse shadow position
+    if (this.earthMesh?.material?.uniforms?.moonWorldPosition && this.moonGroup) {
+      if (!this._tempMoonPos) this._tempMoonPos = new THREE.Vector3();
+      this.moonGroup.getWorldPosition(this._tempMoonPos);
+      this.earthMesh.material.uniforms.moonWorldPosition.value.copy(this._tempMoonPos);
     }
 
     // Asteroid & Kuiper belts slow orbital drift
@@ -1705,35 +2824,84 @@ export class EarthGlobe3D {
     this.orbitRadius += (this.targetOrbitRadius - this.orbitRadius) * orbitEase;
 
     // 5. Compute target camera look-at position based on active focused body
-    if (this.activeFocusedBody === 'system') {
-      this.targetCameraLookAt.set(6.0, 0, 0);
-    } else if (this.activeFocusedBody === 'sun') {
+    const camEase = 1.0 - Math.exp(-5.0 * delta);
+
+    if (this.activeFocusedBody === 'totality') {
+      // Anchored Totality View looking from Earth towards Sun
+      if (this.diamondRingGlint) {
+        this.diamondRingGlint.material.opacity = 0.85 + 0.15 * Math.sin(elapsedTime * 9.0);
+      }
+      if (this.totalityCorona) {
+        this.totalityCorona.material.rotation += 0.0004;
+      }
+
+      const ePos = this.earthGroup.position.clone();
+      const toSun = new THREE.Vector3(0, 0, 0).sub(ePos).normalize();
       this.targetCameraLookAt.set(0, 0, 0);
-    } else if (this.activeFocusedBody === 'earth') {
-      this.targetCameraLookAt.copy(this.earthGroup.position);
-    } else if (this.activeFocusedBody === 'moon') {
-      this.moonGroup.getWorldPosition(this.targetCameraLookAt);
-    } else if (this.planets[this.activeFocusedBody]) {
-      this.targetCameraLookAt.copy(this.planets[this.activeFocusedBody].group.position);
+      this.targetCameraPos.copy(ePos).addScaledVector(toSun, 1.22);
+      this.camera.position.lerp(this.targetCameraPos, camEase);
+      this.currentCameraLookAt.lerp(this.targetCameraLookAt, camEase);
+      this.camera.lookAt(this.currentCameraLookAt);
+    } else if (this.activeFocusedBody === 'saturn_ring_dive') {
+      const sGroup = this.planets['saturn']?.group;
+      if (sGroup) {
+        const sPos = sGroup.position.clone();
+        const tilt = 0.465;
+        const ringR = 1.40 * 2.05; // 2.87 units (Cassini division gap)
+        const angle = elapsedTime * 0.045;
+        const x = Math.cos(angle) * ringR;
+        const z = Math.sin(angle) * ringR;
+        const camLocal = new THREE.Vector3(x, x * Math.sin(tilt) * 0.22 + 0.048, z);
+        this.targetCameraPos.copy(sPos).add(camLocal);
+        this.targetCameraLookAt.copy(sPos).addScaledVector(camLocal, 0.22);
+        this.targetCameraLookAt.y -= 0.06;
+
+        this.camera.position.lerp(this.targetCameraPos, camEase);
+        this.currentCameraLookAt.lerp(this.targetCameraLookAt, camEase);
+        this.camera.lookAt(this.currentCameraLookAt);
+      }
+    } else {
+      if (this.activeFocusedBody === 'system') {
+        this.targetCameraLookAt.set(6.0, 0, 0);
+      } else if (this.activeFocusedBody === 'sun') {
+        this.targetCameraLookAt.set(0, 0, 0);
+      } else if (this.activeFocusedBody === 'earth') {
+        this.targetCameraLookAt.copy(this.earthGroup.position);
+      } else if (this.activeFocusedBody === 'moon') {
+        this.moonGroup.getWorldPosition(this.targetCameraLookAt);
+      } else if (['io', 'europa', 'titan', 'enceladus'].includes(this.activeFocusedBody) && this.planets[this.activeFocusedBody]) {
+        this.planets[this.activeFocusedBody].group.getWorldPosition(this.targetCameraLookAt);
+      } else if (this.planets[this.activeFocusedBody]) {
+        this.targetCameraLookAt.copy(this.planets[this.activeFocusedBody].group.position);
+      }
+
+      // Convert spherical (orbitRadius, orbitTheta, orbitPhi) to 3D Cartesian coordinates relative to look-at
+      const sinPhi = Math.sin(this.orbitPhi);
+      const cosPhi = Math.cos(this.orbitPhi);
+      const sinTheta = Math.sin(this.orbitTheta);
+      const cosTheta = Math.cos(this.orbitTheta);
+
+      this.targetCameraPos.set(
+        this.targetCameraLookAt.x + this.orbitRadius * sinPhi * sinTheta,
+        this.targetCameraLookAt.y + this.orbitRadius * cosPhi,
+        this.targetCameraLookAt.z + this.orbitRadius * sinPhi * cosTheta
+      );
+
+      this.camera.position.lerp(this.targetCameraPos, camEase);
+      this.currentCameraLookAt.lerp(this.targetCameraLookAt, camEase);
+      this.camera.lookAt(this.currentCameraLookAt);
     }
 
-    // Convert spherical (orbitRadius, orbitTheta, orbitPhi) to 3D Cartesian coordinates relative to look-at
-    const sinPhi = Math.sin(this.orbitPhi);
-    const cosPhi = Math.cos(this.orbitPhi);
-    const sinTheta = Math.sin(this.orbitTheta);
-    const cosTheta = Math.cos(this.orbitTheta);
-
-    this.targetCameraPos.set(
-      this.targetCameraLookAt.x + this.orbitRadius * sinPhi * sinTheta,
-      this.targetCameraLookAt.y + this.orbitRadius * cosPhi,
-      this.targetCameraLookAt.z + this.orbitRadius * sinPhi * cosTheta
-    );
-
-    // Camera smoothing
-    const camEase = 1.0 - Math.exp(-5.0 * delta);
-    this.camera.position.lerp(this.targetCameraPos, camEase);
-    this.currentCameraLookAt.lerp(this.targetCameraLookAt, camEase);
-    this.camera.lookAt(this.currentCameraLookAt);
+    // Dynamic Camera Screen Shake (CME shockwave blast impact)
+    if (this.screenShakeIntensity > 0.01) {
+      const shakeAmt = this.screenShakeIntensity * 0.06;
+      this.camera.position.x += (Math.random() - 0.5) * shakeAmt;
+      this.camera.position.y += (Math.random() - 0.5) * shakeAmt;
+      this.camera.position.z += (Math.random() - 0.5) * shakeAmt;
+      this.screenShakeIntensity *= Math.pow(0.04, delta);
+    } else {
+      this.screenShakeIntensity = 0;
+    }
 
     // Keep camera key light pointed in camera forward direction
     if (this.cameraLight) {
