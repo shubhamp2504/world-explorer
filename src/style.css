@@ -3402,269 +3402,400 @@ body.mode-conquest #rightDrawer.emp-drawer-open {
 .emp-camp-item.danger:hover { background: rgba(244, 63, 94, 0.18); }
 .emp-camp-sep { height: 1px; background: rgba(255, 255, 255, 0.1); margin: 3px 0; }
 
-/* 2. STEP-BY-STEP ONBOARDING WIZARD MODAL */
+/* 1.5. GUIDED STRATEGIC MISSION DIRECTIVE BAR */
+.empire-mission-bar {
+  pointer-events: auto;
+  align-self: center;
+  width: min(920px, 96vw);
+  background: rgba(8, 15, 34, 0.94);
+  backdrop-filter: blur(24px) saturate(180%);
+  border: 1px solid rgba(251, 191, 36, 0.45);
+  border-radius: var(--radius-lg);
+  padding: 8px 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.75), 0 0 20px rgba(251, 191, 36, 0.15);
+  margin-top: 6px;
+  animation: missionBarIn 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+@keyframes missionBarIn {
+  from { opacity: 0; transform: translateY(-8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.emp-mission-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+.emp-pulse-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #10b981;
+  box-shadow: 0 0 8px #10b981;
+  animation: beaconPulse 1.4s infinite ease-in-out;
+}
+@keyframes beaconPulse {
+  0%, 100% { transform: scale(0.9); opacity: 0.7; }
+  50% { transform: scale(1.3); opacity: 1; box-shadow: 0 0 14px #10b981; }
+}
+
+.emp-mission-badge {
+  font-size: 0.65rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  color: var(--emp-primary);
+  background: rgba(251, 191, 36, 0.15);
+  border: 1px solid rgba(251, 191, 36, 0.35);
+  padding: 2px 7px;
+  border-radius: var(--radius-pill);
+  white-space: nowrap;
+}
+
+.emp-mission-text {
+  font-size: 0.8rem;
+  color: #e2e8f0;
+}
+.emp-mission-text strong {
+  color: #fff;
+  font-weight: 800;
+}
+
+.emp-mission-targets-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  overflow-x: auto;
+  max-width: 58%;
+  padding-bottom: 2px;
+  scrollbar-width: thin;
+}
+.emp-mission-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(15, 23, 42, 0.9);
+  border: 1px solid rgba(251, 191, 36, 0.38);
+  border-radius: var(--radius-pill);
+  padding: 4px 10px;
+  cursor: pointer;
+  white-space: nowrap;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #fff;
+  transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: 0 2px 6px rgba(0,0,0,0.4);
+}
+.emp-mission-pill:hover {
+  border-color: #fbbf24;
+  background: rgba(251, 191, 36, 0.2);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(251, 191, 36, 0.25);
+}
+.emp-mp-flag { font-size: 0.95rem; }
+.emp-mp-name { color: #f8fafc; font-weight: 700; }
+.emp-mp-gdp { color: #34d399; font-size: 0.7rem; font-weight: 800; }
+.emp-mp-shield { color: #fbbf24; font-size: 0.68rem; font-weight: 800; }
+.emp-all-annexed-tag { font-size: 0.75rem; color: #34d399; font-weight: 800; }
+
+/* 2. INSTANT 1-TAP SOVEREIGN STARTER ARENA (#empireOnboardingWizard) */
 .empire-wizard-overlay {
   pointer-events: auto;
   position: absolute;
   inset: 0;
-  background: rgba(3, 7, 18, 0.82);
-  backdrop-filter: blur(14px);
+  background: rgba(3, 7, 18, 0.85);
+  backdrop-filter: blur(20px) saturate(180%);
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 20px;
+  padding: 16px;
   z-index: 110;
+  animation: overlayFadeIn 0.25s ease-out;
 }
-.emp-wizard-card {
-  width: min(740px, 95vw);
-  max-height: 88vh;
+@keyframes overlayFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.emp-wizard-card.modern-arena {
+  width: min(840px, 96vw);
+  max-height: 90vh;
   overflow-y: auto;
-  background: rgba(9, 17, 36, 0.98);
-  border: 1.5px solid var(--emp-primary);
-  border-radius: var(--radius-lg);
-  padding: 24px;
+  background: linear-gradient(160deg, rgba(10, 20, 44, 0.98), rgba(6, 11, 25, 0.98));
+  border: 1.5px solid rgba(251, 191, 36, 0.45);
+  border-radius: var(--radius-xl, 20px);
+  padding: 24px 26px;
   display: flex;
   flex-direction: column;
   gap: 16px;
-  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.9);
+  box-shadow: 0 30px 90px rgba(0, 0, 0, 0.95), 0 0 45px rgba(251, 191, 36, 0.16);
+  animation: arenaCardIn 0.32s cubic-bezier(0.16, 1, 0.3, 1);
 }
-.emp-wizard-stepper {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 12px;
-  padding-bottom: 12px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-}
-.emp-step-item {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 0.76rem;
-  font-weight: 700;
-  color: var(--txt-muted);
-}
-.emp-step-item.active {
-  color: var(--emp-primary);
-}
-.emp-step-item .step-num {
-  width: 22px;
-  height: 22px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: rgba(255, 255, 255, 0.08);
-  font-size: 0.72rem;
-}
-.emp-step-item.active .step-num {
-  background: var(--emp-primary);
-  color: #000;
-  font-weight: 800;
-}
-.emp-step-divider {
-  width: 32px;
-  height: 1px;
-  background: rgba(255, 255, 255, 0.15);
+@keyframes arenaCardIn {
+  from { opacity: 0; transform: scale(0.95) translateY(12px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
 }
 
-.emp-wizard-pane {
+.emp-arena-header {
+  text-align: center;
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  align-items: center;
+  gap: 4px;
 }
-.wiz-pane-header .wiz-subtag {
+.emp-hero-badge {
   font-size: 0.68rem;
   font-weight: 800;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.12em;
   color: var(--emp-primary);
-}
-.wiz-pane-header .wiz-title {
-  font-size: 1.3rem;
-  font-weight: 800;
-  color: #fff;
-  margin: 3px 0;
-}
-.wiz-pane-header .wiz-desc {
-  font-size: 0.82rem;
-  color: var(--txt-sub);
-}
-.wiz-cap-badge {
-  background: rgba(251, 191, 36, 0.18);
-  border: 1px solid #fbbf24;
-  color: #fef08a;
-  padding: 3px 9px;
+  background: rgba(251, 191, 36, 0.14);
+  border: 1px solid rgba(251, 191, 36, 0.35);
+  padding: 3px 10px;
   border-radius: var(--radius-pill);
-  font-weight: 800;
+}
+.emp-arena-title {
+  font-size: 1.55rem;
+  font-weight: 900;
+  letter-spacing: -0.01em;
+  color: #fff;
+  margin: 4px 0 2px;
+  background: linear-gradient(135deg, #ffffff 40%, #fde68a 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+.emp-arena-sub {
+  font-size: 0.84rem;
+  color: var(--txt-sub, #94a3b8);
+  max-width: 580px;
+  line-height: 1.4;
+  margin: 0;
 }
 
-.wiz-starters-grid {
+/* 12 Top Global Superpowers 1-Tap Grid */
+.emp-starters-arena-grid {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
   gap: 10px;
 }
-.wiz-starter-card {
+@media (max-width: 768px) {
+  .emp-starters-arena-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+.emp-arena-card {
   display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: 9px;
+  text-align: center;
+  gap: 8px;
   background: rgba(15, 23, 42, 0.85);
   border: 1px solid rgba(255, 255, 255, 0.14);
-  border-radius: var(--radius-md);
-  padding: 10px;
+  border-radius: var(--radius-md, 12px);
+  padding: 12px 10px;
   cursor: pointer;
-  text-align: left;
-  transition: all 0.18s ease;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  position: relative;
+  overflow: hidden;
 }
-.wiz-starter-card:hover {
+.emp-arena-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at center top, rgba(251, 191, 36, 0.12), transparent 70%);
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+.emp-arena-card:hover {
+  transform: translateY(-3px) scale(1.02);
   border-color: var(--emp-primary);
-  transform: translateY(-2px);
-  background: rgba(30, 41, 59, 0.95);
+  background: rgba(26, 38, 65, 0.95);
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.6), 0 0 20px rgba(251, 191, 36, 0.22);
 }
-.wiz-starter-card.selected {
-  border-color: var(--emp-primary);
-  background: rgba(251, 191, 36, 0.18);
-  box-shadow: 0 0 16px var(--emp-glow);
+.emp-arena-card:hover::before {
+  opacity: 1;
 }
-.wiz-sc-flag { font-size: 1.6rem; }
-.wiz-sc-info strong { display: block; font-size: 0.8rem; color: #fff; }
-.wiz-sc-info span { font-size: 0.66rem; color: var(--txt-muted); }
+.emp-arena-card:active {
+  transform: scale(0.97);
+}
 
-.wiz-search-strip {
+.emp-ac-flag {
+  font-size: 1.8rem;
+  line-height: 1;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 8px;
+  padding: 4px 10px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 48px;
+}
+.emp-ac-body {
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  position: relative;
+  gap: 2px;
 }
-.wiz-or-text {
+.emp-ac-name {
+  font-size: 0.88rem;
+  font-weight: 800;
+  color: #fff;
+}
+.emp-ac-stats {
+  font-size: 0.66rem;
+  font-weight: 700;
+  color: #34d399;
+  letter-spacing: 0.02em;
+}
+.emp-ac-badge {
   font-size: 0.64rem;
   font-weight: 800;
-  letter-spacing: 0.06em;
-  color: var(--txt-muted);
+  color: #000;
+  background: linear-gradient(135deg, var(--emp-primary), var(--emp-secondary));
+  padding: 3px 8px;
+  border-radius: var(--radius-pill);
+  letter-spacing: 0.04em;
+  margin-top: 2px;
+  transition: transform 0.15s ease;
 }
-.wiz-input {
+.emp-arena-card:hover .emp-ac-badge {
+  transform: scale(1.06);
+}
+
+/* Arena Search Strip */
+.emp-arena-search-strip {
+  position: relative;
   width: 100%;
+}
+.emp-as-box {
+  display: flex;
+  align-items: center;
+  gap: 8px;
   background: rgba(15, 23, 42, 0.9);
   border: 1px solid rgba(255, 255, 255, 0.18);
-  border-radius: var(--radius-sm);
-  padding: 9px 12px;
-  color: #fff;
-  font-size: 0.84rem;
+  border-radius: var(--radius-md);
+  padding: 8px 14px;
+  transition: all 0.2s ease;
 }
-.wiz-input:focus { outline: none; border-color: var(--emp-primary); }
-.wiz-input.large { font-size: 1.05rem; font-weight: 700; padding: 11px 14px; }
+.emp-as-box:focus-within {
+  border-color: var(--emp-primary);
+  box-shadow: 0 0 16px rgba(251, 191, 36, 0.25);
+}
+.emp-as-icon { font-size: 1rem; color: var(--txt-muted); }
+.emp-arena-search-input {
+  flex: 1;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: #fff;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+.emp-arena-search-input::placeholder {
+  color: #64748b;
+}
+
 .wiz-search-results {
   position: absolute;
-  top: calc(100% + 4px);
+  top: calc(100% + 6px);
   left: 0;
   right: 0;
-  background: #09132c;
+  background: rgba(9, 17, 38, 0.98);
+  backdrop-filter: blur(20px);
   border: 1px solid var(--emp-primary);
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-md);
   display: flex;
   flex-direction: column;
-  max-height: 180px;
+  max-height: 220px;
   overflow-y: auto;
-  z-index: 100;
-  box-shadow: 0 12px 30px rgba(0,0,0,0.8);
+  z-index: 120;
+  box-shadow: 0 16px 40px rgba(0,0,0,0.85);
 }
 .wiz-sr-item {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 8px 12px;
+  gap: 12px;
+  padding: 9px 14px;
   cursor: pointer;
-  font-size: 0.8rem;
-  color: #fff;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  transition: background 0.15s ease;
 }
-.wiz-sr-item:hover { background: rgba(255, 255, 255, 0.1); }
-.wiz-sr-sub { color: var(--txt-muted); font-size: 0.72rem; margin-left: auto; }
+.wiz-sr-item:hover {
+  background: rgba(251, 191, 36, 0.18);
+}
+.wiz-sr-flag { font-size: 1.4rem; }
+.wiz-sr-info { flex: 1; display: flex; flex-direction: column; }
+.wiz-sr-name { font-size: 0.85rem; color: #fff; font-weight: 800; }
+.wiz-sr-sub { font-size: 0.7rem; color: var(--txt-muted); }
+.wiz-sr-action {
+  font-size: 0.68rem;
+  font-weight: 800;
+  color: #000;
+  background: var(--emp-primary);
+  padding: 3px 8px;
+  border-radius: var(--radius-pill);
+}
 
-.wiz-action-row {
+.emp-arena-footer {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  margin-top: 8px;
+  flex-wrap: wrap;
+  padding-top: 6px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
 }
-.wiz-action-row.end { justify-content: flex-end; }
-.wiz-btn {
-  padding: 10px 20px;
-  border-radius: var(--radius-pill);
-  font-size: 0.82rem;
+.emp-theme-pick-strip {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.emp-tps-lbl {
+  font-size: 0.68rem;
   font-weight: 800;
-  cursor: pointer;
-  transition: all 0.18s ease;
+  color: var(--txt-muted);
+  letter-spacing: 0.06em;
 }
-.wiz-btn.back {
-  background: rgba(255, 255, 255, 0.08);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  color: #fff;
-}
-.wiz-btn.next, .wiz-btn.launch {
-  background: linear-gradient(135deg, var(--emp-primary), var(--emp-secondary));
-  color: #000;
-  border: none;
-}
-.wiz-btn.next:disabled {
-  opacity: 0.45;
-  cursor: not-allowed;
+.emp-arena-hint {
+  font-size: 0.74rem;
+  color: #94a3b8;
+  font-weight: 600;
 }
 
-.wiz-themes-palette {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 10px;
+/* 2D MAP BEACONS LAYER */
+.emp-frontline-badges-layer {
+  pointer-events: auto;
 }
-.wiz-theme-choice {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  background: rgba(15, 23, 42, 0.8);
-  border: 1px solid rgba(255, 255, 255, 0.14);
-  border-radius: var(--radius-md);
-  padding: 10px;
-  cursor: pointer;
-  color: #fff;
-  font-size: 0.78rem;
-  font-weight: 700;
+.emp-map-target-beacon .emp-beacon-pulse-ring {
+  fill: none;
+  stroke: #fbbf24;
+  stroke-width: 1.5;
+  opacity: 0.8;
+  animation: mapRingPulse 1.6s infinite ease-out;
 }
-.wiz-theme-choice input { display: none; }
-.wiz-theme-choice.active {
-  border-color: var(--emp-primary);
-  background: rgba(251, 191, 36, 0.14);
+@keyframes mapRingPulse {
+  0% { r: 6; opacity: 1; stroke-width: 2; }
+  100% { r: 18; opacity: 0; stroke-width: 0.5; }
 }
-
-.wiz-key-box {
-  background: linear-gradient(135deg, rgba(56, 189, 248, 0.15), rgba(15, 23, 42, 0.9));
-  border: 1px solid rgba(56, 189, 248, 0.4);
-  border-radius: var(--radius-md);
-  padding: 14px 18px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
+.emp-map-target-beacon .emp-beacon-core {
+  fill: #dc2626;
+  stroke: #ffffff;
+  stroke-width: 1.5;
+  transition: transform 0.15s ease;
 }
-.wiz-kb-lbl { font-size: 0.66rem; font-weight: 800; color: #7dd3fc; letter-spacing: 0.08em; display: block; }
-.wiz-kb-code { font-size: 1.4rem; font-weight: 900; color: #fff; letter-spacing: 0.08em; }
-.wiz-kb-note { font-size: 0.74rem; color: var(--txt-sub); max-width: 320px; line-height: 1.35; }
-
-.wiz-directives-list {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
+.emp-map-target-beacon:hover .emp-beacon-core {
+  fill: #f59e0b;
+  transform: scale(1.25);
 }
-.wiz-dir-item {
-  display: flex;
-  align-items: flex-start;
-  gap: 10px;
-  background: rgba(15, 23, 42, 0.7);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: var(--radius-sm);
-  padding: 10px 12px;
+.emp-map-target-beacon .emp-beacon-icon {
+  pointer-events: none;
+  user-select: none;
 }
-.wiz-dir-icon { font-size: 1.25rem; }
-.wiz-dir-item strong { display: block; font-size: 0.82rem; color: #fff; margin-bottom: 2px; }
-.wiz-dir-item p { font-size: 0.74rem; color: var(--txt-sub); line-height: 1.35; margin: 0; }
 
 /* 3. Active Rebellion Alert Banner */
 .empire-rebellion-banner {
@@ -3723,30 +3854,40 @@ body.mode-conquest #rightDrawer.emp-drawer-open {
 }
 
 /* 4. Floating 3-Shield Blitz Siege Combat Stage (#empireSiegeModal) */
+/* 4. Modern KBC-Style Siege Arena Stage (#empireSiegeModal) */
 .empire-siege-modal {
   pointer-events: auto;
   position: absolute;
   inset: 0;
-  background: rgba(3, 7, 18, 0.72);
+  background: rgba(3, 7, 18, 0.82);
+  backdrop-filter: blur(20px) saturate(180%);
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 16px;
   z-index: 90;
+  animation: overlayFadeIn 0.2s ease-out;
 }
 .emp-siege-card {
-  width: min(680px, 95vw);
-  max-height: 86vh;
+  width: min(720px, 95vw);
+  max-height: 88vh;
   overflow-y: auto;
-  background: rgba(9, 17, 36, 0.98);
+  background: linear-gradient(160deg, rgba(10, 20, 44, 0.98), rgba(6, 11, 26, 0.98));
+  backdrop-filter: blur(28px) saturate(180%);
   border: 1.5px solid var(--emp-primary);
-  border-radius: var(--radius-lg);
-  padding: 20px 22px;
+  border-radius: var(--radius-xl, 20px);
+  padding: 22px 26px;
   display: flex;
   flex-direction: column;
-  gap: 14px;
-  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.9);
+  gap: 16px;
+  box-shadow: 0 30px 90px rgba(0, 0, 0, 0.95), 0 0 40px rgba(251, 191, 36, 0.15);
+  animation: siegeCardIn 0.3s cubic-bezier(0.16, 1, 0.3, 1);
 }
+@keyframes siegeCardIn {
+  from { opacity: 0; transform: scale(0.96) translateY(10px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
+}
+
 .emp-siege-header {
   display: flex;
   align-items: flex-start;
@@ -3760,19 +3901,31 @@ body.mode-conquest #rightDrawer.emp-drawer-open {
   gap: 12px;
 }
 .emp-siege-flag {
-  font-size: 2.3rem;
+  font-size: 2rem;
   line-height: 1;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1.5px solid rgba(251, 191, 36, 0.4);
+  border-radius: 10px;
+  padding: 6px 14px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4);
 }
 .emp-siege-title {
-  font-size: 1.25rem;
-  font-weight: 800;
+  font-size: 1.35rem;
+  font-weight: 900;
   color: #fff;
   letter-spacing: 0.02em;
+  margin: 0;
 }
 .emp-siege-sub {
   font-size: 0.78rem;
-  font-weight: 600;
+  font-weight: 700;
   color: #34d399;
+  margin: 2px 0 0;
 }
 .emp-siege-header-right {
   display: flex;
@@ -3785,55 +3938,50 @@ body.mode-conquest #rightDrawer.emp-drawer-open {
   padding: 4px 10px;
   border-radius: 99px;
   letter-spacing: 0.05em;
-}
-.emp-siege-tier-badge.tier-1 {
-  background: rgba(56, 189, 248, 0.16);
-  border: 1px solid #38bdf8;
-  color: #7dd3fc;
-}
-.emp-siege-tier-badge.tier-2 {
-  background: rgba(245, 158, 11, 0.18);
-  border: 1px solid #f59e0b;
-  color: #fde68a;
-}
-.emp-siege-tier-badge.tier-3 {
-  background: rgba(244, 63, 94, 0.22);
-  border: 1px solid #f43f5e;
-  color: #fda4af;
-}
-.emp-siege-tier-badge.rebellion {
-  background: rgba(239, 68, 68, 0.28);
-  border: 1px solid #ef4444;
-  color: #fecaca;
+  background: rgba(251, 191, 36, 0.16);
+  border: 1px solid var(--emp-primary);
+  color: #fef08a;
 }
 .emp-siege-timer {
-  min-width: 48px;
+  min-width: 52px;
   text-align: center;
   background: rgba(15, 23, 42, 0.95);
   border: 1.5px solid var(--accent-cyan);
-  color: #fff;
-  font-size: 0.92rem;
-  font-weight: 800;
-  padding: 5px 10px;
+  color: #38bdf8;
+  font-size: 1rem;
+  font-weight: 900;
+  padding: 5px 12px;
   border-radius: var(--radius-sm);
+  box-shadow: 0 0 14px rgba(56, 189, 248, 0.25);
 }
 .emp-siege-timer.urgent {
   border-color: #ef4444;
   color: #f87171;
+  box-shadow: 0 0 16px rgba(239, 68, 68, 0.4);
+  animation: timerUrgentPulse 0.8s infinite ease-in-out;
 }
+@keyframes timerUrgentPulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.08); }
+}
+
+.emp-btn-pause,
 .emp-btn-retreat {
   background: rgba(255, 255, 255, 0.08);
   border: 1px solid rgba(255, 255, 255, 0.18);
   color: var(--txt-sub);
   font-size: 0.75rem;
   font-weight: 700;
-  padding: 5px 10px;
+  padding: 6px 11px;
   border-radius: var(--radius-sm);
   cursor: pointer;
+  transition: all 0.15s ease;
 }
+.emp-btn-pause:hover,
 .emp-btn-retreat:hover {
   color: #fff;
-  border-color: #f43f5e;
+  border-color: var(--emp-primary);
+  background: rgba(255, 255, 255, 0.14);
 }
 
 /* Shield HP Bar */
@@ -3844,84 +3992,96 @@ body.mode-conquest #rightDrawer.emp-drawer-open {
 .emp-shield-node {
   flex: 1;
   text-align: center;
-  padding: 6px 10px;
+  padding: 7px 10px;
   border-radius: var(--radius-sm);
   font-size: 0.76rem;
   font-weight: 800;
   border: 1px solid rgba(255, 255, 255, 0.12);
   background: rgba(15, 23, 42, 0.75);
   color: var(--txt-muted);
+  transition: all 0.2s ease;
 }
 .emp-shield-node.active {
-  background: rgba(251, 191, 36, 0.18);
+  background: rgba(251, 191, 36, 0.2);
   border-color: #fbbf24;
   color: #fef08a;
+  box-shadow: 0 0 12px rgba(251, 191, 36, 0.3);
 }
 .emp-shield-node.breached {
-  background: rgba(16, 185, 129, 0.2);
+  background: rgba(16, 185, 129, 0.25);
   border-color: #10b981;
   color: #6ee7b7;
 }
 
-/* Siege Question Box (Zero Clipping) */
+/* Siege Question Box (High Contrast) */
 .emp-siege-question-box {
-  background: rgba(15, 23, 42, 0.9);
-  border: 1px solid rgba(56, 189, 248, 0.3);
+  background: rgba(15, 23, 42, 0.92);
+  border: 1px solid rgba(56, 189, 248, 0.35);
   border-radius: var(--radius-md);
-  padding: 14px 16px;
+  padding: 16px 18px;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
 }
 .emp-siege-cat {
-  font-size: 0.7rem;
+  font-size: 0.72rem;
   font-weight: 800;
   color: var(--accent-cyan);
   letter-spacing: 0.08em;
-  margin-bottom: 6px;
+  margin-bottom: 8px;
 }
 .emp-siege-prompt {
-  font-size: 1.04rem;
+  font-size: 1.08rem;
   font-weight: 700;
   color: #ffffff;
-  line-height: 1.45;
+  line-height: 1.5;
   white-space: normal;
   overflow: visible;
+  margin: 0;
 }
 
 /* 4 Answer Buttons Grid */
 .emp-siege-options-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 10px;
+  gap: 12px;
+}
+@media (max-width: 640px) {
+  .emp-siege-options-grid {
+    grid-template-columns: 1fr;
+  }
 }
 .emp-opt-btn {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
   text-align: left;
-  background: rgba(15, 23, 42, 0.92);
+  background: rgba(15, 23, 42, 0.9);
   border: 1px solid rgba(255, 255, 255, 0.16);
   border-radius: var(--radius-md);
-  padding: 11px 14px;
+  padding: 13px 16px;
   color: #f8fafc;
-  font-size: 0.88rem;
+  font-size: 0.92rem;
   font-weight: 600;
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
   white-space: normal;
+  position: relative;
 }
 .emp-opt-btn:hover:not(:disabled) {
   border-color: var(--emp-primary);
   background: rgba(30, 41, 59, 0.95);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.5), 0 0 14px rgba(251, 191, 36, 0.2);
 }
 .emp-opt-letter {
-  width: 26px;
-  height: 26px;
-  border-radius: 6px;
+  width: 28px;
+  height: 28px;
+  border-radius: 7px;
   background: rgba(255, 255, 255, 0.08);
   border: 1px solid rgba(255, 255, 255, 0.2);
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 0.76rem;
+  font-size: 0.8rem;
   font-weight: 800;
   color: var(--emp-primary);
   flex-shrink: 0;
@@ -3931,18 +4091,20 @@ body.mode-conquest #rightDrawer.emp-drawer-open {
   word-break: break-word;
 }
 .emp-opt-btn.correct {
-  background: rgba(16, 185, 129, 0.28) !important;
+  background: rgba(16, 185, 129, 0.3) !important;
   border-color: #10b981 !important;
   color: #ecfdf5 !important;
+  box-shadow: 0 0 20px rgba(16, 185, 129, 0.4) !important;
 }
 .emp-opt-btn.wrong {
-  background: rgba(239, 68, 68, 0.26) !important;
+  background: rgba(239, 68, 68, 0.3) !important;
   border-color: #ef4444 !important;
   color: #fecaca !important;
 }
 .emp-opt-btn.eliminated {
-  opacity: 0.25;
+  opacity: 0.2;
   pointer-events: none;
+  filter: grayscale(1);
 }
 
 /* Tactical Row inside Siege Modal */
@@ -3956,11 +4118,16 @@ body.mode-conquest #rightDrawer.emp-drawer-open {
   background: rgba(30, 41, 59, 0.9);
   border: 1px solid rgba(56, 189, 248, 0.45);
   color: #e0f2fe;
-  font-size: 0.75rem;
+  font-size: 0.76rem;
   font-weight: 700;
-  padding: 6px 11px;
+  padding: 6px 12px;
   border-radius: var(--radius-pill);
   cursor: pointer;
+  transition: all 0.15s ease;
+}
+.emp-btn-siege-card:hover:not(:disabled) {
+  border-color: #38bdf8;
+  background: rgba(56, 189, 248, 0.2);
 }
 .emp-btn-siege-card:disabled {
   opacity: 0.4;
@@ -3974,22 +4141,23 @@ body.mode-conquest #rightDrawer.emp-drawer-open {
 
 /* Post-Answer Intelligence Banner */
 .emp-siege-explain-box {
-  background: rgba(15, 23, 42, 0.95);
-  border-left: 3.5px solid var(--emp-primary);
+  background: rgba(15, 23, 42, 0.96);
+  border-left: 4px solid var(--emp-primary);
   border-radius: var(--radius-sm);
-  padding: 12px 14px;
+  padding: 14px 16px;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 14px;
+  gap: 16px;
   flex-wrap: wrap;
+  box-shadow: 0 6px 20px rgba(0,0,0,0.5);
 }
 .emp-exp-left {
   flex: 1;
-  min-width: 220px;
+  min-width: 240px;
 }
 .emp-exp-title {
-  font-size: 0.82rem;
+  font-size: 0.88rem;
   font-weight: 800;
   color: var(--emp-primary);
   margin-bottom: 4px;
@@ -3998,23 +4166,58 @@ body.mode-conquest #rightDrawer.emp-drawer-open {
   font-size: 0.82rem;
   color: #e2e8f0;
   line-height: 1.45;
+  margin: 0;
+}
+.emp-exp-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
 }
 .emp-btn-siege-next {
-  padding: 9px 16px;
+  padding: 10px 18px;
   border-radius: var(--radius-pill);
-  font-size: 0.82rem;
+  font-size: 0.84rem;
   font-weight: 800;
   cursor: pointer;
   white-space: nowrap;
+  transition: all 0.18s ease;
 }
 .emp-btn-siege-next.victory {
   background: linear-gradient(135deg, var(--emp-primary), var(--emp-secondary));
   color: #000;
+  border: none;
+}
+.emp-btn-siege-next.victory:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 18px rgba(251, 191, 36, 0.4);
 }
 .emp-btn-siege-next.defeat {
   background: rgba(255, 255, 255, 0.12);
   border: 1px solid rgba(255, 255, 255, 0.25);
   color: #fff;
+}
+.emp-btn-quick-next {
+  padding: 10px 20px;
+  border-radius: var(--radius-pill);
+  font-size: 0.84rem;
+  font-weight: 800;
+  cursor: pointer;
+  white-space: nowrap;
+  background: linear-gradient(135deg, #10b981, #059669);
+  color: #fff;
+  border: 1px solid #34d399;
+  box-shadow: 0 4px 14px rgba(16, 185, 129, 0.4);
+  animation: pulseQuickNext 1.5s infinite ease-in-out;
+  transition: all 0.18s ease;
+}
+.emp-btn-quick-next:hover {
+  transform: translateY(-2px) scale(1.03);
+  box-shadow: 0 8px 24px rgba(16, 185, 129, 0.6);
+}
+@keyframes pulseQuickNext {
+  0%, 100% { box-shadow: 0 4px 14px rgba(16, 185, 129, 0.4); }
+  50% { box-shadow: 0 6px 22px rgba(52, 211, 153, 0.7); }
 }
 
 /* 5. Bottom Tactical War Cards Dock (#empireCardsDock) */
@@ -4565,15 +4768,25 @@ body.mode-conquest #rightDrawer.emp-drawer-open {
   gap: 12px;
 }
 .emp-dossier-flag {
-  font-size: 2.2rem;
+  font-size: 1.8rem;
   line-height: 1;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1.5px solid rgba(251, 191, 36, 0.4);
+  border-radius: 10px;
+  padding: 5px 12px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
 }
 .emp-dossier-titles {
   flex: 1;
   min-width: 0;
 }
 .emp-dossier-name {
-  font-size: 1.2rem;
+  font-size: 1.25rem;
   font-weight: 800;
   color: #fff;
   letter-spacing: 0.02em;
@@ -4586,9 +4799,9 @@ body.mode-conquest #rightDrawer.emp-drawer-open {
   margin: 2px 0 0;
 }
 .emp-dossier-shields {
-  font-size: 0.7rem;
+  font-size: 0.72rem;
   font-weight: 800;
-  padding: 4px 9px;
+  padding: 5px 11px;
   border-radius: 99px;
   background: rgba(251, 191, 36, 0.18);
   border: 1px solid var(--emp-primary);
@@ -4642,18 +4855,19 @@ body.mode-conquest #rightDrawer.emp-drawer-open {
   flex: 1;
   background: linear-gradient(135deg, var(--emp-primary), var(--emp-secondary));
   color: #000;
-  font-size: 0.84rem;
-  font-weight: 800;
-  padding: 11px 16px;
+  font-size: 0.86rem;
+  font-weight: 900;
+  padding: 12px 18px;
   border-radius: var(--radius-pill);
   cursor: pointer;
   border: none;
-  transition: transform 0.15s ease, box-shadow 0.15s ease;
-  box-shadow: 0 4px 14px rgba(251, 191, 36, 0.3);
+  letter-spacing: 0.03em;
+  transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: 0 4px 14px rgba(251, 191, 36, 0.35);
 }
-.emp-btn-dossier-siege:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 6px 20px rgba(251, 191, 36, 0.45);
+.emp-btn-dossier-siege:hover:not(:disabled) {
+  transform: translateY(-2px) scale(1.02);
+  box-shadow: 0 8px 24px rgba(251, 191, 36, 0.55);
 }
 .emp-btn-dossier-siege:disabled {
   opacity: 0.45;

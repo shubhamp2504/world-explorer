@@ -227,185 +227,148 @@
           </div>
         </div>
 
-        <!-- 2. STEP-BY-STEP ONBOARDING WIZARD MODAL (#empireOnboardingWizard) -->
+        <!-- 1.5. GUIDED STRATEGIC MISSION DIRECTIVE BAR (#empireMissionBar) -->
+        <div class="empire-mission-bar" id="empireMissionBar">
+          <div class="emp-mission-status">
+            <span class="emp-pulse-dot"></span>
+            <span class="emp-mission-badge">⚔️ STRATEGIC DIRECTIVE</span>
+            <span class="emp-mission-text" id="empMissionText">Expand your sovereign realm — click any glowing border target on the map or quick-invade below:</span>
+          </div>
+          <div class="emp-mission-targets-row" id="empMissionTargetsRow">
+            <!-- Dynamically populated target pills: [ ⚔️ Pakistan ($340B) ] [ ⚔️ Nepal ($42B) ] -->
+          </div>
+        </div>
+
+        <!-- 2. INSTANT 1-TAP SOVEREIGN STARTER ARENA (#empireOnboardingWizard) -->
         <div class="empire-wizard-overlay" id="empireOnboardingWizard" style="display: none;">
-          <div class="emp-wizard-card">
-            <!-- Stepper Progress Header -->
-            <div class="emp-wizard-stepper">
-              <div class="emp-step-item active" id="wizStepTab1"><span class="step-num">1</span> <span class="step-lbl">Homeland</span></div>
-              <div class="emp-step-divider"></div>
-              <div class="emp-step-item" id="wizStepTab2"><span class="step-num">2</span> <span class="step-lbl">Dynasty Identity</span></div>
-              <div class="emp-step-divider"></div>
-              <div class="emp-step-item" id="wizStepTab3"><span class="step-num">3</span> <span class="step-lbl">Command Directive</span></div>
+          <div class="emp-wizard-card modern-arena">
+            <div class="emp-arena-header">
+              <span class="emp-hero-badge">👑 WORLD DOMINATION</span>
+              <h2 class="emp-arena-title">Forge Your Sovereign Empire</h2>
+              <p class="emp-arena-sub">Select your starting imperial capital with 1 tap to claim the throne and begin conquering Earth:</p>
             </div>
 
-            <!-- STEP 1: CHOOSE HOMELAND -->
-            <div class="emp-wizard-pane active" id="wizPane1">
-              <div class="wiz-pane-header">
-                <span class="wiz-subtag">PHASE 1 • THE ANCHOR</span>
-                <h2 class="wiz-title">Claim Your Sovereign Capital</h2>
-                <p class="wiz-desc">Select a historic starting superpower or choose any nation on Earth to establish your Imperial Throne:</p>
-              </div>
-
-              <div class="wiz-starters-grid">
-                <button class="wiz-starter-card" data-code="IN">
-                  <span class="wiz-sc-flag">🇮🇳</span>
-                  <div class="wiz-sc-info">
-                    <strong>India</strong>
-                    <span>$3.94T GDP • 1.44B Pop</span>
-                  </div>
-                </button>
-                <button class="wiz-starter-card" data-code="US">
-                  <span class="wiz-sc-flag">🇺🇸</span>
-                  <div class="wiz-sc-info">
-                    <strong>United States</strong>
-                    <span>$28.78T GDP • 335M Pop</span>
-                  </div>
-                </button>
-                <button class="wiz-starter-card" data-code="JP">
-                  <span class="wiz-sc-flag">🇯🇵</span>
-                  <div class="wiz-sc-info">
-                    <strong>Japan</strong>
-                    <span>$4.11T GDP • 124M Pop</span>
-                  </div>
-                </button>
-                <button class="wiz-starter-card" data-code="DE">
-                  <span class="wiz-sc-flag">🇩🇪</span>
-                  <div class="wiz-sc-info">
-                    <strong>Germany</strong>
-                    <span>$4.59T GDP • 84M Pop</span>
-                  </div>
-                </button>
-                <button class="wiz-starter-card" data-code="GB">
-                  <span class="wiz-sc-flag">🇬🇧</span>
-                  <div class="wiz-sc-info">
-                    <strong>United Kingdom</strong>
-                    <span>$3.50T GDP • 68M Pop</span>
-                  </div>
-                </button>
-                <button class="wiz-starter-card" data-code="BR">
-                  <span class="wiz-sc-flag">🇧🇷</span>
-                  <div class="wiz-sc-info">
-                    <strong>Brazil</strong>
-                    <span>$2.33T GDP • 216M Pop</span>
-                  </div>
-                </button>
-                <button class="wiz-starter-card" data-code="EG">
-                  <span class="wiz-sc-flag">🇪🇬</span>
-                  <div class="wiz-sc-info">
-                    <strong>Egypt</strong>
-                    <span>$380B GDP • 110M Pop</span>
-                  </div>
-                </button>
-                <button class="wiz-starter-card" data-code="AU">
-                  <span class="wiz-sc-flag">🇦🇺</span>
-                  <div class="wiz-sc-info">
-                    <strong>Australia</strong>
-                    <span>$1.79T GDP • 26M Pop</span>
-                  </div>
-                </button>
-              </div>
-
-              <div class="wiz-search-strip">
-                <span class="wiz-or-text">OR SEARCH ANY OF EARTH'S 195 SOVEREIGN NATIONS:</span>
-                <input type="text" id="wizCapitalSearchInput" class="wiz-input" placeholder="Search capital, country name..." autocomplete="off" />
-                <div class="wiz-search-results" id="wizCapitalSearchResults" style="display: none;"></div>
-              </div>
-
-              <div class="wiz-action-row end" style="display: flex; gap: 12px; align-items: center; justify-content: flex-end;">
-                <button class="wiz-btn quickstart" id="btnWizQuickStart" style="display: none; background: rgba(16, 185, 129, 0.25); border: 1px solid #10b981; color: #6ee7b7; font-weight: 700; padding: 10px 18px; border-radius: 8px; cursor: pointer;">⚡ Quick-Start (Instant Play)</button>
-                <button class="wiz-btn next" id="btnWizStep1Next" disabled>Select a Homeland to Continue →</button>
-              </div>
+            <!-- 12 Top Global Superpowers Grid with Instant 1-Tap Play -->
+            <div class="emp-starters-arena-grid">
+              <button class="emp-arena-card" data-code="IN">
+                <span class="emp-ac-flag">🇮🇳</span>
+                <div class="emp-ac-body">
+                  <div class="emp-ac-name">India</div>
+                  <div class="emp-ac-stats">+$3.94T GDP • 1.44B Pop</div>
+                </div>
+                <span class="emp-ac-badge">⚡ 1-Tap Play</span>
+              </button>
+              <button class="emp-arena-card" data-code="US">
+                <span class="emp-ac-flag">🇺🇸</span>
+                <div class="emp-ac-body">
+                  <div class="emp-ac-name">United States</div>
+                  <div class="emp-ac-stats">+$28.78T GDP • 335M Pop</div>
+                </div>
+                <span class="emp-ac-badge">⚡ 1-Tap Play</span>
+              </button>
+              <button class="emp-arena-card" data-code="JP">
+                <span class="emp-ac-flag">🇯🇵</span>
+                <div class="emp-ac-body">
+                  <div class="emp-ac-name">Japan</div>
+                  <div class="emp-ac-stats">+$4.11T GDP • 124M Pop</div>
+                </div>
+                <span class="emp-ac-badge">⚡ 1-Tap Play</span>
+              </button>
+              <button class="emp-arena-card" data-code="DE">
+                <span class="emp-ac-flag">🇩🇪</span>
+                <div class="emp-ac-body">
+                  <div class="emp-ac-name">Germany</div>
+                  <div class="emp-ac-stats">+$4.59T GDP • 84M Pop</div>
+                </div>
+                <span class="emp-ac-badge">⚡ 1-Tap Play</span>
+              </button>
+              <button class="emp-arena-card" data-code="GB">
+                <span class="emp-ac-flag">🇬🇧</span>
+                <div class="emp-ac-body">
+                  <div class="emp-ac-name">United Kingdom</div>
+                  <div class="emp-ac-stats">+$3.50T GDP • 68M Pop</div>
+                </div>
+                <span class="emp-ac-badge">⚡ 1-Tap Play</span>
+              </button>
+              <button class="emp-arena-card" data-code="FR">
+                <span class="emp-ac-flag">🇫🇷</span>
+                <div class="emp-ac-body">
+                  <div class="emp-ac-name">France</div>
+                  <div class="emp-ac-stats">+$3.13T GDP • 68M Pop</div>
+                </div>
+                <span class="emp-ac-badge">⚡ 1-Tap Play</span>
+              </button>
+              <button class="emp-arena-card" data-code="BR">
+                <span class="emp-ac-flag">🇧🇷</span>
+                <div class="emp-ac-body">
+                  <div class="emp-ac-name">Brazil</div>
+                  <div class="emp-ac-stats">+$2.33T GDP • 216M Pop</div>
+                </div>
+                <span class="emp-ac-badge">⚡ 1-Tap Play</span>
+              </button>
+              <button class="emp-arena-card" data-code="IT">
+                <span class="emp-ac-flag">🇮🇹</span>
+                <div class="emp-ac-body">
+                  <div class="emp-ac-name">Italy</div>
+                  <div class="emp-ac-stats">+$2.33T GDP • 59M Pop</div>
+                </div>
+                <span class="emp-ac-badge">⚡ 1-Tap Play</span>
+              </button>
+              <button class="emp-arena-card" data-code="RU">
+                <span class="emp-ac-flag">🇷🇺</span>
+                <div class="emp-ac-body">
+                  <div class="emp-ac-name">Russia</div>
+                  <div class="emp-ac-stats">+$2.06T GDP • 144M Pop</div>
+                </div>
+                <span class="emp-ac-badge">⚡ 1-Tap Play</span>
+              </button>
+              <button class="emp-arena-card" data-code="EG">
+                <span class="emp-ac-flag">🇪🇬</span>
+                <div class="emp-ac-body">
+                  <div class="emp-ac-name">Egypt</div>
+                  <div class="emp-ac-stats">+$380B GDP • 110M Pop</div>
+                </div>
+                <span class="emp-ac-badge">⚡ 1-Tap Play</span>
+              </button>
+              <button class="emp-arena-card" data-code="AU">
+                <span class="emp-ac-flag">🇦🇺</span>
+                <div class="emp-ac-body">
+                  <div class="emp-ac-name">Australia</div>
+                  <div class="emp-ac-stats">+$1.79T GDP • 26M Pop</div>
+                </div>
+                <span class="emp-ac-badge">⚡ 1-Tap Play</span>
+              </button>
+              <button class="emp-arena-card" data-code="CN">
+                <span class="emp-ac-flag">🇨🇳</span>
+                <div class="emp-ac-body">
+                  <div class="emp-ac-name">China</div>
+                  <div class="emp-ac-stats">+$18.53T GDP • 1.41B Pop</div>
+                </div>
+                <span class="emp-ac-badge">⚡ 1-Tap Play</span>
+              </button>
             </div>
 
-            <!-- STEP 2: DYNASTY IDENTITY -->
-            <div class="emp-wizard-pane" id="wizPane2" style="display: none;">
-              <div class="wiz-pane-header">
-                <span class="wiz-subtag">PHASE 2 • EMPIRE CREST</span>
-                <h2 class="wiz-title">Name Your Dynasty & Imperial Banner</h2>
-                <p class="wiz-desc">Homeland selected: <span id="wizSelectedCapBadge" class="wiz-cap-badge">🇮🇳 India</span></p>
+            <!-- Instant Search Any of 195 Nations -->
+            <div class="emp-arena-search-strip">
+              <div class="emp-as-box">
+                <span class="emp-as-icon">🔍</span>
+                <input type="text" id="wizCapitalSearchInput" class="emp-arena-search-input" placeholder="Or search any of Earth's 195 sovereign nations..." autocomplete="off" />
               </div>
-
-              <div class="wiz-form-group">
-                <label for="wizDynastyNameInput">Imperial Dynasty Title</label>
-                <input type="text" id="wizDynastyNameInput" class="wiz-input large" maxlength="32" value="The Sovereign Realm" placeholder="e.g. Maurya Dominion, Neo-Rome..." />
-              </div>
-
-              <div class="wiz-form-group">
-                <label>Imperial Map Color Banner</label>
-                <div class="wiz-themes-palette">
-                  <label class="wiz-theme-choice gold active">
-                    <input type="radio" name="wizThemeChoice" value="gold" checked />
-                    <span class="wiz-tc-icon">👑</span>
-                    <span class="wiz-tc-name">Imperial Gold</span>
-                  </label>
-                  <label class="wiz-theme-choice cyan">
-                    <input type="radio" name="wizThemeChoice" value="cyan" />
-                    <span class="wiz-tc-icon">⚡</span>
-                    <span class="wiz-tc-name">Cyber Sovereign</span>
-                  </label>
-                  <label class="wiz-theme-choice crimson">
-                    <input type="radio" name="wizThemeChoice" value="crimson" />
-                    <span class="wiz-tc-icon">🔥</span>
-                    <span class="wiz-tc-name">Crimson Dynasty</span>
-                  </label>
-                  <label class="wiz-theme-choice emerald">
-                    <input type="radio" name="wizThemeChoice" value="emerald" />
-                    <span class="wiz-tc-icon">🐉</span>
-                    <span class="wiz-tc-name">Emerald Hegemony</span>
-                  </label>
-                </div>
-              </div>
-
-              <div class="wiz-action-row">
-                <button class="wiz-btn back" id="btnWizStep2Back">← Back</button>
-                <button class="wiz-btn next" id="btnWizStep2Next">Confirm Identity →</button>
-              </div>
+              <div class="wiz-search-results" id="wizCapitalSearchResults" style="display: none;"></div>
             </div>
 
-            <!-- STEP 3: STRATEGIC DIRECTIVE & COMMANDER KEY -->
-            <div class="emp-wizard-pane" id="wizPane3" style="display: none;">
-              <div class="wiz-pane-header">
-                <span class="wiz-subtag">PHASE 3 • BATTLE READY</span>
-                <h2 class="wiz-title">War Room Directive & Commander Key</h2>
-              </div>
-
-              <div class="wiz-key-box">
-                <div class="wiz-kb-left">
-                  <span class="wiz-kb-lbl">YOUR SYNC COMMANDER KEY:</span>
-                  <strong class="wiz-kb-code" id="wizCommanderCodeTag">KRONOS-7</strong>
-                </div>
-                <p class="wiz-kb-note">No passwords needed. Enter this 6-character key on any mobile phone or computer to resume your empire instantly.</p>
-              </div>
-
-              <div class="wiz-directives-list">
-                <div class="wiz-dir-item">
-                  <span class="wiz-dir-icon">🌫️</span>
-                  <div>
-                    <strong>1. Fog of War & Borders</strong>
-                    <p>Only directly adjacent frontier nations are reachable. Click glowing amber borders directly on the map to inspect.</p>
-                  </div>
-                </div>
-                <div class="wiz-dir-item">
-                  <span class="wiz-dir-icon">⚡</span>
-                  <div>
-                    <strong>2. 35-Second KBC-Grade Sieges</strong>
-                    <p>Breach dynamic Defense Shields (1 for small states, up to 5 for superpower citadels) with high-IQ cultural, scientific, and geopolitical trivia before time runs out.</p>
-                  </div>
-                </div>
-                <div class="wiz-dir-item">
-                  <span class="wiz-dir-icon">💰</span>
-                  <div>
-                    <strong>3. Vault Progression & Loot Cards</strong>
-                    <p>Every conquered nation adds its real Nominal GDP to your treasury. Unlock Tactical War Cards every 3 victories.</p>
-                  </div>
+            <!-- Footer Theme Choice -->
+            <div class="emp-arena-footer">
+              <div class="emp-theme-pick-strip">
+                <span class="emp-tps-lbl">IMPERIAL BANNER COLOR:</span>
+                <div class="emp-theme-swatches">
+                  <button class="emp-theme-swatch gold active" data-theme="gold" title="Imperial Gold"></button>
+                  <button class="emp-theme-swatch cyan" data-theme="cyan" title="Cyber Sovereign"></button>
+                  <button class="emp-theme-swatch crimson" data-theme="crimson" title="Sovereign Crimson"></button>
+                  <button class="emp-theme-swatch emerald" data-theme="emerald" title="Emerald Hegemony"></button>
                 </div>
               </div>
-
-              <div class="wiz-action-row">
-                <button class="wiz-btn back" id="btnWizStep3Back">← Back</button>
-                <button class="wiz-btn launch" id="btnWizLaunchCampaign">🚀 ENTER WAR ROOM</button>
-              </div>
+              <div class="emp-arena-hint">💡 Tap any card to claim capital and begin conquest</div>
             </div>
           </div>
         </div>
@@ -419,7 +382,7 @@
               <h3 class="emp-dossier-name" id="targetDossierName">China</h3>
               <p class="emp-dossier-sub" id="targetDossierSub">Eastern Asia • Capital: Beijing</p>
             </div>
-            <div class="emp-dossier-shields" id="targetDossierShields">🛡️ 5 Shields</div>
+            <div class="emp-dossier-shields" id="targetDossierShields">🛡️ 1 Shield</div>
           </div>
 
           <div class="emp-dossier-metrics">
@@ -437,11 +400,11 @@
             </div>
           </div>
 
-          <p class="emp-dossier-intel" id="targetDossierIntel">Controls critical semiconductor trade routes, high-speed rail networks, and major shipping lanes.</p>
+          <p class="emp-dossier-intel" id="targetDossierIntel">Controls critical trade routes, high-speed rail networks, and sovereign supply chains.</p>
 
           <div class="emp-dossier-actions">
             <button class="emp-btn-dossier-annex" id="btnDossierAnnex" style="display: none;">🤝 Diplomatic Annex</button>
-            <button class="emp-btn-dossier-siege" id="btnDossierSiege">⚔️ INITIATE BORDER SIEGE (5 SHIELDS)</button>
+            <button class="emp-btn-dossier-siege" id="btnDossierSiege">⚔️ INITIATE BORDER SIEGE (1 SHIELD)</button>
           </div>
         </div>
 
@@ -449,7 +412,7 @@
         <div class="empire-rebellion-banner" id="empireRebellionBanner" style="display: none;">
           <div class="emp-rebel-left">
             <span class="emp-rebel-pulse">🚨</span>
-            <span class="emp-rebel-text" id="empRebellionText">🚨 DEFCON UPRISING! Crush the rebellion or lose the territory!</span>
+            <span class="emp-rebel-text" id="empRebellionText">🚨 DEFCON UPRISING! Crush the rebellion or lose sovereignty!</span>
           </div>
           <div class="emp-rebel-actions">
             <button class="emp-btn-rebel-defend" id="btnEmpDefendRebellion">⚔️ Defend Territory</button>
@@ -457,7 +420,7 @@
           </div>
         </div>
 
-        <!-- 5. 20-SECOND BLITZ SIEGE ARENA STAGE (#empireSiegeModal) -->
+        <!-- 5. KBC-STYLE BLITZ SIEGE ARENA STAGE (#empireSiegeModal) -->
         <div class="empire-siege-modal" id="empireSiegeModal" style="display: none;" role="dialog" aria-modal="true" aria-labelledby="empSiegeCountryName">
           <div class="emp-siege-card">
             <!-- Siege Header with 20s Digital Timer & Pause Control -->
@@ -471,18 +434,18 @@
               </div>
               <div class="emp-siege-header-right">
                 <span class="emp-siege-tier-badge" id="empSiegeTierBadge">🛡️ SIEGE ENGAGED</span>
-                <div class="emp-siege-timer" id="empSiegeTimer" aria-live="polite">35s</div>
+                <div class="emp-siege-timer" id="empSiegeTimer" aria-live="polite">25s</div>
                 <button class="emp-btn-pause" id="btnEmpPauseSiege" title="Pause Battle (Space)">⏸️ Pause</button>
                 <button class="emp-btn-retreat" id="btnEmpRetreatSiege" title="Retreat from Siege (Esc)">🏳️ Retreat</button>
               </div>
             </div>
 
-            <!-- 5-Shield Health Bar Nodes -->
+            <!-- Shield Health Bar Nodes -->
             <div class="emp-shield-bar" id="empShieldBar"></div>
 
             <!-- Question Frame (Unclipped Natural Multi-Line Wrapping) -->
             <div class="emp-siege-question-box">
-              <div class="emp-siege-cat" id="empSiegeCategory">🌊 STRATEGIC CHOKEPOINTS — SHIELD 1 OF 5</div>
+              <div class="emp-siege-cat" id="empSiegeCategory">🌊 STRATEGIC CHOKEPOINTS — SHIELD 1 OF 1</div>
               <h3 class="emp-siege-prompt" id="empSiegePrompt">Loading authentic geopolitical intelligence...</h3>
             </div>
 
@@ -507,7 +470,10 @@
                 <div class="emp-exp-title" id="empSiegeExplainTitle">💥 SHIELD BREACHED!</div>
                 <p class="emp-exp-text" id="empSiegeExplainText"></p>
               </div>
-              <button class="emp-btn-siege-next victory" id="btnSiegeNextStep">⚔️ Attack Next Shield ➡️</button>
+              <div class="emp-exp-actions" id="empExpActions">
+                <button class="emp-btn-siege-next victory" id="btnSiegeNextStep">⚔️ Attack Next Shield ➡️</button>
+                <button class="emp-btn-quick-next" id="btnSiegeInvadeNext" style="display: none;">⚡ Attack Next Neighbor ➡️</button>
+              </div>
             </div>
 
             <!-- Pause Backdrop Overlay -->

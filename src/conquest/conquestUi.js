@@ -223,18 +223,20 @@ export class ConquestController {
     });
 
     // -------------------------------------------------------------------------
-    // ONBOARDING WIZARD EVENTS
+    // INSTANT 1-TAP STARTER ARENA & WIZARD EVENTS
     // -------------------------------------------------------------------------
+    document.querySelectorAll('.emp-arena-card').forEach(card => {
+      card.addEventListener('click', () => {
+        this.deps.sounds.playClick();
+        const code = card.dataset.code;
+        this.launchCampaignWithCapital(code);
+      });
+    });
+
     document.querySelectorAll('.wiz-starter-card').forEach(card => {
       card.addEventListener('click', () => {
         this.deps.sounds.playClick();
         const code = card.dataset.code;
-        this.selectWizardCapital(code);
-      });
-      card.addEventListener('dblclick', () => {
-        this.deps.sounds.playClick();
-        const code = card.dataset.code;
-        this.selectWizardCapital(code);
         this.launchCampaignWithCapital(code);
       });
     });
@@ -251,45 +253,12 @@ export class ConquestController {
       this.renderWizardSearchResults(e.target.value);
     });
 
-    document.getElementById('btnWizStep1Next')?.addEventListener('click', () => {
-      this.deps.sounds.playClick();
-      if (this.wizardSelectedCode) this.goToWizardStep(2);
-    });
-
-    document.getElementById('btnWizStep2Back')?.addEventListener('click', () => {
-      this.deps.sounds.playClick();
-      this.goToWizardStep(1);
-    });
-
     document.querySelectorAll('input[name="wizThemeChoice"]').forEach(radio => {
       radio.addEventListener('change', (e) => {
         const theme = e.target.value;
         this.engine.setTheme(theme);
         this.applyThemeVariables(theme);
-        document.querySelectorAll('.wiz-theme-choice').forEach(tc => {
-          tc.classList.toggle('active', tc.querySelector('input').checked);
-        });
       });
-    });
-
-    document.getElementById('btnWizStep2Next')?.addEventListener('click', () => {
-      this.deps.sounds.playClick();
-      const nameInput = document.getElementById('wizDynastyNameInput');
-      const val = nameInput?.value?.trim() || 'The Sovereign Realm';
-      this.engine.setDynastyName(val);
-      this.goToWizardStep(3);
-    });
-
-    document.getElementById('btnWizStep3Back')?.addEventListener('click', () => {
-      this.deps.sounds.playClick();
-      this.goToWizardStep(2);
-    });
-
-    document.getElementById('btnWizLaunchCampaign')?.addEventListener('click', () => {
-      this.deps.sounds.playClick();
-      if (this.wizardSelectedCode) {
-        this.launchCampaignWithCapital(this.wizardSelectedCode);
-      }
     });
 
     // -------------------------------------------------------------------------
@@ -371,6 +340,18 @@ export class ConquestController {
     document.getElementById('btnSiegeNextStep')?.addEventListener('click', () => {
       this.deps.sounds.playClick();
       this.advanceSiegeStep();
+    });
+
+    document.getElementById('btnSiegeInvadeNext')?.addEventListener('click', () => {
+      this.deps.sounds.playClick();
+      const nextCode = this.nextSiegeTargetCode;
+      this.advanceSiegeStep();
+      if (nextCode) {
+        setTimeout(() => {
+          this.handleCountryInteraction(nextCode);
+          this.startSiege(nextCode, false);
+        }, 160);
+      }
     });
 
     document.getElementById('btnSiegeSpyCard')?.addEventListener('click', () => {
@@ -509,8 +490,16 @@ export class ConquestController {
     const rightDrawer = document.getElementById('rightDrawer');
     if (rightDrawer) rightDrawer.classList.remove('emp-drawer-open');
 
+    const missionBar = document.getElementById('empireMissionBar');
+    if (missionBar) missionBar.style.display = 'none';
+
     window.removeEventListener('keydown', this.boundKeyDown);
     document.removeEventListener('visibilitychange', this.boundVisibilityChange);
+
+    const globe = this.deps.getGlobe3d?.();
+    if (globe && typeof globe.clearMarkers === 'function') {
+      globe.clearMarkers();
+    }
 
     const g = this.deps.getSvgG();
     if (g) {
@@ -522,6 +511,7 @@ export class ConquestController {
         .classed('emp-rebellion', false)
         .classed('emp-fog', false);
       g.selectAll('.emp-microstate-layer').remove();
+      g.selectAll('.emp-frontline-badges-layer').remove();
     }
   }
 
@@ -597,13 +587,12 @@ export class ConquestController {
   }
 
   // =========================================================================
-  // 2. ONBOARDING WIZARD (Step 1 -> Step 2 -> Step 3)
+  // 2. INSTANT 1-TAP SOVEREIGN STARTER ARENA
   // =========================================================================
   openOnboardingWizard() {
     const modal = document.getElementById('empireOnboardingWizard');
     if (modal) modal.style.display = 'flex';
     this.wizardSelectedCode = null;
-    this.goToWizardStep(1);
   }
 
   closeOnboardingWizard() {
@@ -612,55 +601,11 @@ export class ConquestController {
   }
 
   goToWizardStep(step) {
-    this.wizardStep = step;
-    ['wizPane1', 'wizPane2', 'wizPane3'].forEach((id, idx) => {
-      const pane = document.getElementById(id);
-      if (pane) pane.style.display = (idx + 1 === step) ? 'flex' : 'none';
-    });
-
-    ['wizStepTab1', 'wizStepTab2', 'wizStepTab3'].forEach((id, idx) => {
-      const tab = document.getElementById(id);
-      if (tab) tab.classList.toggle('active', idx + 1 === step);
-    });
-
-    if (step === 2) {
-      const c = countryByCode[this.wizardSelectedCode];
-      const badge = document.getElementById('wizSelectedCapBadge');
-      if (badge && c) badge.textContent = `${c.flag} ${c.name}`;
-      const nameInput = document.getElementById('wizDynastyNameInput');
-      if (nameInput && (!nameInput.value || nameInput.value === 'The Sovereign Realm')) {
-        nameInput.value = `${c?.name || 'Imperial'} Dominion`;
-      }
-    } else if (step === 3) {
-      const codeTag = document.getElementById('wizCommanderCodeTag');
-      if (codeTag) codeTag.textContent = this.engine.state.commanderCode || 'KRONOS-7';
-    }
+    this.openOnboardingWizard();
   }
 
   selectWizardCapital(code) {
-    const c = countryByCode[code];
-    if (!c) return;
-    this.wizardSelectedCode = code;
-
-    document.querySelectorAll('.wiz-starter-card').forEach(sc => {
-      sc.classList.toggle('selected', sc.dataset.code === code);
-    });
-
-    const nextBtn = document.getElementById('btnWizStep1Next');
-    if (nextBtn) {
-      nextBtn.disabled = false;
-      nextBtn.textContent = `Customize Dynasty (${c.flag} ${c.name}) →`;
-    }
-
-    const quickBtn = document.getElementById('btnWizQuickStart');
-    if (quickBtn) {
-      quickBtn.style.display = 'inline-flex';
-      quickBtn.textContent = `⚡ Quick-Start as ${c.flag} ${c.name}`;
-    }
-
-    if (c.lat != null && c.lng != null) {
-      this.deps.flyCameraToCoordinates(c.lat, c.lng, 2.5);
-    }
+    this.launchCampaignWithCapital(code);
   }
 
   renderWizardSearchResults(query) {
@@ -675,7 +620,7 @@ export class ConquestController {
     const matches = COUNTRIES.filter(c =>
       c.name.toLowerCase().includes(q) ||
       (c.capital && c.capital.toLowerCase().includes(q))
-    ).slice(0, 6);
+    ).slice(0, 8);
 
     if (matches.length === 0) {
       resultsContainer.innerHTML = `<div class="wiz-sr-item empty">No matching nation found</div>`;
@@ -686,8 +631,11 @@ export class ConquestController {
     resultsContainer.innerHTML = matches.map(c => `
       <div class="wiz-sr-item" data-code="${c.code}">
         <span class="wiz-sr-flag">${c.flag}</span>
-        <span class="wiz-sr-name">${c.name}</span>
-        <span class="wiz-sr-sub">🏛️ ${c.capital || 'N/A'}</span>
+        <div class="wiz-sr-info">
+          <strong class="wiz-sr-name">${c.name}</strong>
+          <span class="wiz-sr-sub">🏛️ ${c.capital || 'N/A'} • ${c.subregion || c.region}</span>
+        </div>
+        <span class="wiz-sr-action">⚡ 1-Tap Play</span>
       </div>
     `).join('');
     resultsContainer.style.display = 'flex';
@@ -695,8 +643,8 @@ export class ConquestController {
     resultsContainer.querySelectorAll('.wiz-sr-item').forEach(item => {
       item.addEventListener('click', () => {
         const code = item.dataset.code;
-        this.selectWizardCapital(code);
         resultsContainer.style.display = 'none';
+        this.launchCampaignWithCapital(code);
       });
     });
   }
@@ -898,6 +846,66 @@ export class ConquestController {
       node.append('title')
         .text(`${c.flag} ${c.name} (${c.capital})`);
     });
+
+    // 2. Render animated ⚔️ assault beacons on 2D map for frontline neighbors
+    g.selectAll('.emp-frontline-badges-layer').remove();
+    if (started && frontlineSet.size > 0) {
+      const badgeGroup = g.append('g').attr('class', 'emp-frontline-badges-layer');
+      frontlineSet.forEach(fCode => {
+        const fc = countryByCode[fCode];
+        if (!fc || fc.lat == null || fc.lng == null) return;
+        const coords = projection([fc.lng, fc.lat]);
+        if (!coords) return;
+
+        const badge = badgeGroup.append('g')
+          .attr('class', 'emp-map-target-beacon')
+          .attr('transform', `translate(${coords[0]},${coords[1]})`)
+          .style('cursor', 'pointer')
+          .on('click', (event) => {
+            event.stopPropagation();
+            this.handleCountryInteraction(fc.code);
+          });
+
+        badge.append('circle')
+          .attr('r', 11)
+          .attr('class', 'emp-beacon-pulse-ring');
+
+        badge.append('circle')
+          .attr('r', 7)
+          .attr('class', 'emp-beacon-core');
+
+        badge.append('text')
+          .attr('text-anchor', 'middle')
+          .attr('dy', '3.5px')
+          .attr('font-size', '8px')
+          .attr('class', 'emp-beacon-icon')
+          .text('⚔️');
+
+        badge.append('title')
+          .text(`⚔️ Invade ${fc.flag} ${fc.name}`);
+      });
+    }
+
+    // 3. Synchronize with 3D Globe holographic beacons
+    const globe = this.deps.getGlobe3d?.();
+    if (globe && typeof globe.setMarkers === 'function') {
+      const markers = [];
+      if (started && capitalCode && countryByCode[capitalCode]) {
+        const cap = countryByCode[capitalCode];
+        if (cap.lat != null && cap.lng != null) {
+          markers.push({ id: cap.code, lat: cap.lat, lng: cap.lng, color: 0xfbbf24, name: `👑 Imperial Capital: ${cap.name}` });
+        }
+      }
+      if (started) {
+        frontlineSet.forEach(fCode => {
+          const fc = countryByCode[fCode];
+          if (fc && fc.lat != null && fc.lng != null) {
+            markers.push({ id: fc.code, lat: fc.lat, lng: fc.lng, color: 0xef4444, name: `⚔️ Invade ${fc.name}` });
+          }
+        });
+      }
+      globe.setMarkers(markers, 'conquest_target');
+    }
   }
 
   // =========================================================================
@@ -1181,7 +1189,34 @@ export class ConquestController {
       }
     }
 
+    const invadeNextBtn = document.getElementById('btnSiegeInvadeNext');
+    if (invadeNextBtn) {
+      if (isCorrect && isFinalShield && !s.isRebellion) {
+        const nextTarget = this.getNextRecommendedTarget(s.countryCode);
+        if (nextTarget) {
+          this.nextSiegeTargetCode = nextTarget.code;
+          invadeNextBtn.innerHTML = `⚡ Invade Next: ${nextTarget.flag} ${nextTarget.name} ➡️`;
+          invadeNextBtn.style.display = 'inline-flex';
+        } else {
+          invadeNextBtn.style.display = 'none';
+          this.nextSiegeTargetCode = null;
+        }
+      } else {
+        invadeNextBtn.style.display = 'none';
+        this.nextSiegeTargetCode = null;
+      }
+    }
+
     if (expBox) expBox.style.display = 'flex';
+  }
+
+  getNextRecommendedTarget(currentCode = null) {
+    const frontline = Array.from(this.engine.getFrontlineSet());
+    if (frontline.length === 0) return null;
+    const candidates = frontline.filter(c => c !== currentCode).map(code => countryByCode[code]).filter(Boolean);
+    if (candidates.length === 0) return null;
+    candidates.sort((a, b) => getCountryGdpBillions(a.code) - getCountryGdpBillions(b.code));
+    return candidates[0] || null;
   }
 
   advanceSiegeStep() {
@@ -1450,6 +1485,56 @@ export class ConquestController {
   }
 
   renderBanners() {
+    // 1. Guided Strategic Mission Directive Bar
+    const started = this.engine.hasCampaignStarted();
+    const missionBar = document.getElementById('empireMissionBar');
+    const targetsRow = document.getElementById('empMissionTargetsRow');
+    const missionText = document.getElementById('empMissionText');
+
+    if (missionBar) {
+      if (!started) {
+        missionBar.style.display = 'none';
+      } else {
+        missionBar.style.display = 'flex';
+        const frontlineCodes = Array.from(this.engine.getFrontlineSet());
+        const frontlineCountries = frontlineCodes.map(code => countryByCode[code]).filter(Boolean);
+
+        if (frontlineCountries.length === 0) {
+          if (missionText) missionText.innerHTML = '👑 <strong>Supreme Mastery:</strong> All 195 nations on Earth are conquered under your dynasty!';
+          if (targetsRow) targetsRow.innerHTML = '<span class="emp-all-annexed-tag">🌍 Earth Fully Unified</span>';
+        } else {
+          if (missionText) {
+            missionText.innerHTML = `⚔️ <strong>${frontlineCountries.length} Frontier Targets</strong> within reach — tap any glowing border or fast-invade below:`;
+          }
+          if (targetsRow) {
+            const sorted = [...frontlineCountries].sort((a, b) => getCountryGdpBillions(a.code) - getCountryGdpBillions(b.code));
+            targetsRow.innerHTML = sorted.slice(0, 7).map(c => {
+              const gdpB = getCountryGdpBillions(c.code);
+              const gdpStr = gdpB >= 1000 ? `$${(gdpB / 1000).toFixed(1)}T` : `$${gdpB}B`;
+              const shields = getRecommendedShieldCount(c.code);
+              return `
+                <button class="emp-mission-pill" data-code="${c.code}" title="Invade ${c.name} (${shields} Shield)">
+                  <span class="emp-mp-flag">${c.flag}</span>
+                  <span class="emp-mp-name">${c.name}</span>
+                  <span class="emp-mp-gdp">+${gdpStr}</span>
+                  <span class="emp-mp-shield">🛡️${shields}</span>
+                </button>
+              `;
+            }).join('');
+
+            targetsRow.querySelectorAll('.emp-mission-pill').forEach(btn => {
+              btn.addEventListener('click', () => {
+                this.deps.sounds.playClick();
+                const code = btn.dataset.code;
+                this.handleCountryInteraction(code);
+              });
+            });
+          }
+        }
+      }
+    }
+
+    // 2. Active DEFCON Rebellion Alert Banner
     const rebBanner = document.getElementById('empireRebellionBanner');
     const reb = this.engine.state.activeRebellion;
     if (rebBanner) {
