@@ -1882,9 +1882,12 @@ function handleModeSwitch(mode) {
     showDrawerSection('viewCountryDossier');
     renderMapLayers();
   } else if (mode === 'conquest') {
-    // Switch to 2D flat map by default so all 195 borders, amber frontlines, and microstate nodes are immediately visible
-    if (currentProjection !== 'flat') {
-      document.getElementById('btnFlatView')?.click();
+    // Elevate Conquest mode to 3D Globe War Theater by default so players experience the museum-grade Earth globe
+    if (currentProjection !== 'globe' || !globe3dInstance) {
+      document.getElementById('btnGlobeView')?.click();
+    }
+    if (globe3dInstance) {
+      globe3dInstance.focusPlanet('earth');
     }
     showDrawerSection('viewEmpireCommand');
     conquestController?.enterMode();

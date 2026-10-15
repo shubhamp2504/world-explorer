@@ -497,8 +497,10 @@ export class ConquestController {
     document.removeEventListener('visibilitychange', this.boundVisibilityChange);
 
     const globe = this.deps.getGlobe3d?.();
-    if (globe && typeof globe.clearMarkers === 'function') {
-      globe.clearMarkers();
+    if (globe) {
+      if (typeof globe.clearMarkers === 'function') globe.clearMarkers();
+      if (typeof globe.clearTrajectoryArcs === 'function') globe.clearTrajectoryArcs();
+      if (typeof globe.clearTargetCountry === 'function') globe.clearTargetCountry();
     }
 
     const g = this.deps.getSvgG();
@@ -757,6 +759,10 @@ export class ConquestController {
 
     if (c.lat != null && c.lng != null) {
       this.deps.flyCameraToCoordinates(c.lat, c.lng, 3.2);
+      const globe = this.deps.getGlobe3d?.();
+      if (globe && typeof globe.setTargetCountry === 'function') {
+        globe.setTargetCountry(c.lat, c.lng, c.name, c.flag);
+      }
     }
   }
 
@@ -764,6 +770,10 @@ export class ConquestController {
     const dossier = document.getElementById('empireTargetDossier');
     if (dossier) dossier.style.display = 'none';
     this.activeDossierCode = null;
+    const globe = this.deps.getGlobe3d?.();
+    if (globe && typeof globe.clearTargetCountry === 'function') {
+      globe.clearTargetCountry();
+    }
   }
 
   // =========================================================================
@@ -886,25 +896,59 @@ export class ConquestController {
       });
     }
 
-    // 3. Synchronize with 3D Globe holographic beacons
+    // 3. Synchronize with 3D Globe holographic beacons & tactical laser trajectory arcs
     const globe = this.deps.getGlobe3d?.();
     if (globe && typeof globe.setMarkers === 'function') {
       const markers = [];
+      const arcs = [];
+      let capObj = null;
+
       if (started && capitalCode && countryByCode[capitalCode]) {
         const cap = countryByCode[capitalCode];
+        capObj = cap;
         if (cap.lat != null && cap.lng != null) {
-          markers.push({ id: cap.code, lat: cap.lat, lng: cap.lng, color: 0xfbbf24, name: `👑 Imperial Capital: ${cap.name}` });
+          markers.push({
+            id: cap.code,
+            lat: cap.lat,
+            lng: cap.lng,
+            color: 0xfbbf24,
+            isCapital: true,
+            name: `👑 Imperial Capital: ${cap.name}`
+          });
         }
       }
+
       if (started) {
         frontlineSet.forEach(fCode => {
           const fc = countryByCode[fCode];
           if (fc && fc.lat != null && fc.lng != null) {
-            markers.push({ id: fc.code, lat: fc.lat, lng: fc.lng, color: 0xef4444, name: `⚔️ Invade ${fc.name}` });
+            markers.push({
+              id: fc.code,
+              lat: fc.lat,
+              lng: fc.lng,
+              color: 0xef4444,
+              isFrontline: true,
+              name: `⚔️ Invade ${fc.name}`
+            });
+
+            if (capObj && capObj.lat != null && capObj.lng != null) {
+              arcs.push({
+                fromLat: capObj.lat,
+                fromLng: capObj.lng,
+                toLat: fc.lat,
+                toLng: fc.lng,
+                color: 0xf59e0b,
+                isFrontline: true
+              });
+            }
           }
         });
       }
+
       globe.setMarkers(markers, 'conquest_target');
+      if (typeof globe.setTrajectoryArcs === 'function') {
+        globe.setTrajectoryArcs(arcs);
+      }
     }
   }
 
@@ -947,6 +991,16 @@ export class ConquestController {
 
     const modal = document.getElementById('empireSiegeModal');
     if (modal) modal.style.display = 'flex';
+
+    const globe = this.deps.getGlobe3d?.();
+    if (globe && c.lat != null && c.lng != null) {
+      if (typeof globe.setTargetCountry === 'function') {
+        globe.setTargetCountry(c.lat, c.lng, c.name, c.flag);
+      }
+      if (typeof globe.flyTo === 'function') {
+        globe.flyTo(c.lat, c.lng, 2.3);
+      }
+    }
     this.renderCurrentSiegeQuestion();
   }
 
@@ -1273,6 +1327,10 @@ export class ConquestController {
     this.activeSiege = null;
     this.isPaused = false;
     document.body.classList.remove('siege-emergency-pulse');
+    const globe = this.deps.getGlobe3d?.();
+    if (globe && typeof globe.clearTargetCountry === 'function') {
+      globe.clearTargetCountry();
+    }
   }
 
   updateSiegeTacticalButtons() {

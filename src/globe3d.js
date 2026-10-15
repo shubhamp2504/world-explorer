@@ -178,9 +178,11 @@ export class EarthGlobe3D {
     // 9. 🪐 All Dynamic Solar System Planets
     this.createOtherPlanets();
 
-    // 10. Interactive Holographic Beacons Layer on Earth
+    // 10. Interactive Holographic Beacons & Tactical Laser Arcs on Earth
     this.markersGroup = new THREE.Group();
     this.earthMesh.add(this.markersGroup);
+    this.trajectoryArcsGroup = new THREE.Group();
+    this.earthMesh.add(this.trajectoryArcsGroup);
 
     // 11. Interactions with Inertial Physics
     this.setupInteractions();
@@ -1121,7 +1123,7 @@ export class EarthGlobe3D {
     if (lat === undefined || lng === undefined) return;
 
     this.targetReticleGroup = new THREE.Group();
-    const pos = this.latLngToVector3(lat, lng, 1.002);
+    const pos = this.latLngToVector3(lat, lng, 1.186);
     const normal = pos.clone().normalize();
     this.targetReticleGroup.position.copy(pos);
 
@@ -1316,37 +1318,72 @@ export class EarthGlobe3D {
     if (!markerList || markerList.length === 0) return;
 
     markerList.forEach(item => {
-      const pos = this.latLngToVector3(item.lat, item.lng, 1.002);
+      const pos = this.latLngToVector3(item.lat, item.lng, 1.186);
       const normal = pos.clone().normalize();
       const isHeritage = (item.category === 'heritage');
-      const color = isHeritage ? 0xf59e0b : (type === 'favorite' ? 0xfbbf24 : (item.color || 0x38bdf8));
+      const isCapital = Boolean(item.isCapital);
+      const isFrontline = Boolean(item.isFrontline);
+      const color = isCapital ? 0xfbbf24 : (isFrontline ? 0xef4444 : (isHeritage ? 0xf59e0b : (type === 'favorite' ? 0xfbbf24 : (item.color || 0x38bdf8))));
 
       const beaconGroup = new THREE.Group();
       beaconGroup.position.copy(pos);
       beaconGroup.userData = { item, type };
 
       // Holographic vertical beam
-      const beamHeight = isHeritage ? 0.11 : 0.08;
-      const beamGeom = new THREE.CylinderGeometry(isHeritage ? 0.004 : 0.003, isHeritage ? 0.004 : 0.003, beamHeight, 6);
-      const beamMat = new THREE.MeshBasicMaterial({ color, transparent: true, opacity: isHeritage ? 0.95 : 0.85 });
+      const beamHeight = isCapital ? 0.15 : (isFrontline ? 0.11 : (isHeritage ? 0.11 : 0.08));
+      const beamRadius = isCapital ? 0.0055 : (isFrontline ? 0.0042 : (isHeritage ? 0.004 : 0.003));
+      const beamGeom = new THREE.CylinderGeometry(beamRadius, beamRadius, beamHeight, 8);
+      const beamMat = new THREE.MeshBasicMaterial({
+        color,
+        transparent: true,
+        opacity: isCapital ? 0.98 : (isFrontline ? 0.92 : 0.85),
+        blending: THREE.AdditiveBlending
+      });
       const beamMesh = new THREE.Mesh(beamGeom, beamMat);
       beamMesh.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), normal);
       beamMesh.position.addScaledVector(normal, beamHeight * 0.5);
       beaconGroup.add(beamMesh);
 
-      // Top floating gem / monument cap
-      const diamondGeom = isHeritage ? new THREE.OctahedronGeometry(0.018, 0) : new THREE.OctahedronGeometry(0.014, 0);
-      const diamondMat = new THREE.MeshBasicMaterial({ color: isHeritage ? 0xfffbeb : 0xffffff });
+      // Top floating gem / monument cap / imperial crest
+      const diamondRadius = isCapital ? 0.024 : (isFrontline ? 0.018 : (isHeritage ? 0.018 : 0.014));
+      const diamondGeom = new THREE.OctahedronGeometry(diamondRadius, 0);
+      const diamondMat = new THREE.MeshBasicMaterial({
+        color: isCapital ? 0xfffbeb : (isFrontline ? 0xffe4e6 : (isHeritage ? 0xfffbeb : 0xffffff)),
+        blending: THREE.AdditiveBlending
+      });
       const diamondMesh = new THREE.Mesh(diamondGeom, diamondMat);
-      diamondMesh.position.addScaledVector(normal, beamHeight + 0.005);
+      diamondMesh.position.addScaledVector(normal, beamHeight + 0.006);
       beaconGroup.add(diamondMesh);
 
       // Pulsing concentric ground rings
-      const ringGeom = new THREE.RingGeometry(isHeritage ? 0.018 : 0.015, isHeritage ? 0.030 : 0.024, 16);
-      const ringMat = new THREE.MeshBasicMaterial({ color, side: THREE.DoubleSide, transparent: true, opacity: isHeritage ? 0.90 : 0.75 });
+      const innerRing = isCapital ? 0.024 : (isFrontline ? 0.018 : (isHeritage ? 0.018 : 0.015));
+      const outerRing = isCapital ? 0.046 : (isFrontline ? 0.034 : (isHeritage ? 0.030 : 0.024));
+      const ringGeom = new THREE.RingGeometry(innerRing, outerRing, 20);
+      const ringMat = new THREE.MeshBasicMaterial({
+        color,
+        side: THREE.DoubleSide,
+        transparent: true,
+        opacity: isCapital ? 0.95 : (isFrontline ? 0.90 : 0.75),
+        blending: THREE.AdditiveBlending
+      });
       const ringMesh = new THREE.Mesh(ringGeom, ringMat);
       ringMesh.lookAt(normal.clone().multiplyScalar(2));
       beaconGroup.add(ringMesh);
+
+      if (isCapital) {
+        // Second orbiting ring for Imperial Capital
+        const outerHaloGeom = new THREE.RingGeometry(0.052, 0.060, 24);
+        const outerHaloMat = new THREE.MeshBasicMaterial({
+          color: 0xfef08a,
+          side: THREE.DoubleSide,
+          transparent: true,
+          opacity: 0.8,
+          blending: THREE.AdditiveBlending
+        });
+        const outerHaloMesh = new THREE.Mesh(outerHaloGeom, outerHaloMat);
+        outerHaloMesh.lookAt(normal.clone().multiplyScalar(2));
+        beaconGroup.add(outerHaloMesh);
+      }
 
       this.markersGroup.add(beaconGroup);
     });
@@ -1359,7 +1396,73 @@ export class EarthGlobe3D {
     }
   }
 
-  latLngToVector3(lat, lng, radius = 1) {
+  setTrajectoryArcs(arcsList = []) {
+    if (!this.trajectoryArcsGroup) {
+      this.trajectoryArcsGroup = new THREE.Group();
+      this.earthMesh.add(this.trajectoryArcsGroup);
+    }
+
+    while (this.trajectoryArcsGroup.children.length > 0) {
+      const obj = this.trajectoryArcsGroup.children[0];
+      if (obj.geometry) obj.geometry.dispose();
+      if (obj.material) obj.material.dispose();
+      this.trajectoryArcsGroup.remove(obj);
+    }
+
+    if (!arcsList || arcsList.length === 0) return;
+
+    arcsList.forEach(arc => {
+      if (arc.fromLat == null || arc.fromLng == null || arc.toLat == null || arc.toLng == null) return;
+      const p1 = this.latLngToVector3(arc.fromLat, arc.fromLng, 1.186);
+      const p2 = this.latLngToVector3(arc.toLat, arc.toLng, 1.186);
+      const dist = p1.distanceTo(p2);
+      if (dist < 0.008) return;
+
+      const mid = p1.clone().add(p2).multiplyScalar(0.5);
+      const apex = 1.186 + Math.min(0.48, Math.max(0.06, dist * 0.32));
+      const midControl = mid.clone().normalize().multiplyScalar(apex);
+      const curve = new THREE.QuadraticBezierCurve3(p1, midControl, p2);
+
+      // Glowing Ballistic Laser Tube
+      const geom = new THREE.TubeGeometry(curve, 36, 0.0038, 6, false);
+      const color = arc.color || (arc.isFrontline ? 0xf59e0b : 0x38bdf8);
+      const mat = new THREE.MeshBasicMaterial({
+        color: color,
+        transparent: true,
+        opacity: 0.85,
+        blending: THREE.AdditiveBlending
+      });
+      const tube = new THREE.Mesh(geom, mat);
+      this.trajectoryArcsGroup.add(tube);
+
+      // Target impact ring on Earth's surface
+      const normal2 = p2.clone().normalize();
+      const ringGeom = new THREE.RingGeometry(0.016, 0.028, 18);
+      const ringMat = new THREE.MeshBasicMaterial({
+        color: 0xef4444,
+        side: THREE.DoubleSide,
+        transparent: true,
+        opacity: 0.92,
+        blending: THREE.AdditiveBlending
+      });
+      const ring = new THREE.Mesh(ringGeom, ringMat);
+      ring.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), normal2);
+      ring.position.copy(p2);
+      this.trajectoryArcsGroup.add(ring);
+    });
+  }
+
+  clearTrajectoryArcs() {
+    if (!this.trajectoryArcsGroup) return;
+    while (this.trajectoryArcsGroup.children.length > 0) {
+      const obj = this.trajectoryArcsGroup.children[0];
+      if (obj.geometry) obj.geometry.dispose();
+      if (obj.material) obj.material.dispose();
+      this.trajectoryArcsGroup.remove(obj);
+    }
+  }
+
+  latLngToVector3(lat, lng, radius = 1.185) {
     const phi = (90 - lat) * (Math.PI / 180);
     const theta = (lng + 180) * (Math.PI / 180);
 
@@ -1383,12 +1486,18 @@ export class EarthGlobe3D {
     this.velocityX = 0;
     this.velocityY = 0;
 
-    // Direct camera to look straight at the target latitude and longitude
-    const phi = (90 - lat) * (Math.PI / 180);
-    const theta = (lng + 90) * (Math.PI / 180);
+    // Direct camera to look straight at target latitude and longitude in world space
+    const localVec = this.latLngToVector3(lat, lng, 1.0);
+    const earthRotY = this.earthMesh ? this.earthMesh.rotation.y : 0;
+    const worldX = localVec.x * Math.cos(earthRotY) + localVec.z * Math.sin(earthRotY);
+    const worldZ = -localVec.x * Math.sin(earthRotY) + localVec.z * Math.cos(earthRotY);
+    const worldY = localVec.y;
+
+    const phi = Math.acos(Math.max(-0.999, Math.min(0.999, worldY)));
+    const theta = Math.atan2(worldX, worldZ);
 
     this.targetOrbitPhi = Math.max(0.12, Math.min(Math.PI - 0.12, phi));
-    this.targetOrbitTheta = -theta;
+    this.targetOrbitTheta = theta;
     this.zoomDistance = zoom;
     this.targetOrbitRadius = zoom;
   }
