@@ -2161,7 +2161,38 @@ function findCountryAt(lat, lng) {
   return nearest;
 }
 
-// Solar System Planetary Explorer
+// Solar System Planetary & Moon Explorer
+function focusCelestialBody(planetId) {
+  const scroll = document.getElementById('planetSelectorScroll');
+  if (scroll) {
+    scroll.querySelectorAll('.planet-pill').forEach(b => b.classList.toggle('active', b.dataset.planet === planetId));
+    const activeBtn = scroll.querySelector(`[data-planet="${planetId}"]`);
+    if (activeBtn) {
+      activeBtn.classList.add('just-selected');
+      setTimeout(() => activeBtn.classList.remove('just-selected'), 500);
+      activeBtn.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+    }
+  }
+
+  if (currentProjection !== 'globe') {
+    document.getElementById('btnGlobeView')?.click();
+  }
+
+  if (globe3dInstance) {
+    globe3dInstance.focusPlanet(planetId);
+  }
+
+  if (planetId === 'earth') {
+    if (!selectedCountry) {
+      const defaultC = countryMap.get('IN') || allCountries[0];
+      if (defaultC) selectCountry(defaultC);
+    }
+    showDrawerSection('viewCountryDossier');
+  } else {
+    openPlanetDossier(planetId);
+  }
+}
+
 function initPlanetaryExplorer() {
   const scroll = document.getElementById('planetSelectorScroll');
   if (!scroll) return;
@@ -2170,43 +2201,13 @@ function initPlanetaryExplorer() {
     btn.addEventListener('click', () => {
       sounds.playWhoosh();
       const planetId = btn.dataset.planet;
-
-      scroll.querySelectorAll('.planet-pill').forEach(b => b.classList.remove('active'));
-      btn.classList.add('active');
-      
-      btn.classList.add('just-selected');
-      setTimeout(() => btn.classList.remove('just-selected'), 500);
-
-      if (currentProjection !== 'globe') {
-        document.getElementById('btnGlobeView')?.click();
-      }
-
-      if (globe3dInstance) {
-        globe3dInstance.focusPlanet(planetId);
-      }
-
-      if (planetId === 'earth') {
-        if (!selectedCountry) {
-          const defaultC = countryMap.get('IN') || allCountries[0];
-          if (defaultC) selectCountry(defaultC);
-        }
-        showDrawerSection('viewCountryDossier');
-      } else {
-        openPlanetDossier(planetId);
-      }
+      focusCelestialBody(planetId);
     });
   });
 
   document.getElementById('btnReturnToEarth')?.addEventListener('click', () => {
     sounds.playWhoosh();
-    scroll.querySelectorAll('.planet-pill').forEach(b => b.classList.remove('active'));
-    scroll.querySelector('[data-planet="earth"]')?.classList.add('active');
-    if (globe3dInstance) globe3dInstance.focusPlanet('earth');
-    if (!selectedCountry) {
-      const defaultC = countryMap.get('IN') || allCountries[0];
-      if (defaultC) selectCountry(defaultC);
-    }
-    showDrawerSection('viewCountryDossier');
+    focusCelestialBody('earth');
   });
 }
 
@@ -2248,7 +2249,55 @@ function openPlanetDossier(planetId) {
     </div>
   `).join('');
 
+  // 1. If this is a moon, show parent jump bar
+  const parentRow = document.getElementById('planetParentRow');
+  const moonsSection = document.getElementById('planetMoonsSection');
 
+  if (p.isMoon && p.parentPlanetId) {
+    const parentP = PLANETS_DATA.find(x => x.id === p.parentPlanetId);
+    if (parentRow && parentP) {
+      parentRow.style.display = 'flex';
+      document.getElementById('parentPlanetIcon').textContent = parentP.symbol || '🪐';
+      document.getElementById('parentPlanetName').textContent = `Fly to Parent Planet (${parentP.name})`;
+      document.getElementById('btnParentPlanetJump').onclick = () => {
+        sounds.playWhoosh();
+        focusCelestialBody(p.parentPlanetId);
+      };
+    }
+  } else if (parentRow) {
+    parentRow.style.display = 'none';
+  }
+
+  // 2. If planet has featured moons, display the interactive moons grid
+  if (p.featuredMoons && p.featuredMoons.length > 0 && moonsSection) {
+    moonsSection.style.display = 'block';
+    const headerEl = document.getElementById('planetMoonsHeader');
+    if (headerEl) {
+      headerEl.textContent = (p.id === 'jupiter' ? '🪐 The Galilean Moons' : `🌙 Famous Moons of ${p.name}`);
+    }
+    const moonObjs = p.featuredMoons.map(mid => PLANETS_DATA.find(x => x.id === mid)).filter(Boolean);
+    const grid = document.getElementById('planetMoonsGrid');
+    if (grid) {
+      grid.innerHTML = moonObjs.map(m => `
+        <div class="planet-moon-card" data-moon="${m.id}" title="${m.tagline}">
+          <span class="pm-icon">${m.symbol || '🌙'}</span>
+          <div class="pm-info">
+            <span class="pm-name">${m.name}</span>
+            <span class="pm-sub">${m.type ? m.type.split('(')[0].trim() : 'Natural Satellite'}</span>
+          </div>
+        </div>
+      `).join('');
+
+      grid.querySelectorAll('.planet-moon-card').forEach(card => {
+        card.addEventListener('click', () => {
+          sounds.playWhoosh();
+          focusCelestialBody(card.dataset.moon);
+        });
+      });
+    }
+  } else if (moonsSection) {
+    moonsSection.style.display = 'none';
+  }
 }
 
 // ============================================================

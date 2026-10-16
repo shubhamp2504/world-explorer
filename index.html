@@ -154,6 +154,16 @@
             <button class="planet-pill" data-planet="uranus" title="Uranus">♅ Uranus</button>
             <button class="planet-pill" data-planet="neptune" title="Neptune">♆ Neptune</button>
             <button class="planet-pill" data-planet="pluto" title="Pluto (Dwarf Planet & Tombaugh Regio Heart)">♇ Pluto</button>
+            <span class="dock-divider-dot">•</span>
+            <span class="dock-section-label">🌙 MOONS:</span>
+            <button class="planet-pill moon-pill" data-planet="phobos" title="Mars: Phobos (Doomed Inner Moon)">🛰️ Phobos</button>
+            <button class="planet-pill moon-pill" data-planet="deimos" title="Mars: Deimos (Smooth Regolith World)">🪨 Deimos</button>
+            <button class="planet-pill moon-pill" data-planet="io" title="Jupiter: Io (Hyper-Volcanic World)">🌋 Io</button>
+            <button class="planet-pill moon-pill" data-planet="europa" title="Jupiter: Europa (Subsurface Saltwater Ocean)">🧊 Europa</button>
+            <button class="planet-pill moon-pill" data-planet="ganymede" title="Jupiter: Ganymede (Largest Moon in Solar System)">🛡️ Ganymede</button>
+            <button class="planet-pill moon-pill" data-planet="callisto" title="Jupiter: Callisto (Heavily Cratered Time Capsule)">☄️ Callisto</button>
+            <button class="planet-pill moon-pill" data-planet="titan" title="Saturn: Titan (Methane Seas & Atmosphere)">🪐 Titan</button>
+            <button class="planet-pill moon-pill" data-planet="enceladus" title="Saturn: Enceladus (Active Ice Geysers)">💧 Enceladus</button>
           </div>
         </div>
       </div>
@@ -888,6 +898,21 @@
         <div class="planet-facts-section">
           <h4 class="planet-facts-header">🚀 Extraordinary Astronomical Phenomena</h4>
           <div class="wild-facts-list" id="planetFactsList"></div>
+        </div>
+
+        <!-- MOON PARENT PLANET RETURN ROW (Visible when inspecting a Moon) -->
+        <div class="planet-parent-row" id="planetParentRow" style="display: none;">
+          <span class="parent-label">🪐 Natural Satellite of:</span>
+          <button class="btn-parent-jump" id="btnParentPlanetJump">
+            <span id="parentPlanetIcon">🪐</span>
+            <span id="parentPlanetName">Fly to Parent Planet</span>
+          </button>
+        </div>
+
+        <!-- FEATURED MOONS OF PLANET (Visible when inspecting Earth, Mars, Jupiter, Saturn) -->
+        <div class="planet-moons-section" id="planetMoonsSection" style="display: none;">
+          <h4 class="planet-moons-header" id="planetMoonsHeader">🌙 Famous Moons</h4>
+          <div class="planet-moons-grid" id="planetMoonsGrid"></div>
         </div>
 
         <div class="drawer-footer-actions">

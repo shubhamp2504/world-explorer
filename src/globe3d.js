@@ -59,6 +59,8 @@ export class EarthGlobe3D {
 
     // Celestial Bodies Dictionary
     this.planets = {};
+    this.moons = {};
+    this.moonsList = [];
     this.interactiveObjects = [];
     this.billboardLabels = [];
     this.lastOrreryState = null;
@@ -177,6 +179,9 @@ export class EarthGlobe3D {
 
     // 9. 🪐 All Dynamic Solar System Planets
     this.createOtherPlanets();
+
+    // 9.5 🌙 Famous Moons of the Solar System (Mars, Jupiter, Saturn)
+    this.createFamousMoons();
 
     // 10. Interactive Holographic Beacons & Tactical Laser Arcs on Earth
     this.markersGroup = new THREE.Group();
@@ -1071,6 +1076,561 @@ export class EarthGlobe3D {
     this.planetsList = Object.values(this.planets);
   }
 
+  // ============================================================
+  // 🌙 FAMOUS MOONS ENGINE (Mars, Jupiter, Saturn)
+  // ============================================================
+  createIoTexture() {
+    const canvas = document.createElement('canvas');
+    canvas.width = 512; canvas.height = 256;
+    const ctx = canvas.getContext('2d');
+    
+    // Sulfur base gradient
+    const grad = ctx.createLinearGradient(0, 0, 0, 256);
+    grad.addColorStop(0, '#fef08a');
+    grad.addColorStop(0.35, '#facc15');
+    grad.addColorStop(0.65, '#ca8a04');
+    grad.addColorStop(1, '#fef08a');
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, 512, 256);
+
+    // Mottled sulfur & silicate patches
+    for (let i = 0; i < 90; i++) {
+      const x = Math.random() * 512;
+      const y = Math.random() * 256;
+      const r = 8 + Math.random() * 24;
+      ctx.fillStyle = Math.random() > 0.5 ? 'rgba(234, 179, 8, 0.45)' : 'rgba(217, 119, 6, 0.35)';
+      ctx.beginPath();
+      ctx.arc(x, y, r, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    // 25+ Active volcanic calderas & sulfur dioxide frost halos
+    const calderas = [
+      { x: 120, y: 90, r: 14 },
+      { x: 260, y: 140, r: 18 },
+      { x: 380, y: 80, r: 12 },
+      { x: 80, y: 180, r: 10 },
+      { x: 440, y: 170, r: 13 }
+    ];
+    for (let i = 0; i < 20; i++) {
+      calderas.push({
+        x: Math.random() * 512,
+        y: 40 + Math.random() * 176,
+        r: 6 + Math.random() * 10
+      });
+    }
+
+    calderas.forEach(c => {
+      // Outer sulfur halo (reddish orange)
+      const haloGrad = ctx.createRadialGradient(c.x, c.y, c.r * 0.4, c.x, c.y, c.r * 2.5);
+      haloGrad.addColorStop(0, 'rgba(239, 68, 68, 0.85)');
+      haloGrad.addColorStop(0.5, 'rgba(249, 115, 22, 0.45)');
+      haloGrad.addColorStop(1, 'rgba(234, 179, 8, 0)');
+      ctx.fillStyle = haloGrad;
+      ctx.beginPath();
+      ctx.arc(c.x, c.y, c.r * 2.5, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Deep dark magma caldera pit
+      ctx.fillStyle = '#450a0a';
+      ctx.beginPath();
+      ctx.arc(c.x, c.y, c.r, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Inner molten glow
+      ctx.fillStyle = '#f97316';
+      ctx.beginPath();
+      ctx.arc(c.x + 1, c.y - 1, c.r * 0.4, 0, Math.PI * 2);
+      ctx.fill();
+    });
+
+    const tex = new THREE.CanvasTexture(canvas);
+    tex.colorSpace = THREE.SRGBColorSpace;
+    return tex;
+  }
+
+  createEuropaTexture() {
+    const canvas = document.createElement('canvas');
+    canvas.width = 512; canvas.height = 256;
+    const ctx = canvas.getContext('2d');
+
+    // Smooth pale icy cyan/white base
+    const grad = ctx.createLinearGradient(0, 0, 0, 256);
+    grad.addColorStop(0, '#f0f9ff');
+    grad.addColorStop(0.5, '#e0f2fe');
+    grad.addColorStop(1, '#f0f9ff');
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, 512, 256);
+
+    // Subtle mottling
+    for (let i = 0; i < 120; i++) {
+      ctx.fillStyle = 'rgba(186, 230, 253, 0.25)';
+      ctx.beginPath();
+      ctx.arc(Math.random() * 512, Math.random() * 256, 10 + Math.random() * 30, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    // Iconic reddish-brown intersecting linear fractures (Lineae)
+    ctx.lineWidth = 2.5;
+    ctx.strokeStyle = 'rgba(180, 83, 9, 0.65)';
+    for (let i = 0; i < 42; i++) {
+      ctx.beginPath();
+      let x = Math.random() * 512;
+      let y = Math.random() * 256;
+      ctx.moveTo(x, y);
+      const segments = 4 + Math.floor(Math.random() * 6);
+      for (let s = 0; s < segments; s++) {
+        x += (Math.random() - 0.48) * 80;
+        y += (Math.random() - 0.5) * 50;
+        ctx.lineTo(x, y);
+      }
+      ctx.stroke();
+    }
+
+    // Fine capillary cracks
+    ctx.lineWidth = 1.0;
+    ctx.strokeStyle = 'rgba(194, 65, 12, 0.45)';
+    for (let i = 0; i < 65; i++) {
+      ctx.beginPath();
+      let x = Math.random() * 512;
+      let y = Math.random() * 256;
+      ctx.moveTo(x, y);
+      ctx.lineTo(x + (Math.random() - 0.5) * 60, y + (Math.random() - 0.5) * 40);
+      ctx.stroke();
+    }
+
+    const tex = new THREE.CanvasTexture(canvas);
+    tex.colorSpace = THREE.SRGBColorSpace;
+    return tex;
+  }
+
+  createGanymedeTexture() {
+    const canvas = document.createElement('canvas');
+    canvas.width = 512; canvas.height = 256;
+    const ctx = canvas.getContext('2d');
+
+    // Slate grey / silicate rock base
+    ctx.fillStyle = '#64748b';
+    ctx.fillRect(0, 0, 512, 256);
+
+    // Darker silicate patches
+    for (let i = 0; i < 80; i++) {
+      ctx.fillStyle = 'rgba(30, 41, 59, 0.35)';
+      ctx.beginPath();
+      ctx.arc(Math.random() * 512, Math.random() * 256, 15 + Math.random() * 40, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    // Grooved terrain bands (sulci)
+    ctx.strokeStyle = 'rgba(203, 213, 225, 0.35)';
+    ctx.lineWidth = 1.8;
+    for (let i = 0; i < 35; i++) {
+      ctx.beginPath();
+      const y = Math.random() * 256;
+      ctx.moveTo(0, y);
+      ctx.bezierCurveTo(170, y + (Math.random() - 0.5) * 40, 340, y + (Math.random() - 0.5) * 40, 512, y);
+      ctx.stroke();
+    }
+
+    // Fresh ice impact crater rays
+    for (let i = 0; i < 14; i++) {
+      const cx = Math.random() * 512;
+      const cy = Math.random() * 256;
+      ctx.fillStyle = '#ffffff';
+      ctx.beginPath();
+      ctx.arc(cx, cy, 3, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.4)';
+      ctx.lineWidth = 0.8;
+      for (let r = 0; r < 8; r++) {
+        const ang = (r / 8) * Math.PI * 2;
+        const len = 12 + Math.random() * 25;
+        ctx.beginPath();
+        ctx.moveTo(cx, cy);
+        ctx.lineTo(cx + Math.cos(ang) * len, cy + Math.sin(ang) * len);
+        ctx.stroke();
+      }
+    }
+
+    const tex = new THREE.CanvasTexture(canvas);
+    tex.colorSpace = THREE.SRGBColorSpace;
+    return tex;
+  }
+
+  createCallistoTexture() {
+    const canvas = document.createElement('canvas');
+    canvas.width = 512; canvas.height = 256;
+    const ctx = canvas.getContext('2d');
+
+    // Ancient dark charcoal-grey rock-ice base
+    ctx.fillStyle = '#334155';
+    ctx.fillRect(0, 0, 512, 256);
+
+    for (let i = 0; i < 60; i++) {
+      ctx.fillStyle = 'rgba(15, 23, 42, 0.45)';
+      ctx.beginPath();
+      ctx.arc(Math.random() * 512, Math.random() * 256, 12 + Math.random() * 30, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    // Valhalla massive multi-ring basin
+    const vx = 210, vy = 110;
+    for (let r = 10; r <= 70; r += 12) {
+      ctx.strokeStyle = 'rgba(226, 232, 240, 0.35)';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.arc(vx, vy, r, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+    ctx.fillStyle = '#ffffff';
+    ctx.beginPath();
+    ctx.arc(vx, vy, 5, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Hundreds of dense impact craters
+    for (let i = 0; i < 280; i++) {
+      const cx = Math.random() * 512;
+      const cy = Math.random() * 256;
+      const cr = 1.2 + Math.random() * 3.5;
+      ctx.fillStyle = 'rgba(241, 245, 249, 0.75)';
+      ctx.beginPath();
+      ctx.arc(cx, cy, cr, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    const tex = new THREE.CanvasTexture(canvas);
+    tex.colorSpace = THREE.SRGBColorSpace;
+    return tex;
+  }
+
+  createTitanTexture() {
+    const canvas = document.createElement('canvas');
+    canvas.width = 512; canvas.height = 256;
+    const ctx = canvas.getContext('2d');
+
+    // Dense hydrocarbon amber-gold haze atmosphere
+    const grad = ctx.createLinearGradient(0, 0, 0, 256);
+    grad.addColorStop(0, '#78350f');   // North polar dark hood
+    grad.addColorStop(0.2, '#d97706');
+    grad.addColorStop(0.5, '#f59e0b'); // Equatorial bright dunes (Xanadu)
+    grad.addColorStop(0.8, '#d97706');
+    grad.addColorStop(1, '#92400e');   // South polar collar
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, 512, 256);
+
+    // Subtle atmospheric banding
+    for (let i = 0; i < 18; i++) {
+      const y = Math.random() * 256;
+      ctx.fillStyle = 'rgba(251, 191, 36, 0.12)';
+      ctx.fillRect(0, y, 512, 4 + Math.random() * 12);
+    }
+
+    // High-latitude liquid methane lake shapes (Kraken Mare, Ligeia Mare)
+    ctx.fillStyle = 'rgba(69, 26, 3, 0.4)';
+    for (let i = 0; i < 12; i++) {
+      ctx.beginPath();
+      ctx.ellipse(80 + i * 30, 25 + Math.random() * 15, 8 + Math.random() * 12, 4 + Math.random() * 6, Math.random(), 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    const tex = new THREE.CanvasTexture(canvas);
+    tex.colorSpace = THREE.SRGBColorSpace;
+    return tex;
+  }
+
+  createEnceladusTexture() {
+    const canvas = document.createElement('canvas');
+    canvas.width = 512; canvas.height = 256;
+    const ctx = canvas.getContext('2d');
+
+    // Pure reflective brilliant snow-white ice (albedo 0.99)
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, 512, 256);
+
+    // Subtle ice texture
+    for (let i = 0; i < 80; i++) {
+      ctx.fillStyle = 'rgba(224, 242, 254, 0.35)';
+      ctx.beginPath();
+      ctx.arc(Math.random() * 512, Math.random() * 256, 10 + Math.random() * 30, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    // South Pole "Tiger Stripes" fractures (Damascus, Baghdad, Alexandria, Cairo Sulci)
+    ctx.strokeStyle = '#0284c7';
+    ctx.lineWidth = 2.2;
+    for (let i = 0; i < 5; i++) {
+      ctx.beginPath();
+      const sx = 180 + i * 35;
+      ctx.moveTo(sx, 220);
+      ctx.bezierCurveTo(sx + 10, 235, sx - 10, 245, sx + 5, 256);
+      ctx.stroke();
+    }
+
+    const tex = new THREE.CanvasTexture(canvas);
+    tex.colorSpace = THREE.SRGBColorSpace;
+    return tex;
+  }
+
+  createPhobosTexture() {
+    const canvas = document.createElement('canvas');
+    canvas.width = 256; canvas.height = 256;
+    const ctx = canvas.getContext('2d');
+
+    ctx.fillStyle = '#57534e';
+    ctx.fillRect(0, 0, 256, 256);
+
+    // Giant Stickney crater
+    const grad = ctx.createRadialGradient(100, 100, 10, 100, 100, 65);
+    grad.addColorStop(0, '#292524');
+    grad.addColorStop(0.7, '#44403c');
+    grad.addColorStop(1, '#57534e');
+    ctx.fillStyle = grad;
+    ctx.beginPath();
+    ctx.arc(100, 100, 65, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Parallel grooves radiating from Stickney
+    ctx.strokeStyle = 'rgba(41, 37, 36, 0.45)';
+    ctx.lineWidth = 1.2;
+    for (let i = -5; i <= 5; i++) {
+      ctx.beginPath();
+      ctx.moveTo(0, 100 + i * 18);
+      ctx.bezierCurveTo(80, 100 + i * 22, 180, 100 + i * 20, 256, 100 + i * 16);
+      ctx.stroke();
+    }
+
+    const tex = new THREE.CanvasTexture(canvas);
+    tex.colorSpace = THREE.SRGBColorSpace;
+    return tex;
+  }
+
+  createDeimosTexture() {
+    const canvas = document.createElement('canvas');
+    canvas.width = 256; canvas.height = 256;
+    const ctx = canvas.getContext('2d');
+
+    // Smooth regolith dust covered asteroid
+    ctx.fillStyle = '#78716c';
+    ctx.fillRect(0, 0, 256, 256);
+
+    for (let i = 0; i < 40; i++) {
+      ctx.fillStyle = 'rgba(87, 83, 78, 0.35)';
+      ctx.beginPath();
+      ctx.arc(Math.random() * 256, Math.random() * 256, 8 + Math.random() * 25, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    const tex = new THREE.CanvasTexture(canvas);
+    tex.colorSpace = THREE.SRGBColorSpace;
+    return tex;
+  }
+
+  createFamousMoons() {
+    this.moons = {};
+    this.moonsList = [];
+    this.moonOrbitLines = {};
+
+    const moonDefs = [
+      // Mars Moons
+      {
+        id: 'phobos',
+        name: '🛰️ Phobos',
+        parentPlanetId: 'mars',
+        r: 1.15,
+        radius: 0.12,
+        speed: 0.058,
+        col: '#a8a29e',
+        texGen: () => this.createPhobosTexture(),
+        bumpScale: 0.04,
+        inclination: 0.06,
+        isIrregular: true
+      },
+      {
+        id: 'deimos',
+        name: '🪨 Deimos',
+        parentPlanetId: 'mars',
+        r: 1.68,
+        radius: 0.09,
+        speed: 0.032,
+        col: '#78716c',
+        texGen: () => this.createDeimosTexture(),
+        bumpScale: 0.02,
+        inclination: 0.12,
+        isIrregular: true
+      },
+      // Jupiter Galilean Moons (Laplace Resonance: Io 4 : Europa 2 : Ganymede 1)
+      {
+        id: 'io',
+        name: '🌋 Io',
+        parentPlanetId: 'jupiter',
+        r: 2.65,
+        radius: 0.22,
+        speed: 0.052,
+        col: '#eab308',
+        texGen: () => this.createIoTexture(),
+        bumpScale: 0.025,
+        inclination: 0.05
+      },
+      {
+        id: 'europa',
+        name: '🧊 Europa',
+        parentPlanetId: 'jupiter',
+        r: 3.45,
+        radius: 0.20,
+        speed: 0.036,
+        col: '#38bdf8',
+        texGen: () => this.createEuropaTexture(),
+        bumpScale: 0.015,
+        inclination: 0.08
+      },
+      {
+        id: 'ganymede',
+        name: '🛡️ Ganymede',
+        parentPlanetId: 'jupiter',
+        r: 4.40,
+        radius: 0.29,
+        speed: 0.024,
+        col: '#94a3b8',
+        texGen: () => this.createGanymedeTexture(),
+        bumpScale: 0.03,
+        inclination: 0.04
+      },
+      {
+        id: 'callisto',
+        name: '☄️ Callisto',
+        parentPlanetId: 'jupiter',
+        r: 5.50,
+        radius: 0.26,
+        speed: 0.016,
+        col: '#64748b',
+        texGen: () => this.createCallistoTexture(),
+        bumpScale: 0.035,
+        inclination: 0.09
+      },
+      // Saturn Moons
+      {
+        id: 'enceladus',
+        name: '💧 Enceladus',
+        parentPlanetId: 'saturn',
+        r: 3.55,
+        radius: 0.15,
+        speed: 0.042,
+        col: '#e0f2fe',
+        texGen: () => this.createEnceladusTexture(),
+        bumpScale: 0.02,
+        inclination: 0.02
+      },
+      {
+        id: 'titan',
+        name: '🪐 Titan',
+        parentPlanetId: 'saturn',
+        r: 4.95,
+        radius: 0.28,
+        speed: 0.022,
+        col: '#f59e0b',
+        texGen: () => this.createTitanTexture(),
+        bumpScale: 0.01,
+        inclination: 0.06
+      }
+    ];
+
+    moonDefs.forEach((m, idx) => {
+      const parent = this.planets[m.parentPlanetId];
+      if (!parent) return;
+
+      const group = new THREE.Group();
+      const initialAngle = (idx + 1) * 1.15;
+      group.position.set(Math.cos(initialAngle) * m.r, 0, Math.sin(initialAngle) * m.r);
+      group.userData = { celestialId: m.id };
+      parent.group.add(group);
+
+      // Faint orbital trace ring around parent planet
+      const pts = [];
+      const segs = 64;
+      for (let i = 0; i <= segs; i++) {
+        const theta = (i / segs) * Math.PI * 2;
+        pts.push(new THREE.Vector3(
+          Math.cos(theta) * m.r,
+          m.inclination ? Math.sin(theta) * m.inclination : 0,
+          Math.sin(theta) * m.r
+        ));
+      }
+      const ringGeom = new THREE.BufferGeometry().setFromPoints(pts);
+      const ringMat = new THREE.LineBasicMaterial({
+        color: m.col,
+        transparent: true,
+        opacity: 0.25,
+        blending: THREE.AdditiveBlending
+      });
+      const orbitRing = new THREE.Line(ringGeom, ringMat);
+      orbitRing.userData = { moonId: m.id };
+      this.moonOrbitLines[m.id] = orbitRing;
+      parent.group.add(orbitRing);
+
+      // Texture & geometry
+      const tex = m.texGen();
+      const geom = m.isIrregular 
+        ? new THREE.DodecahedronGeometry(m.radius, 1) 
+        : new THREE.SphereGeometry(m.radius, 32, 32);
+
+      // If irregular asteroid, slightly deform vertices
+      if (m.isIrregular) {
+        const pos = geom.attributes.position;
+        for (let i = 0; i < pos.count; i++) {
+          const vx = pos.getX(i);
+          const vy = pos.getY(i);
+          const vz = pos.getZ(i);
+          const noise = 0.88 + Math.sin(vx * 15 + vy * 12 + vz * 8) * 0.16;
+          pos.setXYZ(i, vx * noise, vy * noise * 0.85, vz * noise);
+        }
+        geom.computeVertexNormals();
+      }
+
+      const mat = new THREE.MeshStandardMaterial({
+        map: tex,
+        bumpMap: tex,
+        bumpScale: m.bumpScale || 0.02,
+        roughness: m.id === 'europa' || m.id === 'enceladus' ? 0.35 : 0.80,
+        metalness: 0.02,
+        emissive: new THREE.Color(m.col),
+        emissiveIntensity: 0.08
+      });
+
+      const mesh = new THREE.Mesh(geom, mat);
+      mesh.userData = { celestialId: m.id };
+      group.add(mesh);
+      this.interactiveObjects.push(mesh);
+
+      // Billboard label
+      const label = this.createBillboardLabel(m.name, m.col, 0.72);
+      label.position.set(0, m.radius + 0.45, 0);
+      label.userData = { celestialId: m.id };
+      group.add(label);
+      this.billboardLabels.push(label);
+      this.interactiveObjects.push(label);
+
+      const moonObj = {
+        id: m.id,
+        name: m.name,
+        parentPlanetId: m.parentPlanetId,
+        group,
+        mesh,
+        orbitRing,
+        label,
+        radius: m.radius,
+        orbitR: m.r,
+        orbitSpeed: m.speed,
+        angle: initialAngle,
+        inclination: m.inclination || 0,
+        rotSpeed: 0.003
+      };
+
+      this.moons[m.id] = moonObj;
+      this.moonsList.push(moonObj);
+    });
+  }
+
   // Sleek Glassmorphic Floating HUD Label
   createBillboardLabel(text, color = '#38bdf8', scale = 0.85) {
     const canvas = document.createElement('canvas');
@@ -1239,6 +1799,14 @@ export class EarthGlobe3D {
       this.targetCameraLookAt.copy(mPos);
       this.targetOrbitRadius = 0.88;
       this.targetOrbitPhi = Math.PI * 0.45;
+    } else if (this.moons && this.moons[planetId]) {
+      this.autoRotate = false;
+      const m = this.moons[planetId];
+      const mPos = new THREE.Vector3();
+      m.group.getWorldPosition(mPos);
+      this.targetCameraLookAt.copy(mPos);
+      this.targetOrbitRadius = Math.max(0.68, m.radius * 3.4);
+      this.targetOrbitPhi = Math.PI * 0.44;
     } else if (this.planets[planetId]) {
       this.autoRotate = false;
       const p = this.planets[planetId];
@@ -1253,6 +1821,18 @@ export class EarthGlobe3D {
         this.targetOrbitPhi = Math.PI * 0.42;
       }
     }
+
+    this.syncMoonLabels();
+  }
+
+  syncMoonLabels() {
+    if (!this.moonsList) return;
+    const isOrrery = (this.activeFocusedBody === 'system');
+    this.moonsList.forEach(m => {
+      const isParentActive = (this.activeFocusedBody === m.parentPlanetId || this.activeFocusedBody === m.id);
+      if (m.label) m.label.visible = !isOrrery && isParentActive;
+      if (m.orbitRing) m.orbitRing.visible = !isOrrery && isParentActive;
+    });
   }
 
   updateVisibility(isOrrery) {
@@ -1260,7 +1840,16 @@ export class EarthGlobe3D {
     this.lastOrreryState = isOrrery;
 
     if (this.billboardLabels) {
-      this.billboardLabels.forEach(l => { l.visible = isOrrery; });
+      this.billboardLabels.forEach(l => {
+        const cid = l.userData?.celestialId;
+        if (this.moons && this.moons[cid]) {
+          const m = this.moons[cid];
+          const isParentActive = (this.activeFocusedBody === m.parentPlanetId || this.activeFocusedBody === cid);
+          l.visible = !isOrrery && isParentActive;
+        } else {
+          l.visible = isOrrery;
+        }
+      });
     }
     if (this.asteroidBelt) {
       this.asteroidBelt.visible = isOrrery;
@@ -1273,6 +1862,7 @@ export class EarthGlobe3D {
         if (line.material) line.material.opacity = isOrrery ? 0.35 : 0.08;
       });
     }
+    this.syncMoonLabels();
   }
 
   focusTarget(targetType = 'system') {
@@ -1289,6 +1879,11 @@ export class EarthGlobe3D {
       this.targetOrbitRadius = this.zoomDistance;
     } else if (this.activeFocusedBody === 'moon') {
       this.targetOrbitRadius = Math.max(0.45, Math.min(3.2, this.targetOrbitRadius * factor));
+    } else if (this.moons && this.moons[this.activeFocusedBody]) {
+      const m = this.moons[this.activeFocusedBody];
+      const minMZoom = Math.max(0.35, m.radius * 1.5);
+      const maxMZoom = Math.max(2.8, m.radius * 8.0);
+      this.targetOrbitRadius = Math.max(minMZoom, Math.min(maxMZoom, this.targetOrbitRadius * factor));
     } else if (this.planets[this.activeFocusedBody]) {
       const p = this.planets[this.activeFocusedBody];
       const minPZoom = Math.max(1.2, p.radius * 1.5);
@@ -1768,6 +2363,36 @@ export class EarthGlobe3D {
       }
     }
 
+    // 2.5 Dynamic Live Orbital Motion for Famous Moons
+    if (this.moonsList) {
+      const mLen = this.moonsList.length;
+      for (let i = 0; i < mLen; i++) {
+        const m = this.moonsList[i];
+        m.angle += m.orbitSpeed * delta * 2.8;
+        m.group.position.set(
+          Math.cos(m.angle) * m.orbitR,
+          m.inclination ? Math.sin(m.angle) * m.inclination : 0,
+          Math.sin(m.angle) * m.orbitR
+        );
+
+        if (m.mesh && m.rotSpeed) {
+          m.mesh.rotation.y += m.rotSpeed;
+          const isHovered = (this.hoveredPlanetId === m.id);
+          const targetScale = isHovered ? 1.15 : 1.0;
+          m.mesh.scale.lerp(new THREE.Vector3(targetScale, targetScale, targetScale), 0.1);
+        }
+
+        if (this.moonOrbitLines && this.moonOrbitLines[m.id]) {
+          const orbitLine = this.moonOrbitLines[m.id];
+          const isFocusedParent = (this.activeFocusedBody === m.parentPlanetId || this.activeFocusedBody === m.id);
+          orbitLine.visible = !this.lastOrreryState && isFocusedParent;
+          if (orbitLine.material) {
+            orbitLine.material.opacity = (this.hoveredPlanetId === m.id) ? 0.75 : 0.28;
+          }
+        }
+      }
+    }
+
     // Clouds drift
     if (this.cloudsMesh) {
       this.cloudsMesh.rotation.y += 0.00015;
@@ -1822,6 +2447,8 @@ export class EarthGlobe3D {
       this.targetCameraLookAt.copy(this.earthGroup.position);
     } else if (this.activeFocusedBody === 'moon') {
       this.moonGroup.getWorldPosition(this.targetCameraLookAt);
+    } else if (this.moons && this.moons[this.activeFocusedBody]) {
+      this.moons[this.activeFocusedBody].group.getWorldPosition(this.targetCameraLookAt);
     } else if (this.planets[this.activeFocusedBody]) {
       this.targetCameraLookAt.copy(this.planets[this.activeFocusedBody].group.position);
     }

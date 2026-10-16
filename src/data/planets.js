@@ -109,6 +109,7 @@ export const PLANETS_DATA = [
     texture: 'earth_day_4096.jpg',
     color: '#0ea5e9',
     radius: 1.0,
+    featuredMoons: ['moon'],
     facts: [
       'Oceans cover 70.8% of the surface and contain 97% of Earth\'s total water reserves.',
       'Earth\'s molten iron outer core generates a massive magnetic shield that repels deadly solar wind.',
@@ -119,6 +120,8 @@ export const PLANETS_DATA = [
     id: 'moon',
     name: 'The Moon (Luna)',
     symbol: '🌕',
+    isMoon: true,
+    parentPlanetId: 'earth',
     type: 'Natural Satellite',
     tagline: 'Earth\'s ancient companion whose gravitational pull drives tidal rhythms and stabilizes our axial tilt.',
     diameter: '3,474 km',
@@ -155,6 +158,7 @@ export const PLANETS_DATA = [
     texture: 'https://cdn.jsdelivr.net/gh/jeromeetienne/threex.planets@master/images/marsmap1k.jpg',
     color: '#ef4444',
     radius: 0.65,
+    featuredMoons: ['phobos', 'deimos'],
     facts: [
       'Home to Olympus Mons, an extinct shield volcano nearly 3 times taller than Mount Everest (22 km high).',
       'Valles Marineris canyon stretches over 4,000 km across Mars — 10 times longer and 4 times deeper than the Grand Canyon.',
@@ -178,6 +182,7 @@ export const PLANETS_DATA = [
     texture: 'https://cdn.jsdelivr.net/gh/jeromeetienne/threex.planets@master/images/jupitermap.jpg',
     color: '#d97706',
     radius: 1.45,
+    featuredMoons: ['io', 'europa', 'ganymede', 'callisto'],
     facts: [
       'The Great Red Spot is a persistent anticyclonic storm that has raged for at least 350 years and could swallow Earth whole.',
       'Jupiter\'s moon Ganymede is the largest moon in the Solar System — larger than Mercury and Pluto.',
@@ -203,6 +208,7 @@ export const PLANETS_DATA = [
     color: '#eab308',
     radius: 1.25,
     hasRings: true,
+    featuredMoons: ['titan', 'enceladus'],
     facts: [
       'Saturn\'s ring system spans up to 282,000 km wide, but is astonishingly razor-thin: only 10 to 100 meters thick in most parts!',
       'Saturn is the only planet in the Solar System that is less dense than water — if you had a bathtub big enough, Saturn would float!',
@@ -276,6 +282,201 @@ export const PLANETS_DATA = [
       'Pluto features a massive heart-shaped nitrogen ice glacier named Tombaugh Regio (Sputnik Planitia) spanning over 1,000 km.',
       'Pluto and its largest moon Charon form a binary dwarf planet system, both tidally locked and orbiting a common center of gravity outside Pluto itself.',
       'Discovered in 1930 by Clyde Tombaugh, Pluto orbits in an inclined (17°) elliptical path that occasionally brings it closer to the Sun than Neptune.'
+    ]
+  },
+  // ============================================================
+  // FAMOUS MOONS OF THE SOLAR SYSTEM
+  // ============================================================
+  {
+    id: 'phobos',
+    name: 'Phobos',
+    symbol: '🛰️',
+    parentPlanetId: 'mars',
+    isMoon: true,
+    type: 'Doomed Martian Moon',
+    tagline: 'An irregularly shaped asteroid-like moon skimming just 6,000 km above Mars, spiraling toward eventual destruction.',
+    diameter: '22.2 km (27 × 22 × 18 km)',
+    distanceSun: '9,377 km from Mars center',
+    orbitalPeriod: '7 Hours, 39 Minutes (Orbits 3x daily)',
+    rotationPeriod: '7 Hours, 39 Minutes (Tidally Locked)',
+    temperature: '-4°C to -112°C',
+    gravity: '0.0057 m/s² (0.0006x Earth)',
+    moons: 'Orbits Mars',
+    atmosphere: 'None (Vacuum)',
+    color: '#a8a29e',
+    radius: 0.14,
+    facts: [
+      'Phobos orbits so close to Mars that it completes three full orbits in a single Martian day.',
+      'Tidal forces are dragging Phobos 1.8 meters closer to Mars each century; in ~50 million years it will break apart into a planetary ring or crash into Mars.',
+      'Its most prominent feature is the enormous Stickney impact crater, spanning 9 km across.'
+    ]
+  },
+  {
+    id: 'deimos',
+    name: 'Deimos',
+    symbol: '🪨',
+    parentPlanetId: 'mars',
+    isMoon: true,
+    type: 'Martian Outer Moon',
+    tagline: 'The smaller, smoother outer moon of Mars, named after the Greek god of dread and panic.',
+    diameter: '12.4 km (15 × 12 × 11 km)',
+    distanceSun: '23,460 km from Mars center',
+    orbitalPeriod: '30.3 Hours',
+    rotationPeriod: '30.3 Hours (Tidally Locked)',
+    temperature: '-40°C to -108°C',
+    gravity: '0.003 m/s² (0.0003x Earth)',
+    moons: 'Orbits Mars',
+    atmosphere: 'None (Vacuum)',
+    color: '#78716c',
+    radius: 0.10,
+    facts: [
+      'Unlike cratered Phobos, Deimos is blanketed in a thick layer of regolith dust that gives it a remarkably smooth appearance.',
+      'Escape velocity on Deimos is just 20 km/h (12 mph) — an astronaut could jump off into orbit with a bicycle ramp!',
+      'From the Martian surface, Deimos looks only slightly larger than a bright star.'
+    ]
+  },
+  {
+    id: 'io',
+    name: 'Io',
+    symbol: '🌋',
+    parentPlanetId: 'jupiter',
+    isMoon: true,
+    type: 'Galilean Moon (Hyper-Volcanic World)',
+    tagline: 'The most geologically active body in the Solar System, torn by gravitational tidal friction with 400+ active silicate volcanoes.',
+    diameter: '3,642 km',
+    distanceSun: '421,700 km from Jupiter',
+    orbitalPeriod: '42.5 Hours (1.77 Earth Days)',
+    rotationPeriod: '42.5 Hours (Tidally Locked)',
+    temperature: '-130°C (Surface) to 1,600°C (Lava lakes)',
+    gravity: '1.796 m/s² (0.183x Earth)',
+    moons: 'Orbits Jupiter (Galilean Moon)',
+    atmosphere: 'Thin Sulfur Dioxide (SO₂) volcanic atmosphere',
+    color: '#eab308',
+    radius: 0.28,
+    facts: [
+      'Gravitational tug-of-war between Jupiter, Europa, and Ganymede causes Io\'s solid surface to flex up and down by up to 100 meters (330 ft) daily!',
+      'Io possesses over 400 active volcanoes that shoot sulfurous plumes over 500 km (300 miles) high into space.',
+      'Loki Patera on Io is a massive volcanic lava lake spanning over 200 km across.'
+    ]
+  },
+  {
+    id: 'europa',
+    name: 'Europa',
+    symbol: '🧊',
+    parentPlanetId: 'jupiter',
+    isMoon: true,
+    type: 'Galilean Moon (Ocean World)',
+    tagline: 'An icy wonderland harboring a global subsurface saltwater ocean with more liquid water than all of Earth\'s oceans combined.',
+    diameter: '3,122 km',
+    distanceSun: '670,900 km from Jupiter',
+    orbitalPeriod: '85.2 Hours (3.55 Earth Days)',
+    rotationPeriod: '85.2 Hours (Tidally Locked)',
+    temperature: '-160°C to -220°C (Surface Ice)',
+    gravity: '1.315 m/s² (0.134x Earth)',
+    moons: 'Orbits Jupiter (Galilean Moon)',
+    atmosphere: 'Tenuous molecular oxygen (O₂) exosphere',
+    color: '#38bdf8',
+    radius: 0.25,
+    facts: [
+      'Beneath a 15-25 km thick ice shell lies a vast liquid ocean estimated to be 60-150 km deep, containing 2x Earth\'s total water volume.',
+      'Europa has the smoothest surface of any known solid object in the Solar System, crisscrossed with reddish-brown fractures called lineae.',
+      'NASA\'s Europa Clipper mission (launched 2024) is en route to investigate whether Europa\'s ocean could harbor extraterrestrial microbial life.'
+    ]
+  },
+  {
+    id: 'ganymede',
+    name: 'Ganymede',
+    symbol: '🛡️',
+    parentPlanetId: 'jupiter',
+    isMoon: true,
+    type: 'Galilean Moon (The Colossus)',
+    tagline: 'The undisputed giant: larger than planet Mercury and Pluto, and the only moon in the Solar System with its own magnetic dynamo.',
+    diameter: '5,268 km',
+    distanceSun: '1,070,400 km from Jupiter',
+    orbitalPeriod: '7.15 Earth Days',
+    rotationPeriod: '7.15 Earth Days (Tidally Locked)',
+    temperature: '-113°C to -183°C',
+    gravity: '1.428 m/s² (0.146x Earth)',
+    moons: 'Orbits Jupiter (Galilean Moon)',
+    atmosphere: 'Thin oxygen exosphere with polar auroras',
+    color: '#94a3b8',
+    radius: 0.35,
+    facts: [
+      'Ganymede is the largest moon in the Solar System; if it orbited the Sun directly instead of Jupiter, it would easily be classified as a major planet.',
+      'It is the only moon with its own internally generated magnetic field, created by a convective liquid iron core just like Earth.',
+      'Hubble Space Telescope observations of Ganymede\'s glowing auroral belts confirmed the presence of a deep subsurface saltwater ocean.'
+    ]
+  },
+  {
+    id: 'callisto',
+    name: 'Callisto',
+    symbol: '☄️',
+    parentPlanetId: 'jupiter',
+    isMoon: true,
+    type: 'Galilean Moon (The Ancient Sentinel)',
+    tagline: 'The most heavily cratered object in the Solar System, an untouched 4-billion-year-old cosmic impact time capsule.',
+    diameter: '4,821 km',
+    distanceSun: '1,882,700 km from Jupiter',
+    orbitalPeriod: '16.69 Earth Days',
+    rotationPeriod: '16.69 Earth Days (Tidally Locked)',
+    temperature: '-108°C to -193°C',
+    gravity: '1.236 m/s² (0.126x Earth)',
+    moons: 'Orbits Jupiter (Galilean Moon)',
+    atmosphere: 'Thin carbon dioxide (CO₂) exosphere',
+    color: '#64748b',
+    radius: 0.32,
+    facts: [
+      'Callisto\'s surface is the oldest and most heavily cratered in the Solar System, showing almost no geological activity for 4 billion years.',
+      'Valhalla is its largest multi-ring impact basin, with a bright central region 600 km wide surrounded by concentric rings spanning 3,800 km!',
+      'Because it lies outside Jupiter\'s intense deadly radiation belts, Callisto is considered the safest long-term human outpost base in the Jovian system.'
+    ]
+  },
+  {
+    id: 'titan',
+    name: 'Titan',
+    symbol: '🪐',
+    parentPlanetId: 'saturn',
+    isMoon: true,
+    type: 'Saturnian Supermoon (Hydrocarbon World)',
+    tagline: 'The only moon with a dense atmosphere and the only body besides Earth with stable bodies of surface liquid — rivers, seas, and lakes of liquid methane.',
+    diameter: '5,149 km',
+    distanceSun: '1,221,870 km from Saturn',
+    orbitalPeriod: '15.95 Earth Days',
+    rotationPeriod: '15.95 Earth Days (Tidally Locked)',
+    temperature: '-179°C (Liquid Methane Climate)',
+    gravity: '1.352 m/s² (0.138x Earth)',
+    moons: 'Orbits Saturn',
+    atmosphere: '95% Nitrogen, 5% Methane (1.5x Earth surface pressure!)',
+    color: '#f59e0b',
+    radius: 0.34,
+    facts: [
+      'Titan has a full hydrological cycle like Earth, except instead of water, it rains liquid methane and ethane into massive polar seas (Kraken Mare).',
+      'Atmospheric pressure is 50% greater than Earth\'s; because of low gravity and thick air, humans wearing oxygen masks could fly by strapping wings to their arms!',
+      'In 2005, ESA\'s Huygens probe successfully landed on Titan\'s surface, beaming back images of smooth rounded icy pebbles and river channels.'
+    ]
+  },
+  {
+    id: 'enceladus',
+    name: 'Enceladus',
+    symbol: '💧',
+    parentPlanetId: 'saturn',
+    isMoon: true,
+    type: 'Saturnian Ice Moon (The Ocean Geyser)',
+    tagline: 'A brilliant, snow-white moon with cryovolcanic geysers venting ocean water, organic molecules, and silica nano-grains directly into space.',
+    diameter: '504 km',
+    distanceSun: '238,000 km from Saturn',
+    orbitalPeriod: '32.9 Hours (1.37 Earth Days)',
+    rotationPeriod: '32.9 Hours (Tidally Locked)',
+    temperature: '-198°C (Extreme Albedo Mirror)',
+    gravity: '0.113 m/s² (0.011x Earth)',
+    moons: 'Orbits Saturn',
+    atmosphere: 'Water vapor, nitrogen, methane and CO₂ venting plumes',
+    color: '#e0f2fe',
+    radius: 0.18,
+    facts: [
+      'Enceladus has the highest visual reflectivity (geometric albedo 0.99) of any body in the Solar System, reflecting nearly 100% of sunlight like fresh snow.',
+      'Over 100 cryovolcanic geysers erupt from the "Tiger Stripes" fractures near its South Pole, continuously creating and replenishing Saturn\'s vast E-ring!',
+      'The Cassini spacecraft flew directly through the plumes and detected molecular hydrogen (H₂), complex organic macromolecular compounds, and hydrothermal vent signatures.'
     ]
   }
 ];
