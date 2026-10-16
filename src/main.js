@@ -571,8 +571,9 @@ function handleStateMouseOut() {
 
 function handleStateClick(event, d) {
   event.stopPropagation();
-  const stateCode = d.properties?.stateCode;
-  const stateName = d.properties?.st_nm || d.properties?.name || 'State';
+  const stateCode = d?.properties?.stateCode;
+  const stateName = d?.properties?.st_nm || d?.properties?.name || 'State';
+  console.log('[DEBUG CLICK] handleStateClick called:', { stateCode, stateName, currentMode, battleSubMode });
   const [px, py] = d3.pointer(event, g.node());
   const coords = projection.invert([px, py]);
   const clickedLng = coords ? coords[0] : null;
@@ -629,8 +630,9 @@ function positionTooltip(event, tt) {
 // Map Click Router (Supports Explore, Empire Conquest, Battle Royale, Guess Where)
 function handleCountryClick(event, d) {
   event.stopPropagation();
-  const c = d.properties?.countryObj;
-  const code = d.properties?.countryCode;
+  const c = d?.properties?.countryObj;
+  const code = d?.properties?.countryCode;
+  console.log('[DEBUG CLICK] handleCountryClick called:', { code, name: c?.name, currentMode, battleSubMode });
 
   // 0. In Empire Conquest Mode
   if (currentMode === 'conquest' && conquestController) {
@@ -808,9 +810,13 @@ function initBattleRoyale() {
 }
 
 async function fetchServerQuizQuestions(mode) {
+  // If running locally, instantly use bundled syllabus questions without network delay
+  if (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')) {
+    return null;
+  }
   try {
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 3500);
+    const timeoutId = setTimeout(() => controller.abort(), 2000);
     const res = await fetch(`/api/quiz?mode=${encodeURIComponent(mode)}`, { signal: controller.signal });
     clearTimeout(timeoutId);
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -825,9 +831,13 @@ async function fetchServerQuizQuestions(mode) {
 }
 
 async function validateAnswerServerless(questionId, chosenAnswer, subMode) {
+  // If running locally, validate instantly without network delay
+  if (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')) {
+    return null;
+  }
   try {
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 3500);
+    const timeoutId = setTimeout(() => controller.abort(), 2000);
     const res = await fetch('/api/quiz', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -850,6 +860,9 @@ async function validateAnswerServerless(questionId, chosenAnswer, subMode) {
 // ASYNCHRONOUS ZERO-LAG GROQ AI MENTOR CALL
 // ============================================================
 async function requestAiMentorInsight(question, chosenAnswer, correctAnswer, explanation, category) {
+  if (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')) {
+    return null;
+  }
   try {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 2800); // 2.8s strict ceiling
@@ -872,6 +885,7 @@ async function requestAiMentorInsight(question, chosenAnswer, correctAnswer, exp
 }
 
 async function startBattleRoyale(subMode = 'world') {
+  currentMode = 'battle';
   battleSubMode = subMode;
   battleScore = 0;
   battleStreak = 0;
@@ -937,6 +951,81 @@ async function startBattleRoyale(subMode = 'world') {
   }
 
   nextBattleQuestion();
+}
+
+function renderBattleChoices(currentQ, subMode) {
+  const container = document.getElementById('battleChoicesRow');
+  if (!container) return;
+  container.innerHTML = '';
+  if (!currentQ || subMode === 'kbc') return;
+
+  let choices = [];
+
+  if (subMode === 'india') {
+    const localQ = INDIA_BATTLE_QUESTIONS.find(q => q.id === currentQ.id) || currentQ;
+    const targetCode = currentQ.stateCode || localQ.stateCode;
+    const targetState = INDIA_STATES_DATA.find(s => s.code === targetCode) || { code: targetCode, name: targetCode };
+
+    const distractors = INDIA_STATES_DATA
+      .filter(s => s.code !== targetCode)
+      .sort(() => 0.5 - Math.random())
+      .slice(0, 3);
+
+    choices = [
+      { code: targetState.code, name: targetState.name, flag: '🇮🇳' },
+      ...distractors.map(d => ({ code: d.code, name: d.name, flag: '🇮🇳' }))
+    ];
+  } else {
+    // World mode
+    const localQ = BATTLE_QUESTIONS.find(q => q.id === currentQ.id) || currentQ;
+    const targetCode = currentQ.targetCode || localQ.targetCode;
+    const targetObj = countryMap.get(targetCode) || allCountries.find(c => c.code === targetCode) || { code: targetCode, name: targetCode, flag: '🌍' };
+
+    const distractors = allCountries
+      .filter(c => c.code !== targetCode && c.name)
+      .sort(() => 0.5 - Math.random())
+      .slice(0, 3);
+
+    choices = [
+      { code: targetObj.code, name: targetObj.name, flag: targetObj.flag || '🌍' },
+      ...distractors.map(d => ({ code: d.code, name: d.name, flag: d.flag || '🌍' }))
+    ];
+  }
+
+  choices = shuffleArray(choices);
+
+  choices.forEach(ch => {
+    const btn = document.createElement('button');
+    btn.className = 'battle-choice-btn';
+    btn.dataset.choiceCode = ch.code;
+    btn.innerHTML = `${ch.flag ? ch.flag + ' ' : ''}${ch.name}`;
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      if (battleAnswerLocked) return;
+      if (subMode === 'india') {
+        handleBattleStateClick(ch.code, ch.name, null, window.innerWidth / 2, 220);
+      } else {
+        const c = countryMap.get(ch.code) || { code: ch.code, name: ch.name };
+        handleBattleMapClick(ch.code, c, currentQ.lng, currentQ.lat, window.innerWidth / 2, 220);
+      }
+    });
+    container.appendChild(btn);
+  });
+}
+
+function updateBattleChoiceButtons(selectedCode, correctCode) {
+  const container = document.getElementById('battleChoicesRow');
+  if (!container) return;
+  const buttons = container.querySelectorAll('.battle-choice-btn');
+  buttons.forEach(btn => {
+    btn.disabled = true;
+    const code = btn.dataset.choiceCode;
+    if (code === correctCode) {
+      btn.classList.add('correct-choice');
+    } else if (code === selectedCode) {
+      btn.classList.add('wrong-choice');
+    }
+  });
 }
 
 function nextBattleQuestion() {
@@ -1012,7 +1101,8 @@ function nextBattleQuestion() {
 
     document.getElementById('battleDiffBadge').textContent = currentBattleQuestion.difficulty || 'EASY';
     document.getElementById('battleQuestionText').textContent = currentBattleQuestion.text;
-    document.getElementById('battleHintText').textContent = 'Locate and click the target region on the map before timer expires!';
+    document.getElementById('battleHintText').textContent = 'Tap matching answer choice or click the region directly on the map!';
+    renderBattleChoices(currentBattleQuestion, battleSubMode);
   }
 
   // Reset countdown timer (15 seconds for thoughtful play)
@@ -1168,6 +1258,7 @@ async function handleBattleStateClick(stateCode, stateName, stateFeature, px, py
   const hint = currentBattleQuestion.hint || localQ.hint || 'Locate within the Indian subcontinent.';
 
   const isCorrect = (stateCode === targetCode);
+  updateBattleChoiceButtons(stateCode, targetCode);
 
   g.selectAll('.state-path').classed('correct-hit', false).classed('wrong-hit', false).classed('target-hint', false);
 
@@ -1221,6 +1312,7 @@ async function handleBattleMapClick(clickedCode, countryObj, clickedLng = null, 
     }
 
     isCorrect = (clickedCode === 'IN' && closestState && closestState.state.code === targetCode);
+    updateBattleChoiceButtons(closestState ? closestState.state.code : clickedCode, targetCode);
     g.selectAll('.state-path').classed('correct-hit', false).classed('wrong-hit', false).classed('target-hint', false);
 
     if (isCorrect) {
@@ -1256,6 +1348,7 @@ async function handleBattleMapClick(clickedCode, countryObj, clickedLng = null, 
     const localQ = BATTLE_QUESTIONS.find(q => q.id === currentBattleQuestion.id) || currentBattleQuestion;
     const targetCode = serverValidation?.targetCode || localQ.targetCode;
     isCorrect = serverValidation ? serverValidation.isCorrect : (clickedCode === targetCode);
+    updateBattleChoiceButtons(clickedCode, targetCode);
 
     if (isCorrect) {
       if (battleStreak >= 3) {
@@ -1378,6 +1471,7 @@ function initMysteryGame() {
 }
 
 function startMysteryGame() {
+  currentMode = 'mystery';
   document.body.classList.add('mode-mystery');
   if (currentProjection !== 'flat') {
     document.getElementById('btnFlatView')?.click();

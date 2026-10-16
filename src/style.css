@@ -1230,6 +1230,65 @@ body.mode-mystery .toast-stream {
   word-break: break-word;
 }
 
+/* Dynamic Fast-Action Answer Pills Row for World & Bharat Quizzes */
+.battle-choices-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  width: 100%;
+  margin-top: 6px;
+}
+
+.battle-choice-btn {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(56, 189, 248, 0.35);
+  border-radius: 20px;
+  padding: 6px 16px;
+  color: #f1f5f9;
+  font-size: 0.84rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  backdrop-filter: blur(8px);
+}
+
+.battle-choice-btn:hover:not(:disabled) {
+  background: rgba(56, 189, 248, 0.22);
+  border-color: #38bdf8;
+  color: #ffffff;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 16px rgba(56, 189, 248, 0.4);
+}
+
+.battle-choice-btn:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.battle-choice-btn.correct-choice {
+  background: rgba(16, 185, 129, 0.32) !important;
+  border-color: #10b981 !important;
+  color: #6ee7b7 !important;
+  box-shadow: 0 0 16px rgba(16, 185, 129, 0.6) !important;
+  transform: scale(1.04);
+}
+
+.battle-choice-btn.wrong-choice {
+  background: rgba(239, 68, 68, 0.32) !important;
+  border-color: #ef4444 !important;
+  color: #fca5a5 !important;
+  box-shadow: 0 0 16px rgba(239, 68, 68, 0.6) !important;
+}
+
+.battle-choice-btn:disabled {
+  cursor: default;
+  opacity: 0.85;
+}
+
 /* ========================================================
    KBC 4-OPTION STUDIO ARENA (Centered Stage Layout)
    ======================================================== */
